@@ -58,12 +58,12 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
-      meta: { requiresAuth: true, layout: 'admin' } 
+      meta: { requiresAuth: true, role: 'manajer', layout: 'admin' }
     },
     {
       path: '/operator/settings',
       name: 'operator-settings',
-      component: () => import('../views/OperatorSettingsView.vue'), 
+      component: () => import('../views/OperatorSettingsView.vue'),
       meta: { requiresAuth: true, role: 'operator', layout: 'operator' }
     },
   ],
@@ -81,19 +81,24 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (session && !authStore.user) {
-    await authStore.initialize() 
+    await authStore.initialize()
   }
 
   const userRole = authStore.role
 
-    if (to.meta.requiresAuth) {
-    if (to.meta.role && to.meta.role !== userRole) {
+  if (to.meta.requiresAuth) {
+    if (to.meta.layout === 'admin' && userRole !== 'manajer') {
+      if (userRole === 'operator') return next({ name: 'operator' })
+      await supabase.auth.signOut()
+      return next({ name: 'login' })
+    }
 
+    if (to.meta.role && to.meta.role !== userRole) {
       if (userRole === 'manajer') return next({ name: 'dashboard' })
       if (userRole === 'operator') return next({ name: 'operator' })
 
       await supabase.auth.signOut()
-      return next({ name: 'login' }) 
+      return next({ name: 'login' })
     }
   }
 
