@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { toast } from 'vue3-toastify'
 import { useCameraScanner } from '@/composables/useCameraScanner'
 import { useTransactionAction } from '@/composables/useTransactionAction'
+import { supabase } from '@/lib/supabaseClient'
 
 const props = defineProps({
   vehicleType: String,
