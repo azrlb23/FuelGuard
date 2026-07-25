@@ -19,150 +19,38 @@ import { Line, Pie, Bar } from 'vue-chartjs'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
+import { useMasterDashboard } from '@/composables/useMasterDashboard'
+
 const router = useRouter()
 
-// ─── Filter Time & Search State ─────────────────────────────────────────────
-const filterTime = ref('today') // 'today', 'weekly', 'monthly', 'all-time'
+// ─── Master Dashboard State via Composable ──────────────────────────────────
 const timeFilters = ['Today', 'Weekly', 'Monthly', 'All-Time']
+const activeSpbuId = ref(null)
 
-const searchQuery = ref('')
-const activeSpbuId = ref(null) // No accordion open by default
-
-const spbuList = ref([])
-const weeklyVolumeByDay = ref([0, 0, 0, 0, 0, 0, 0]) // Sen, Sel, Rab, Kam, Jum, Sab, Min
-
-const dbStats = ref({
-  totalRevenue: 0,
-  totalVolume: 0,
-  todayTrxCount: 0
-})
-
-const fetchRealDatabaseStats = async () => {
-  try {
-    // 1. Fetch SPBUs directly from Supabase
-    const { data: dbSpbus, error: spbuError } = await supabase.from('spbu').select('*')
-
-    if (spbuError) {
-      console.warn('[MasterDashboard] Error fetching SPBU table:', spbuError.message)
-    }
-
-    const rawSpbus = dbSpbus || []
-
-    // 2. Build date query based on filterTime
-    const now = new Date()
-    let query = supabase
-      .from('transaksi_pertalite')
-      .select('harga, liter, waktu_pencatatan, jenis_kendaraan, plat_nomor, spbu_id')
-      .order('waktu_pencatatan', { ascending: false })
-
-    if (filterTime.value === 'today') {
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString()
-      query = query.gte('waktu_pencatatan', startOfDay)
-    } else if (filterTime.value === 'weekly') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-      query = query.gte('waktu_pencatatan', weekAgo)
-    } else if (filterTime.value === 'monthly') {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      query = query.gte('waktu_pencatatan', monthAgo)
-    }
-
-    const { data: allTrx, error: trxError } = await query
-
-    if (trxError) {
-      console.warn('[MasterDashboard] Error fetching transactions:', trxError.message)
-    }
-
-    const allTrxList = allTrx || []
-
-    // Map transactions to SPBUs strictly when spbu_id exists
-    const spbuDataMap = {}
-    allTrxList.forEach(tx => {
-      if (!tx.spbu_id) return
-      const sId = String(tx.spbu_id)
-      if (!spbuDataMap[sId]) {
-        spbuDataMap[sId] = { revenue: 0, volume: 0, transactions: [] }
-      }
-      spbuDataMap[sId].revenue += Number(tx.harga) || 0
-      spbuDataMap[sId].volume += Number(tx.liter) || 0
-      spbuDataMap[sId].transactions.push(tx)
-    })
-
-    // Process SPBU list directly from database rows
-    spbuList.value = rawSpbus.map(s => {
-      const sId = String(s.id)
-      const stats = spbuDataMap[sId] || { revenue: 0, volume: 0, transactions: [] }
-
-      const name = s.nama || s.name || s.nama_spbu || `SPBU ${sId}`
-      const location = s.alamat || s.location || s.kota || '-'
-      const manager = s.manager || s.manager_name || '-'
-
-      return {
-        id: sId,
-        name: name,
-        location: location,
-        revenue: stats.revenue,
-        volume: stats.volume,
-        manager: manager,
-        transactions: stats.transactions
-      }
-    })
-
-    // Calculate totals directly from queried transactions
-    const totalRev = allTrxList.reduce((sum, item) => sum + (Number(item.harga) || 0), 0)
-    const totalVol = allTrxList.reduce((sum, item) => sum + (Number(item.liter) || 0), 0)
-
-    dbStats.value.totalRevenue = totalRev
-    dbStats.value.totalVolume = totalVol
-    dbStats.value.todayTrxCount = allTrxList.length
-
-    // 3. Fetch real 7-day volume per day for Bar Chart
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
-    sevenDaysAgo.setHours(0, 0, 0, 0)
-
-    const { data: weeklyTrx } = await supabase
-      .from('transaksi_pertalite')
-      .select('liter, waktu_pencatatan')
-      .gte('waktu_pencatatan', sevenDaysAgo.toISOString())
-
-    const dayVolumes = [0, 0, 0, 0, 0, 0, 0] // Sen, Sel, Rab, Kam, Jum, Sab, Min
-    if (weeklyTrx && weeklyTrx.length > 0) {
-      weeklyTrx.forEach(tx => {
-        const d = new Date(tx.waktu_pencatatan)
-        if (!isNaN(d.getTime())) {
-          const day = d.getDay() // 0 = Sun, 1 = Mon ...
-          const idx = day === 0 ? 6 : day - 1
-          dayVolumes[idx] += Number(tx.liter) || 0
-        }
-      })
-    }
-    weeklyVolumeByDay.value = dayVolumes
-
-  } catch (err) {
-    console.error('Error fetching real stats from Supabase:', err)
-  }
-}
-
-watch(filterTime, () => {
-  fetchRealDatabaseStats()
-})
+const {
+  filterTime,
+  setFilterTime,
+  searchQuery,
+  isLoading,
+  stats,
+  spbuList,
+  weeklyVolumeByDay,
+  alerts
+} = useMasterDashboard()
 
 const isMounted = ref(false)
 
 onMounted(() => {
   isMounted.value = true
-  fetchRealDatabaseStats()
-  const interval = setInterval(fetchRealDatabaseStats, 30000)
-  return () => clearInterval(interval)
 })
 
 const filteredSpbuList = computed(() => {
   if (!searchQuery.value.trim()) return spbuList.value
   const q = searchQuery.value.toLowerCase()
   return spbuList.value.filter(s =>
-    s.name.toLowerCase().includes(q) ||
-    s.location.toLowerCase().includes(q) ||
-    s.manager.toLowerCase().includes(q)
+    (s.name && s.name.toLowerCase().includes(q)) ||
+    (s.location && s.location.toLowerCase().includes(q)) ||
+    (s.manager && s.manager.toLowerCase().includes(q))
   )
 })
 
@@ -199,7 +87,7 @@ const goToSpbuConsole = (spbu) => {
 
 // ─── Network Statistics Computed Properties ──────────────────────────────────
 const totalNetworkRevenue = computed(() => {
-  const sum = dbStats.value.totalRevenue
+  const sum = stats.value.totalRevenue
   if (sum === 0) return 'Rp 0'
   if (sum >= 1000000000) return `Rp ${(sum / 1000000000).toFixed(2)} M`
   if (sum >= 1000000) return `Rp ${(sum / 1000000).toFixed(1)} Jt`
@@ -207,13 +95,13 @@ const totalNetworkRevenue = computed(() => {
 })
 
 const totalNetworkVolume = computed(() => {
-  const sum = dbStats.value.totalVolume
+  const sum = stats.value.totalVolume
   if (sum === 0) return '0 L'
   return sum >= 1000 ? `${(sum / 1000).toFixed(1)}K L` : `${sum.toFixed(1)} L`
 })
 
 const totalTransactionsCount = computed(() => {
-  return dbStats.value.todayTrxCount.toLocaleString('id-ID')
+  return (stats.value.todayTrxCount || 0).toLocaleString('id-ID')
 })
 
 const activeSpbuCountText = computed(() => {
@@ -247,8 +135,6 @@ const formatVolume = (val) => {
   if (!val || val === 0) return '0 Liter'
   return val >= 1000 ? `${(val / 1000).toFixed(1)}K Liter` : `${val} Liter`
 }
-
-const alerts = ref([])
 
 const barChartData = computed(() => {
   const volumes = weeklyVolumeByDay.value
