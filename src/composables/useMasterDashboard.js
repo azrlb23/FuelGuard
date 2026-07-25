@@ -71,11 +71,11 @@ export function useMasterDashboard() {
 
         return {
           id: sId,
-          name: s.nama || s.name || s.nama_spbu || `SPBU ${sId}`,
-          location: s.alamat || s.location || s.kota || '-',
+          name: s.nama || `SPBU #${sId}`,
+          location: s.alamat || '-',
           revenue: sStats.revenue,
           volume: sStats.volume,
-          manager: s.manager || s.manager_name || '-',
+          manager: s.manajer_id ? `Manager #${s.manajer_id}` : '-',
           transactions: sStats.transactions
         }
       })
@@ -119,6 +119,8 @@ export function useMasterDashboard() {
     }
   }
 
+  const dataSource = ref('Checking...')
+
   // ─── Main Fetch (Prioritas RPC Database -> Fallback Direct Fetch) ─────────────
   const fetchData = async () => {
     try {
@@ -136,13 +138,14 @@ export function useMasterDashboard() {
           weeklyVolumeByDay.value = data.weekly_volume || [0, 0, 0, 0, 0, 0, 0]
           alerts.value = data.alerts || []
           rpcSuccess = true
-          console.log('[useMasterDashboard] RPC data loaded successfully.')
+          dataSource.value = 'RPC Database (Server-side)'
         }
       } catch (err) {
-        console.warn('[useMasterDashboard] RPC failed, falling back to direct query:', err)
+        // RPC failed or function not created yet
       }
 
       if (!rpcSuccess) {
+        dataSource.value = 'Fallback Direct Query (Frontend)'
         await fetchDirectTableData()
       }
     } catch (err) {
@@ -179,6 +182,7 @@ export function useMasterDashboard() {
     spbuList,
     weeklyVolumeByDay,
     alerts,
+    dataSource,
     fetchData
   }
 }

@@ -1,24 +1,22 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { supabase } from '@/lib/supabaseClient'
+import { computed } from 'vue'
+import { useMasterHistory } from '@/composables/useMasterHistory'
 
-const route = useRoute()
-
-// ─── State & Pagination ──────────────────────────────────────────────────────
+// ─── Master History State via Composable ────────────────────────────────────
 const itemsPerPage = 10
-const currentPage = ref(1)
-const totalItems = ref(0)
-const transactions = ref([])
-const loading = ref(false)
-const spbuMap = ref({})
 
-// ─── Filter State ────────────────────────────────────────────────────────────
-const searchQuery = ref('')
-const dateFrom = ref('')
-const dateTo = ref('')
-const sortField = ref('waktu_pencatatan')
-const sortDir = ref('desc') // 'asc' | 'desc'
+const {
+  transactions,
+  loading,
+  totalItems,
+  currentPage,
+  searchQuery,
+  dateFrom,
+  dateTo,
+  sortField,
+  sortDir,
+  resetFilters
+} = useMasterHistory(itemsPerPage)
 
 const SORT_OPTIONS = [
   { label: 'Terbaru', field: 'waktu_pencatatan', dir: 'desc' },
@@ -45,59 +43,6 @@ const activeFilters = computed(() => {
   return filters
 })
 
-// ─── Fetch SPBUs for Mapping Name ───────────────────────────────────────────
-const fetchSpbus = async () => {
-  try {
-    const { data } = await supabase.from('spbu').select('id, name, code')
-    if (data && data.length > 0) {
-      const map = {}
-      data.forEach(s => {
-        map[s.id] = s.name || s.code || `SPBU #${s.id}`
-      })
-      spbuMap.value = map
-    }
-  } catch (err) {
-    console.warn('Gagal load SPBU map:', err)
-  }
-}
-
-// ─── Fetch History ───────────────────────────────────────────────────────────
-const fetchHistory = async () => {
-  loading.value = true
-  try {
-    const from = (currentPage.value - 1) * itemsPerPage
-    const to = from + itemsPerPage - 1
-
-    let query = supabase
-      .from('transaksi_pertalite')
-      .select('*', { count: 'exact' })
-      .order(sortField.value, { ascending: sortDir.value === 'asc' })
-      .range(from, to)
-
-    if (searchQuery.value.trim()) {
-      query = query.ilike('plat_nomor', `%${searchQuery.value.trim()}%`)
-    }
-
-    if (dateFrom.value) {
-      query = query.gte('waktu_pencatatan', `${dateFrom.value}T00:00:00`)
-    }
-    if (dateTo.value) {
-      query = query.lte('waktu_pencatatan', `${dateTo.value}T23:59:59`)
-    }
-
-    const { data, count, error } = await query
-
-    if (error) throw error
-
-    transactions.value = data || []
-    totalItems.value = count || 0
-  } catch (err) {
-    console.error('Error fetching history:', err.message)
-  } finally {
-    loading.value = false
-  }
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatRupiah = (num) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0)
@@ -116,9 +61,7 @@ const formatDate = (dateString) => {
 }
 
 const getSpbuName = (trx) => {
-  if (trx.spbu_name) return trx.spbu_name
-  if (trx.spbu_id && spbuMap.value[trx.spbu_id]) return spbuMap.value[trx.spbu_id]
-  return 'SPBU 64.7501' // Default fallback SPBU name
+  return trx.spbu_name || 'SPBU 64.7501'
 }
 
 const removeFilter = (key) => {
@@ -131,43 +74,10 @@ const removeFilter = (key) => {
   }
 }
 
-const resetFilters = () => {
-  searchQuery.value = ''
-  dateFrom.value = ''
-  dateTo.value = ''
-  sortField.value = 'waktu_pencatatan'
-  sortDir.value = 'desc'
-  currentPage.value = 1
-}
-
 const setSort = (field, dir) => {
   sortField.value = field
   sortDir.value = dir
 }
-
-// Watchers for refetching
-watch([searchQuery, dateFrom, dateTo, sortField, sortDir], () => {
-  currentPage.value = 1
-  fetchHistory()
-})
-
-watch(currentPage, () => {
-  fetchHistory()
-})
-
-watch(() => route.query.q, (newQuery) => {
-  if (newQuery !== undefined) {
-    searchQuery.value = newQuery
-  }
-})
-
-onMounted(() => {
-  fetchSpbus()
-  if (route.query.q) {
-    searchQuery.value = route.query.q
-  }
-  fetchHistory()
-})
 
 const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage) || 1)
 </script>

@@ -59,7 +59,7 @@ const toggleSpbuAccordion = (id) => {
 }
 
 const getRecentTransactions = (spbuId) => {
-  const spbu = spbuList.value.find(s => s.id === String(spbuId))
+  const spbu = spbuList.value.find(s => String(s.id) === String(spbuId))
   if (spbu && spbu.transactions && spbu.transactions.length > 0) {
     return spbu.transactions.slice(0, 10).map((tx, idx) => {
       const date = new Date(tx.waktu_pencatatan)
@@ -400,14 +400,11 @@ const barChartOptions = {
               </div>
 
               <div class="flex items-center gap-2 w-full sm:w-auto">
-                <button class="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-white hover:bg-gray-100 text-gray-700 text-xs font-bold transition-colors cursor-pointer border border-gray-200">
-                  📞 Hubungi Manager
-                </button>
                 <button
                   @click="goToSpbuConsole(spbu)"
                   class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#143d2e] hover:bg-[#1e5c45] text-white text-xs font-bold transition-all shadow-md shadow-green-900/10 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  🚀 Buka Console Manager SPBU →
+                  Buka Dashboard SPBU
                 </button>
               </div>
             </div>

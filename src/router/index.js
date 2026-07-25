@@ -29,8 +29,22 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'master', layout: 'master' }
     },
     {
+      path: '/master/analytics',
+      name: 'master-analytics',
+      component: () => import('../views/MasterAnalyticsView.vue'),
+      meta: { requiresAuth: true, role: 'master', layout: 'master' }
+    },
+    {
       path: '/master/network',
       redirect: '/master/history'
+    },
+    {
+      path: '/master/team',
+      redirect: '/team'
+    },
+    {
+      path: '/master/settings',
+      redirect: '/settings'
     },
     {
       path: '/dashboard',
