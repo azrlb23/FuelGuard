@@ -26,44 +26,27 @@ const filterTime = ref('today') // 'today', 'weekly', 'monthly', 'all-time'
 const timeFilters = ['Today', 'Weekly', 'Monthly', 'All-Time']
 
 const searchQuery = ref('')
-const activeSpbuId = ref('6176101')
-const isUsingSeedData = ref(false)
+const activeSpbuId = ref(null) // No accordion open by default
 
 const spbuList = ref([])
+const weeklyVolumeByDay = ref([0, 0, 0, 0, 0, 0, 0]) // Sen, Sel, Rab, Kam, Jum, Sab, Min
+
 const dbStats = ref({
   totalRevenue: 0,
   totalVolume: 0,
   todayTrxCount: 0
 })
 
-const defaultSeedSpbus = [
-  { id: '6176101', nama: 'SPBU Sudirman 1', alamat: 'Jakarta Pusat', manager: 'Budi Santoso' },
-  { id: '6176102', nama: 'SPBU Gatot Subroto', alamat: 'Jakarta Selatan', manager: 'Hendra Wijaya' },
-  { id: '6176103', nama: 'SPBU Thamrin Plaza', alamat: 'Jakarta Pusat', manager: 'Siti Rahma' },
-  { id: '6176104', nama: 'SPBU Cengkareng Hub', alamat: 'Jakarta Barat', manager: 'Rian Hidayat' },
-  { id: '6176105', nama: 'SPBU Kelapa Gading', alamat: 'Jakarta Utara', manager: 'Kevin Tan' },
-  { id: '6176106', nama: 'SPBU Bekasi Timur', alamat: 'Bekasi', manager: 'Asep Pratama' },
-  { id: '6176107', nama: 'SPBU Depok Margonda', alamat: 'Depok', manager: 'Farhan Ardi' },
-  { id: '6176108', nama: 'SPBU Tangerang BSD', alamat: 'Tangerang', manager: 'Maya Putri' },
-  { id: '6176109', nama: 'SPBU Bogor Pajajaran', alamat: 'Bogor', manager: 'Denny Kurnia' },
-  { id: '6176110', nama: 'SPBU Serpong Tech', alamat: 'Tangerang Selatan', manager: 'Aris Munandar' },
-]
-
 const fetchRealDatabaseStats = async () => {
   try {
-    // 1. Fetch SPBUs from Supabase
-    let { data: dbSpbus, error: spbuError } = await supabase.from('spbu').select('*')
+    // 1. Fetch SPBUs directly from Supabase
+    const { data: dbSpbus, error: spbuError } = await supabase.from('spbu').select('*')
 
     if (spbuError) {
       console.warn('[MasterDashboard] Error fetching SPBU table:', spbuError.message)
     }
 
-    if (!dbSpbus || dbSpbus.length === 0) {
-      dbSpbus = defaultSeedSpbus
-      isUsingSeedData.value = true
-    } else {
-      isUsingSeedData.value = false
-    }
+    const rawSpbus = dbSpbus || []
     
     // 2. Build date query based on filterTime
     const now = new Date()
@@ -82,7 +65,6 @@ const fetchRealDatabaseStats = async () => {
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
       query = query.gte('waktu_pencatatan', monthAgo)
     }
-    // 'all-time': fetch without date filter
 
     const { data: allTrx, error: trxError } = await query
 
@@ -92,10 +74,11 @@ const fetchRealDatabaseStats = async () => {
 
     const allTrxList = allTrx || []
 
-    // Map transactions to SPBUs
+    // Map transactions to SPBUs strictly when spbu_id exists
     const spbuDataMap = {}
     allTrxList.forEach(tx => {
-      const sId = String(tx.spbu_id || '6176101')
+      if (!tx.spbu_id) return
+      const sId = String(tx.spbu_id)
       if (!spbuDataMap[sId]) {
         spbuDataMap[sId] = { revenue: 0, volume: 0, transactions: [] }
       }
@@ -104,14 +87,14 @@ const fetchRealDatabaseStats = async () => {
       spbuDataMap[sId].transactions.push(tx)
     })
 
-    // Process SPBU list
-    spbuList.value = dbSpbus.map((s, idx) => {
+    // Process SPBU list directly from database rows
+    spbuList.value = rawSpbus.map(s => {
       const sId = String(s.id)
       const stats = spbuDataMap[sId] || { revenue: 0, volume: 0, transactions: [] }
       
       const name = s.nama || s.name || s.nama_spbu || `SPBU ${sId}`
-      const location = s.alamat || s.location || s.kota || 'Indonesia'
-      const manager = s.manager || s.manager_name || (idx === 0 ? 'Budi Santoso' : idx === 1 ? 'Hendra Wijaya' : 'Farhan Ardi')
+      const location = s.alamat || s.location || s.kota || '-'
+      const manager = s.manager || s.manager_name || '-'
 
       return {
         id: sId,
@@ -119,24 +102,41 @@ const fetchRealDatabaseStats = async () => {
         location: location,
         revenue: stats.revenue,
         volume: stats.volume,
-        status: stats.revenue > 0 ? 'online' : (idx % 3 === 1 ? 'warning' : 'online'),
-        trend: stats.revenue > 0 ? 5.2 : 0,
         manager: manager,
         transactions: stats.transactions
       }
     })
 
-    if (!activeSpbuId.value && spbuList.value.length > 0) {
-      activeSpbuId.value = spbuList.value[0].id
-    }
-
-    // Calculate totals
+    // Calculate totals directly from queried transactions
     const totalRev = allTrxList.reduce((sum, item) => sum + (Number(item.harga) || 0), 0)
     const totalVol = allTrxList.reduce((sum, item) => sum + (Number(item.liter) || 0), 0)
 
     dbStats.value.totalRevenue = totalRev
     dbStats.value.totalVolume = totalVol
     dbStats.value.todayTrxCount = allTrxList.length
+
+    // 3. Fetch real 7-day volume per day for Bar Chart
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+    sevenDaysAgo.setHours(0, 0, 0, 0)
+
+    const { data: weeklyTrx } = await supabase
+      .from('transaksi_pertalite')
+      .select('liter, waktu_pencatatan')
+      .gte('waktu_pencatatan', sevenDaysAgo.toISOString())
+
+    const dayVolumes = [0, 0, 0, 0, 0, 0, 0] // Sen, Sel, Rab, Kam, Jum, Sab, Min
+    if (weeklyTrx && weeklyTrx.length > 0) {
+      weeklyTrx.forEach(tx => {
+        const d = new Date(tx.waktu_pencatatan)
+        if (!isNaN(d.getTime())) {
+          const day = d.getDay() // 0 = Sun, 1 = Mon ...
+          const idx = day === 0 ? 6 : day - 1
+          dayVolumes[idx] += Number(tx.liter) || 0
+        }
+      })
+    }
+    weeklyVolumeByDay.value = dayVolumes
 
   } catch (err) {
     console.error('Error fetching real stats from Supabase:', err)
@@ -178,7 +178,7 @@ const getRecentTransactions = (spbuId) => {
 
       return {
         id: idx + 1,
-        plat: tx.plat_nomor || 'B 1234 A',
+        plat: tx.plat_nomor || '-',
         fuel: 'Pertalite',
         liter: `${(Number(tx.liter) || 0).toFixed(1)} L`,
         amount: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(tx.harga || 0),
@@ -215,8 +215,7 @@ const totalTransactionsCount = computed(() => {
 
 const activeSpbuCountText = computed(() => {
   const total = spbuList.value.length
-  const online = spbuList.value.filter(s => s.status === 'online').length
-  return `${online}/${total}`
+  return `${total} SPBU`
 })
 
 const periodLabel = computed(() => {
@@ -234,7 +233,7 @@ const transactionCardTitle = computed(() => {
 })
 
 
-// ─── Formatters & Status Config ──────────────────────────────────────────────
+// ─── Formatters ──────────────────────────────────────────────────────────────
 const formatRupiah = (val) => {
   if (!val || val === 0) return 'Rp 0'
   if (val >= 1000000000) return `Rp ${(val / 1000000000).toFixed(2)} M`
@@ -246,23 +245,29 @@ const formatVolume = (val) => {
   return val >= 1000 ? `${(val / 1000).toFixed(1)}K Liter` : `${val} Liter`
 }
 
-const statusConfig = {
-  online: { label: 'Online', color: 'text-green-600', dot: 'bg-green-500' },
-  warning: { label: 'Peringatan', color: 'text-amber-600', dot: 'bg-amber-400' },
-  offline: { label: 'Offline', color: 'text-red-500', dot: 'bg-red-500' }
-}
-
 const alerts = ref([])
 
-const barChartData = computed(() => ({
-  labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
-  datasets: [{
-    label: 'Volume (K Liters)',
-    data: [18.4, 21.2, 19.8, 23.1, 25.6, 28.9, 22.3],
-    backgroundColor: ['#143d2e', '#143d2e', '#143d2e', '#143d2e', '#143d2e', '#258f62', '#143d2e'],
-    borderRadius: 6
-  }]
-}))
+const barChartData = computed(() => {
+  const volumes = weeklyVolumeByDay.value
+  const maxVol = Math.max(...volumes)
+  const isKLiter = maxVol >= 1000
+
+  const dataValues = volumes.map(v => 
+    isKLiter ? Number((v / 1000).toFixed(2)) : Number(v.toFixed(1))
+  )
+
+  const todayIdx = (new Date().getDay() + 6) % 7 // Current day index (0=Sen, 6=Min)
+
+  return {
+    labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
+    datasets: [{
+      label: isKLiter ? 'Volume (K Liters)' : 'Volume (Liters)',
+      data: dataValues,
+      backgroundColor: dataValues.map((_, i) => i === todayIdx ? '#258f62' : '#143d2e'),
+      borderRadius: 6
+    }]
+  }
+})
 
 const barChartOptions = {
   responsive: true,
@@ -278,14 +283,14 @@ const barChartOptions = {
 <template>
   <div class="space-y-6 animate-enter">
 
-    <!-- Header Section with Title & Filter Toggle (Today, Weekly, Monthly, All-Time) -->
+    <!-- Header Section with Title & Filter Toggle -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-2">
       <div>
         <h2 class="text-2xl md:text-3xl font-extrabold text-black tracking-tight mb-1">Master Dashboard</h2>
         <p class="text-gray-500 font-bold text-sm">Overview performa jaringan SPBU</p>
       </div>
 
-      <!-- Time Filter Toggle matching Manager Dashboard -->
+      <!-- Time Filter Toggle -->
       <div class="bg-[#184e39] p-1.5 rounded-full flex shadow-lg shadow-green-900/10 self-start sm:self-auto">
         <button 
           v-for="filter in timeFilters" 
@@ -312,9 +317,6 @@ const barChartOptions = {
         </div>
         <h3 class="text-3xl lg:text-4xl font-black tracking-tight mb-1">{{ totalNetworkRevenue }}</h3>
         <p class="text-xs text-green-200/80 mb-3 font-medium">{{ periodLabel }} · {{ spbuList.length }} SPBU</p>
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-500/30 text-green-100">
-          {{ isUsingSeedData ? '● Offline / Default Mode' : '● Live Database Connected' }}
-        </span>
         <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
       </div>
 
@@ -328,24 +330,18 @@ const barChartOptions = {
         </div>
         <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-[#143d2e] mb-1">{{ totalNetworkVolume }}</h3>
         <p class="text-xs text-gray-400 mb-3 font-medium">Total liter terjual ({{ periodLabel }})</p>
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-500/15 text-green-600">
-          ● Live Database Status
-        </span>
       </div>
 
       <!-- Active SPBU Card -->
       <div class="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-xl shadow-green-900/5 hover:scale-[1.01] transition-transform">
         <div class="flex justify-between items-start mb-4">
-          <p class="text-xs font-bold uppercase tracking-widest text-gray-400">SPBU Aktif</p>
+          <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Total SPBU</p>
           <div class="w-10 h-10 rounded-2xl bg-[#143d2e]/8 flex items-center justify-center text-[#143d2e]">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
           </div>
         </div>
         <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-[#143d2e] mb-1">{{ activeSpbuCountText }}</h3>
-        <p class="text-xs text-gray-400 mb-3 font-medium">Status operasional SPBU</p>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700">
-          ● Status Operasional
-        </span>
+        <p class="text-xs text-gray-400 mb-3 font-medium">Total jaringan SPBU terhubung</p>
       </div>
 
       <!-- Transactions Card -->
@@ -358,22 +354,8 @@ const barChartOptions = {
         </div>
         <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-[#143d2e] mb-1">{{ totalTransactionsCount }}</h3>
         <p class="text-xs text-gray-400 mb-3 font-medium">Total transaksi ({{ periodLabel }})</p>
-        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-500/15 text-green-600">
-          ● Live Database Status
-        </span>
       </div>
 
-    </div>
-
-    <!-- Info Banner if Supabase RLS is blocking unauthenticated SELECT -->
-    <div v-if="isUsingSeedData" class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-3">
-      <span class="text-lg leading-none">⚠️</span>
-      <div>
-        <p class="font-bold">Info Koneksi Supabase (Row Level Security / RLS):</p>
-        <p class="mt-0.5 text-amber-800">
-          Supabase REST API mengembalikan 0 baris data untuk tabel <code class="bg-amber-100 px-1 py-0.5 rounded font-mono">spbu</code> (mungkin karena belum ada RLS Policy SELECT untuk role public/anon). Aplikasi sementara menampilkan daftar SPBU default agar antarmuka accordion tetap dapat diakses. 
-        </p>
-      </div>
     </div>
 
     <!-- Row 2: Volume Mingguan & Notifikasi Sistem -->
@@ -383,7 +365,7 @@ const barChartOptions = {
       <div class="lg:col-span-2 bg-white rounded-[2rem] p-6 shadow-xl shadow-green-900/5 border border-gray-100 flex flex-col justify-between">
         <div>
           <h4 class="text-[#143d2e] font-black text-lg mb-0.5">Volume Mingguan Jaringan</h4>
-          <p class="text-gray-400 text-xs font-medium mb-4">Ribu liter · akumulasi transaksi langsung dari database</p>
+          <p class="text-gray-400 text-xs font-medium mb-4">Total volume BBM terjual per hari dalam 7 hari terakhir (Real-time Database)</p>
         </div>
         <div class="h-44 w-full">
           <Bar :data="barChartData" :options="barChartOptions" />
@@ -459,11 +441,11 @@ const barChartOptions = {
       <div class="space-y-3">
         <!-- Empty State Filter -->
         <div v-if="filteredSpbuList.length === 0" class="py-12 text-center text-gray-400 text-xs font-medium border border-dashed border-gray-200 rounded-2xl">
-          <p class="text-gray-500 font-bold text-sm mb-1">Tidak ada data SPBU yang sesuai</p>
+          <p class="text-gray-500 font-bold text-sm mb-1">Belum ada data SPBU di database</p>
         </div>
 
         <div 
-          v-for="spbu in filteredSpbuList" 
+          v-for="(spbu, index) in filteredSpbuList" 
           :key="spbu.id"
           class="rounded-2xl transition-all duration-300 overflow-hidden border"
           :class="[
@@ -477,11 +459,12 @@ const barChartOptions = {
             @click="toggleSpbuAccordion(spbu.id)"
             class="w-full flex items-center gap-3 p-3.5 text-left transition-colors cursor-pointer select-none"
           >
+            <!-- Sequential Index Badge (1, 2, 3...) -->
             <div 
               class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-black text-white shadow-sm"
               style="background: linear-gradient(135deg, #143d2e, #258f62)"
             >
-              {{ spbu.id }}
+              {{ index + 1 }}
             </div>
 
             <div class="flex-1 min-w-0">
@@ -492,7 +475,7 @@ const barChartOptions = {
               </div>
             </div>
 
-            <div class="text-right hidden sm:flex items-center gap-3 pr-2">
+            <div class="text-right flex items-center gap-3 pr-2">
               <div>
                 <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Revenue</p>
                 <p class="text-[#143d2e] font-black text-sm leading-tight">{{ formatRupiah(spbu.revenue) }}</p>
@@ -504,17 +487,7 @@ const barChartOptions = {
               </div>
             </div>
 
-            <div 
-              class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-gray-50 border border-gray-100"
-              :class="statusConfig[spbu.status]?.color || 'text-gray-500'"
-            >
-              <div 
-                class="w-2 h-2 rounded-full" 
-                :class="[statusConfig[spbu.status]?.dot || 'bg-gray-400', spbu.status === 'online' ? 'animate-pulse' : '']"
-              ></div>
-              <span class="text-[11px] font-bold hidden lg:block">{{ statusConfig[spbu.status]?.label || 'Offline' }}</span>
-            </div>
-
+            <!-- Chevron Toggle Button -->
             <div 
               class="w-7 h-7 rounded-full flex items-center justify-center transition-transform duration-200"
               :class="[
@@ -552,7 +525,6 @@ const barChartOptions = {
             <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm">🧾</span>
                   <h5 class="text-xs font-black text-[#143d2e] uppercase tracking-wider">10 Transaksi Terakhir ({{ periodLabel }})</h5>
                 </div>
                 <span class="text-[10px] text-gray-400 font-medium">Real-time Feed · {{ spbu.name }}</span>
