@@ -5,18 +5,25 @@ import { supabase } from '@/lib/supabaseClient'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const role = ref(null)
+  const spbuId = ref(null)
   const isLoading = ref(false)
   const isInitialized = ref(false)
 
-  // Singleton promise — mencegah double-fetch saat router guard & App.vue
-  // sama-sama memanggil initialize() secara bersamaan saat refresh halaman
   let _initPromise = null
 
-  const initialize = async () => {
-    // Sudah selesai diinisialisasi sebelumnya, skip
-    if (isInitialized.value) return
+  const fetchUserMeta = async () => {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role, spbu_id')
+      .eq('user_id', (await supabase.auth.getUser()).data.user.id)
+      .single()
 
-    // Sedang dalam proses init, kembalikan promise yang sama
+    if (error) throw error
+    return data
+  }
+
+  const initialize = async () => {
+    if (isInitialized.value) return
     if (_initPromise) return _initPromise
 
     _initPromise = (async () => {
@@ -25,8 +32,9 @@ export const useAuthStore = defineStore('auth', () => {
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
           user.value = session.user
-          const { data: roleData } = await supabase.rpc('get_user_role')
-          role.value = roleData
+          const meta = await fetchUserMeta()
+          role.value = meta.role
+          spbuId.value = meta.spbu_id
         }
         isInitialized.value = true
       } finally {
@@ -49,12 +57,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       user.value = session.user
 
-      const { data: roleData, error: roleError } = await supabase.rpc('get_user_role')
-      if (roleError) console.error('Gagal ambil role:', roleError)
+      const meta = await fetchUserMeta()
+      role.value = meta.role
+      spbuId.value = meta.spbu_id
 
-      role.value = roleData
       isInitialized.value = true
-      return { success: true, role: roleData }
+      return { success: true, role: meta.role }
     } catch (error) {
       return { success: false, error: error.message }
     } finally {
@@ -71,14 +79,14 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       user.value = null
       role.value = null
+      spbuId.value = null
       isInitialized.value = false
       isLoading.value = false
-      // Hapus token auth dari storage secara menyeluruh agar router.beforeEach tidak melakukan redirect ulang ke dashboard
       localStorage.clear()
       sessionStorage.clear()
       window.location.href = '/'
     }
   }
 
-  return { user, role, isLoading, isInitialized, login, logout, initialize }
+  return { user, role, spbuId, isLoading, isInitialized, login, logout, initialize }
 })

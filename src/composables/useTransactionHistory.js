@@ -1,25 +1,32 @@
 import { ref, watch, onMounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 export function useTransactionHistory(itemsPerPage = 10, options = {}) {
-  
+
   const transactions = ref([])
   const loading = ref(false)
   const totalItems = ref(0)
   const currentPage = ref(1)
 
-  // Filter state
   const searchQuery = ref('')
-  const vehicleFilter = ref('') // '' = Semua, 'Motor', 'Mobil'
+  const vehicleFilter = ref('')
   const dateFrom = ref('')
   const dateTo = ref('')
   const sortField = ref('waktu_pencatatan')
-  const sortDir = ref('desc') // 'asc' | 'desc'
+  const sortDir = ref('desc')
 
   const route = useRoute()
+  const authStore = useAuthStore()
 
   const fetchHistory = async () => {
+    const spbuId = authStore.spbuId
+    if (!spbuId) {
+      console.warn('[TransactionHistory] spbu_id belum tersedia, skip fetch.')
+      return
+    }
+
     loading.value = true
     try {
       const from = (currentPage.value - 1) * itemsPerPage
@@ -28,20 +35,18 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
       let query = supabase
         .from('transaksi_pertalite')
         .select('*', { count: 'exact' })
+        .eq('spbu_id', spbuId)
         .order(sortField.value, { ascending: sortDir.value === 'asc' })
         .range(from, to)
 
-      // Search by plate
       if (searchQuery.value) {
         query = query.ilike('plat_nomor', `%${searchQuery.value}%`)
       }
 
-      // Filter by vehicle type
       if (vehicleFilter.value) {
         query = query.eq('jenis_kendaraan', vehicleFilter.value)
       }
 
-      // Filter by date range
       if (dateFrom.value) {
         query = query.gte('waktu_pencatatan', `${dateFrom.value}T00:00:00`)
       }
@@ -49,7 +54,6 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
         query = query.lte('waktu_pencatatan', `${dateTo.value}T23:59:59`)
       }
 
-      // Operator: restrict to today 06:00–23:59
       if (options.dateFilter) {
         const now = new Date()
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0, 0, 0).toISOString()
@@ -62,7 +66,7 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
       const { data, count, error } = await query
 
       if (error) throw error
-      
+
       transactions.value = data
       totalItems.value = count
     } catch (err) {
@@ -72,25 +76,21 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
     }
   }
 
-  // Reset to page 1 and re-fetch when any filter changes
   watch([searchQuery, vehicleFilter, dateFrom, dateTo, sortField, sortDir], () => {
     currentPage.value = 1
     fetchHistory()
   })
 
-  // Re-fetch when page changes
   watch(currentPage, () => {
     fetchHistory()
   })
 
-  // Sync search from URL query param
   watch(() => route.query.q, (newQuery) => {
     if (newQuery !== undefined) {
       searchQuery.value = newQuery
     }
   })
 
-  // Reset all filters
   const resetFilters = () => {
     searchQuery.value = ''
     vehicleFilter.value = ''

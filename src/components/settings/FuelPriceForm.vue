@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'vue3-toastify'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const prices = ref([])
@@ -9,9 +12,12 @@ const prices = ref([])
 const fetchPrices = async () => {
   loading.value = true
   try {
+    if (!authStore.spbuId) return
+
     const { data, error } = await supabase
       .from('fuel_prices')
       .select('*')
+      .eq('spbu_id', authStore.spbuId)
       .order('fuel_type')
     
     if (error || !data || data.length === 0) {
@@ -45,6 +51,7 @@ const savePrices = async () => {
       const row = {
         fuel_type: p.fuel_type,
         price_per_liter: Number(p.price_per_liter) || 0,
+        spbu_id: authStore.spbuId,
         updated_at: new Date()
       }
       if (p.id) row.id = p.id
@@ -145,6 +152,17 @@ onMounted(() => fetchPrices())
         </div>
 
         </div>
+
+        <button 
+          type="button"
+          @click="addNewFuelType"
+          class="w-full flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-[#143d2e] hover:text-[#143d2e] transition-colors text-sm font-bold"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+          </svg>
+          Tambah Jenis BBM
+        </button>
       </div>
 
       <div class="pt-4 mt-auto text-right">
