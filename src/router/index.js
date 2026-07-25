@@ -13,6 +13,16 @@ const router = createRouter({
       meta: { requiresAuth: false, layout: 'auth' }
     },
     {
+      path: '/master',
+      redirect: '/master/dashboard'
+    },
+    {
+      path: '/master/dashboard',
+      name: 'master-dashboard',
+      component: () => import('../views/MasterDashboardView.vue'),
+      meta: { requiresAuth: true, role: 'master', layout: 'master' }
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
@@ -86,9 +96,9 @@ router.beforeEach(async (to, from, next) => {
 
   const userRole = authStore.role
 
-    if (to.meta.requiresAuth) {
+  if (to.meta.requiresAuth) {
     if (to.meta.role && to.meta.role !== userRole) {
-
+      if (userRole === 'master') return next({ name: 'master-dashboard' })
       if (userRole === 'manajer') return next({ name: 'dashboard' })
       if (userRole === 'operator') return next({ name: 'operator' })
 
@@ -98,6 +108,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.name === 'login' && session) {
+    if (userRole === 'master') return next({ name: 'master-dashboard' })
     if (userRole === 'manajer') return next({ name: 'dashboard' })
     if (userRole === 'operator') return next({ name: 'operator' })
   }

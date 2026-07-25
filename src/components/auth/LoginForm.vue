@@ -27,7 +27,8 @@ const handleLogin = async () => {
     toast.success('Login Berhasil!')
 
     setTimeout(() => {
-      if (role === 'manajer') router.push('/dashboard')
+      if (role === 'master') router.push('/master/dashboard')
+      else if (role === 'manajer') router.push('/dashboard')
       else if (role === 'operator') router.push('/operator')
       else router.push('/')
     }, 1000)
