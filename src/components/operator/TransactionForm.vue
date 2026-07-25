@@ -217,10 +217,10 @@ const handleBackToPlateCheck = () => {
 
 const handleStartCamera = async () => {
   const mediaStream = await startCamera()
-  
+
   if (mediaStream) {
-    await nextTick() 
-    
+    await nextTick()
+
     if (videoRef.value) {
       videoRef.value.srcObject = mediaStream
       try {
@@ -349,11 +349,11 @@ const handleSubmit = () => {
 
 <template>
   <div class="w-full max-w-lg mx-auto animate-enter relative">
-    
+
     <!-- HEADER BAR -->
     <div class="flex items-center justify-between mb-4 md:mb-6">
-      <button 
-        @click="$emit('back')" 
+      <button
+        @click="$emit('back')"
         class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white active:scale-95 transition-all shadow-md"
         title="Kembali ke Pilih Kendaraan"
       >
@@ -376,7 +376,7 @@ const handleSubmit = () => {
       <div class="space-y-4">
         <div class="flex flex-col gap-2">
           <div class="flex gap-2 items-stretch">
-            <input 
+            <input
               ref="platInputRef"
               :value="form.plat_nomor"
               @input="onPlatInput"
@@ -419,7 +419,7 @@ const handleSubmit = () => {
         </div>
 
         <div class="flex gap-3">
-          <button 
+          <button
             type="button"
             @click.prevent="handleCheckPlate"
             :disabled="checkingPlate"
@@ -434,9 +434,9 @@ const handleSubmit = () => {
             </template>
           </button>
 
-          <button 
+          <button
             v-if="isCameraFeatureEnabled"
-            @click.prevent="handleStartCamera" 
+            @click.prevent="handleStartCamera"
             type="button"
             class="w-14 h-14 shrink-0 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-95 transition-all"
             title="Scan Plat"
@@ -452,7 +452,7 @@ const handleSubmit = () => {
 
     <!-- TAHAP 2: INPUT LITER & TRANSAKSI -->
     <form v-else-if="subStep === 'input_liter'" @submit.prevent="handleSubmit" class="space-y-5 animate-enter">
-      
+
       <!-- Info Plat Terverifikasi -->
       <div class="bg-white/10 border border-white/20 rounded-2xl p-4 flex items-center justify-between shadow-lg">
         <div class="flex items-center gap-3">
@@ -467,8 +467,8 @@ const handleSubmit = () => {
           </div>
         </div>
 
-        <button 
-          type="button" 
+        <button
+          type="button"
           @click="handleBackToPlateCheck"
           class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 transition-all active:scale-95"
         >
@@ -484,19 +484,19 @@ const handleSubmit = () => {
             Jumlah Liter
             <span class="text-white/40 font-normal normal-case text-[10px]">(L)</span>
           </label>
-          <input 
+          <input
             ref="literInputRef"
             v-model="form.liter"
             @input="onLiterInput"
             @keydown="onLiterKeydown"
-            type="number" 
+            type="number"
             step="0.01"
             min="0"
-            placeholder="0.00" 
+            placeholder="0.00"
             class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-4 py-3 md:py-4 text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all"
           />
         </div>
-        
+
         <!-- Kolom Total Harga -->
         <div class="space-y-1.5">
           <label class="text-green-100 text-xs md:text-sm font-bold ml-1 uppercase flex items-center gap-1">
@@ -522,8 +522,8 @@ const handleSubmit = () => {
       </p>
 
       <!-- Submit Button -->
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         :disabled="loading || !form.liter"
         class="w-full bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-lg md:text-xl py-4 rounded-2xl shadow-xl transform active:scale-95 transition-all mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -536,7 +536,7 @@ const handleSubmit = () => {
     <Teleport to="body">
       <div v-if="showRefueledModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 bg-black/80 backdrop-blur-xl animate-enter">
         <div class="bg-gradient-to-br from-[#143d2e] via-[#1e5c45] to-[#143d2e] border-2 border-white/30 rounded-[2rem] md:rounded-[2.5rem] max-w-md w-full p-6 md:p-8 text-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col items-center text-center relative overflow-hidden">
-          
+
           <div class="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
           <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -575,7 +575,7 @@ const handleSubmit = () => {
             </div>
           </div>
 
-          <button 
+          <button
             @click="handleResetPlateCheck"
             class="w-full bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-base md:text-lg py-4 rounded-2xl shadow-xl hover:shadow-white/20 transform active:scale-95 transition-all flex items-center justify-center gap-2"
           >
@@ -592,7 +592,7 @@ const handleSubmit = () => {
     <!-- CAMERA SCANNER MODAL -->
     <Teleport to="body">
       <div v-if="isScanning" class="fixed inset-0 z-[9999] bg-black flex flex-col">
-        
+
         <div class="absolute top-0 w-full p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
           <button @click="stopCamera" class="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white z-30">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
@@ -604,15 +604,15 @@ const handleSubmit = () => {
         </div>
 
         <div class="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
-          
-          <video 
-            ref="videoRef" 
-            autoplay 
-            playsinline 
-            muted 
+
+          <video
+            ref="videoRef"
+            autoplay
+            playsinline
+            muted
             class="absolute inset-0 w-full h-full object-cover"
           ></video>
-          
+
           <div class="relative w-72 h-40 border-2 border-white/30 rounded-2xl z-10 pointer-events-none">
             <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500 rounded-tl-xl -mt-[2px] -ml-[2px]"></div>
             <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500 rounded-tr-xl -mt-[2px] -mr-[2px]"></div>
@@ -623,8 +623,8 @@ const handleSubmit = () => {
         </div>
 
         <div class="h-28 bg-black/90 flex items-center justify-center pb-6 pt-2 z-20">
-          <button 
-            @click.prevent="handleScan" 
+          <button
+            @click.prevent="handleScan"
             type="button"
             :disabled="isProcessing"
             class="w-16 h-16 rounded-full border-[5px] border-white flex items-center justify-center active:scale-90 transition-transform disabled:opacity-50"

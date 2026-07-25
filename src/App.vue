@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePresence } from '@/composables/usePresence'
 import { useRoute } from 'vue-router'
+import MasterLayout from '@/layouts/MasterLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import OperatorLayout from '@/layouts/OperatorLayout.vue'
 
@@ -13,19 +14,16 @@ const route = useRoute()
 const layout = computed(() => route.meta.layout || 'auth')
 
 onMounted(() => {
-  // initialize() sudah ditangani oleh router guard (beforeEach)
-  // sehingga tidak perlu dipanggil lagi di sini untuk menghindari race condition
   if (authStore.user) {
     initPresence()
   }
 })
 
-
 watch(() => authStore.user, (newUser) => {
   if (newUser) {
-    initPresence() 
+    initPresence()
   } else {
-    leavePresence() 
+    leavePresence()
   }
 })
 
@@ -35,7 +33,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <AdminLayout v-if="layout === 'admin'">
+  <MasterLayout v-if="layout === 'master'">
+    <RouterView v-slot="{ Component }">
+      <Transition name="content" mode="out-in">
+        <component :is="Component" :key="route.fullPath" />
+      </Transition>
+    </RouterView>
+  </MasterLayout>
+
+  <AdminLayout v-else-if="layout === 'admin'">
     <RouterView v-slot="{ Component }">
       <Transition name="content" mode="out-in">
         <component :is="Component" :key="route.fullPath" />

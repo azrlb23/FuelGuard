@@ -27,7 +27,8 @@ const handleLogin = async () => {
     toast.success('Login Berhasil!')
 
     setTimeout(() => {
-      if (role === 'manajer') router.push('/dashboard')
+      if (role === 'master') router.push('/master/dashboard')
+      else if (role === 'manajer') router.push('/dashboard')
       else if (role === 'operator') router.push('/operator')
       else router.push('/')
     }, 1000)
@@ -43,21 +44,21 @@ const handleLogin = async () => {
 
 <template>
   <form @submit.prevent="handleLogin" class="space-y-6 animate-enter">
-    
+
     <div class="space-y-2">
       <label for="email" class="text-sm font-bold text-green-100 lg:text-gray-700 ml-1 uppercase tracking-wider text-[11px]">
         Email Address
       </label>
       <div class="relative group">
-        <input 
+        <input
           id="email"
-          v-model="email" 
-          type="email" 
-          placeholder="nama@habijaya.com" 
-          class="w-full pl-11 pr-4 py-4 rounded-2xl 
+          v-model="email"
+          type="email"
+          placeholder="nama@habijaya.com"
+          class="w-full pl-11 pr-4 py-4 rounded-2xl
                  bg-white/10 border border-white/20 text-white placeholder-white/40
                  lg:bg-gray-50 lg:border-gray-200 lg:text-gray-900 lg:placeholder-gray-400
-                 focus:outline-none focus:ring-2 focus:ring-green-400/50 lg:focus:ring-[#143d2e]/20 focus:border-transparent 
+                 focus:outline-none focus:ring-2 focus:ring-green-400/50 lg:focus:ring-[#143d2e]/20 focus:border-transparent
                  transition-all duration-300"
           required
         />
@@ -76,15 +77,15 @@ const handleLogin = async () => {
         </label>
       </div>
       <div class="relative group">
-        <input 
+        <input
           id="password"
-          v-model="password" 
-          type="password" 
-          placeholder="••••••••" 
-          class="w-full pl-11 pr-4 py-4 rounded-2xl 
+          v-model="password"
+          type="password"
+          placeholder="••••••••"
+          class="w-full pl-11 pr-4 py-4 rounded-2xl
                  bg-white/10 border border-white/20 text-white placeholder-white/40
                  lg:bg-gray-50 lg:border-gray-200 lg:text-gray-900 lg:placeholder-gray-400
-                 focus:outline-none focus:ring-2 focus:ring-green-400/50 lg:focus:ring-[#143d2e]/20 focus:border-transparent 
+                 focus:outline-none focus:ring-2 focus:ring-green-400/50 lg:focus:ring-[#143d2e]/20 focus:border-transparent
                  transition-all duration-300"
           required
         />
@@ -96,8 +97,8 @@ const handleLogin = async () => {
       </div>
     </div>
 
-    <button 
-      type="submit" 
+    <button
+      type="submit"
       :disabled="loading"
       class="w-full font-black py-4 rounded-2xl shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none
              bg-white text-[#143d2e] hover:bg-green-50
