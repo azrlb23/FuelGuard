@@ -44,7 +44,9 @@ const router = createRouter({
     },
     {
       path: '/master/settings',
-      redirect: '/settings'
+      name: 'master-settings',
+      component: () => import('../views/MasterSettingsView.vue'),
+      meta: { requiresAuth: true, role: 'master', layout: 'master' }
     },
     {
       path: '/dashboard',

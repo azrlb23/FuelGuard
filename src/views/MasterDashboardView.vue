@@ -348,44 +348,60 @@ const barChartOptions = {
           <!-- Accordion Header Bar -->
           <button
             @click="toggleSpbuAccordion(spbu.id)"
-            class="w-full flex items-center gap-3 p-3.5 text-left transition-colors cursor-pointer select-none"
+            class="w-full p-3.5 text-left transition-colors cursor-pointer select-none space-y-2.5 sm:space-y-0 sm:flex sm:items-center sm:gap-3"
           >
-            <!-- Sequential Index Badge (1, 2, 3...) -->
-            <div
-              class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-black text-white shadow-sm"
-              style="background: linear-gradient(135deg, #143d2e, #258f62)"
-            >
-              {{ index + 1 }}
-            </div>
+            <!-- Top section (Mobile full width / Desktop flex left) -->
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <!-- Sequential Index Badge (1, 2, 3...) -->
+              <div
+                class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center text-xs font-black text-white shadow-sm"
+                style="background: linear-gradient(135deg, #143d2e, #258f62)"
+              >
+                {{ index + 1 }}
+              </div>
 
-            <div class="flex-1 min-w-0">
-              <p class="text-gray-900 font-bold text-sm truncate">{{ spbu.name }}</p>
-              <div class="flex items-center gap-1.5 mt-0.5 text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-                <p class="text-[11px] truncate">{{ spbu.location }}</p>
+              <div class="flex-1 min-w-0">
+                <p class="text-gray-900 font-bold text-sm leading-tight break-words sm:truncate">{{ spbu.name }}</p>
+                <div class="flex items-center gap-1.5 mt-0.5 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3 h-3 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                  <p class="text-[11px] truncate">{{ spbu.location || '-' }}</p>
+                </div>
+              </div>
+
+              <!-- Chevron Toggle Button (Mobile Top-Right) -->
+              <div
+                class="w-7 h-7 rounded-full flex-shrink-0 flex sm:hidden items-center justify-center transition-transform duration-200"
+                :class="[
+                  activeSpbuId === spbu.id ? 'bg-[#143d2e] text-white rotate-180' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                ]"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
               </div>
             </div>
 
-            <div class="text-right flex items-center gap-3 pr-2">
-              <div>
-                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Revenue</p>
-                <p class="text-[#143d2e] font-black text-sm leading-tight">{{ formatRupiah(spbu.revenue) }}</p>
+            <!-- Bottom section (Mobile stacked metrics bar / Desktop right side) -->
+            <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t border-gray-100 sm:border-t-0 pl-11 sm:pl-0 pr-0 sm:pr-2">
+              <div class="flex items-center gap-4 sm:gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Revenue</p>
+                  <p class="text-[#143d2e] font-black text-sm leading-tight">{{ formatRupiah(spbu.revenue) }}</p>
+                </div>
+                <div class="h-6 w-px bg-gray-200"></div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Volume</p>
+                  <p class="text-gray-800 font-bold text-sm leading-tight">{{ formatVolume(spbu.volume) }}</p>
+                </div>
               </div>
-              <div class="h-6 w-px bg-gray-200"></div>
-              <div>
-                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Volume</p>
-                <p class="text-gray-800 font-bold text-sm leading-tight">{{ formatVolume(spbu.volume) }}</p>
-              </div>
-            </div>
 
-            <!-- Chevron Toggle Button -->
-            <div
-              class="w-7 h-7 rounded-full flex items-center justify-center transition-transform duration-200"
-              :class="[
-                activeSpbuId === spbu.id ? 'bg-[#143d2e] text-white rotate-180' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              ]"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+              <!-- Chevron Toggle Button (Desktop Right) -->
+              <div
+                class="w-7 h-7 rounded-full flex-shrink-0 hidden sm:flex items-center justify-center transition-transform duration-200"
+                :class="[
+                  activeSpbuId === spbu.id ? 'bg-[#143d2e] text-white rotate-180' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                ]"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+              </div>
             </div>
           </button>
 

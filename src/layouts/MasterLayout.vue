@@ -101,7 +101,6 @@ const menuItems = [
             <path stroke-linecap="round" stroke-linejoin="round" :d="item.iconPath" />
           </svg>
           <span v-if="isSidebarOpen" class="text-sm tracking-tight truncate">{{ item.name }}</span>
-          <div v-if="isSidebarOpen && route.path === item.route" class="ml-auto w-1.5 h-1.5 rounded-full bg-green-400"></div>
         </router-link>
 
         <div v-if="isSidebarOpen" class="pt-6 pb-2 px-3">
