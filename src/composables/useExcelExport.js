@@ -1,11 +1,13 @@
 import { ref } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'vue3-toastify'
+import { useAuthStore } from '@/stores/auth'
 import * as XLSX from 'xlsx'
 
 export function useExcelExport() {
   const exportLoading = ref(false)
   const progress = ref(0)
+  const authStore = useAuthStore()
 
   const formatDate = (date) => new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
@@ -14,23 +16,29 @@ export function useExcelExport() {
       toast.warn("Pilih rentang tanggal terlebih dahulu.")
       return
     }
-    
+
+    if (!authStore.spbuId) {
+      toast.error("Data SPBU belum tersedia. Silakan login ulang.")
+      return
+    }
+
     exportLoading.value = true
     progress.value = 0
-    
+
     try {
       let allData = []
       let page = 0
-      let pageSize = 1000 
+      let pageSize = 1000
       let hasMore = true
 
       while (hasMore) {
         const from = page * pageSize
         const to = from + pageSize - 1
-        
+
         const { data, error } = await supabase
           .from('transaksi_pertalite')
           .select('*')
+          .eq('spbu_id', authStore.spbuId)
           .gte('waktu_pencatatan', `${startDate}T00:00:00`)
           .lte('waktu_pencatatan', `${endDate}T23:59:59`)
           .order('waktu_pencatatan', { ascending: true })
@@ -43,7 +51,7 @@ export function useExcelExport() {
           progress.value = allData.length
           page++
         }
-        
+
         if (data.length < pageSize) hasMore = false
       }
 

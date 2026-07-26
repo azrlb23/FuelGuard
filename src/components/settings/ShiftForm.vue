@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'vue3-toastify'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const shifts = ref([])
@@ -9,9 +12,12 @@ const shifts = ref([])
 const fetchShifts = async () => {
   loading.value = true
   try {
+    if (!authStore.spbuId) return
+
     const { data, error } = await supabase
       .from('shift_config')
       .select('*')
+      .eq('spbu_id', authStore.spbuId)
       .order('shift_name')
     
     if (error || !data || data.length === 0) {
@@ -39,6 +45,7 @@ const saveShifts = async () => {
         shift_name: s.shift_name,
         start_time: s.start_time,
         end_time: s.end_time,
+        spbu_id: authStore.spbuId,
         updated_at: new Date()
       }
       if (s.id) row.id = s.id

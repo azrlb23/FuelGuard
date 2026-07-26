@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { toast } from 'vue3-toastify'
+import { supabase } from '@/lib/supabaseClient'
+import { useAuthStore } from '@/stores/auth'
 import { useCameraScanner } from '@/composables/useCameraScanner'
 import { useTransactionAction } from '@/composables/useTransactionAction'
 import { supabase } from '@/lib/supabaseClient'
@@ -12,8 +14,9 @@ const props = defineProps({
 
 const emit = defineEmits(['submit', 'back'])
 
-const { isScanning, isProcessing, stream, startCamera, stopCamera, scanPlateNumber } = useCameraScanner()
+const { isScanning, isProcessing, startCamera, stopCamera, scanPlateNumber } = useCameraScanner()
 const { checkPlateStatus, checkingPlate } = useTransactionAction()
+const authStore = useAuthStore()
 
 const videoRef = ref(null)
 const platInputRef = ref(null)
@@ -250,11 +253,17 @@ const hargaPerLiter = ref(10000)
 
 const fetchActiveFuelPrice = async () => {
   try {
-    const { data } = await supabase
+    let query = supabase
       .from('fuel_prices')
       .select('price_per_liter')
       .ilike('fuel_type', '%pertalite%')
       .limit(1)
+
+    if (authStore.spbuId) {
+      query = query.eq('spbu_id', authStore.spbuId)
+    }
+
+    const { data } = await query
 
     if (data && data.length > 0 && Number(data[0].price_per_liter) > 0) {
       hargaPerLiter.value = Number(data[0].price_per_liter)
@@ -268,10 +277,10 @@ onMounted(() => {
   fetchActiveFuelPrice()
 })
 
-const calculatedPrice = computed(() => {
-  const liter = parseFloat(form.value.liter) || 0
-  return liter * hargaPerLiter.value
-})
+// const calculatedPrice = computed(() => {
+//   const liter = parseFloat(form.value.liter) || 0
+//   return liter * hargaPerLiter.value
+// })
 
 const formatRupiah = (val) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)

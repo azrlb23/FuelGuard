@@ -1,9 +1,11 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
+import { useAuthStore } from '@/stores/auth'
 
 export function useDashboard() {
   const filter = ref('today')
   const isLoading = ref(false)
+  const authStore = useAuthStore()
 
   const stats = ref({ volume: 0, revenue: 0, vehicle: 0 })
   const feed = ref([])
@@ -16,11 +18,15 @@ export function useDashboard() {
   const revenueShareStats = ref([])
 
   const fetchDirectTableData = async () => {
+    const spbuId = authStore.spbuId
+    if (!spbuId) return
+
     try {
       const now = new Date()
       let query = supabase
         .from('transaksi_pertalite')
         .select('*')
+        .eq('spbu_id', spbuId)
         .order('waktu_pencatatan', { ascending: false })
 
       if (filter.value === 'today') {
@@ -43,7 +49,6 @@ export function useDashboard() {
 
       const list = rows || []
 
-      // Hitung ringkasan statistik
       const volume = list.reduce((sum, r) => sum + (Number(r.liter) || 0), 0)
       const revenue = list.reduce((sum, r) => sum + (Number(r.harga) || 0), 0)
       const vehicle = list.length
@@ -56,20 +61,18 @@ export function useDashboard() {
         revenue_growth: 0
       }
 
-      // Live Feed
       let feedSource = list
       if (list.length === 0 && filter.value === 'today') {
-        // Jika belum ada transaksi hari ini, ambil 10 transaksi terakhir secara umum untuk feed
         const { data: fallbackFeed } = await supabase
           .from('transaksi_pertalite')
           .select('*')
+          .eq('spbu_id', spbuId)
           .order('waktu_pencatatan', { ascending: false })
           .limit(10)
         feedSource = fallbackFeed || []
       }
       feed.value = feedSource.slice(0, 10)
 
-      // Vehicle Chart
       const vehicleMap = {}
       list.forEach(r => {
         const type = r.jenis_kendaraan || 'Umum'
@@ -80,10 +83,9 @@ export function useDashboard() {
         count: vehicleMap[type]
       }))
 
-      // Shift Chart (Shift 1: 06-14, Shift 2: 14-22, Shift 3: 22-06)
       const shifts = { 1: 0, 2: 0, 3: 0 }
       list.forEach(r => {
-        const d = new Date(r.waktu_pencatatan || r.created_at)
+        const d = new Date(r.waktu_pencatatan)
         const hour = d.getHours()
         if (hour >= 6 && hour < 14) shifts[1]++
         else if (hour >= 14 && hour < 22) shifts[2]++
@@ -95,10 +97,9 @@ export function useDashboard() {
         { shift: 3, count: shifts[3] }
       ]
 
-      // Peak Hours
       const hoursMap = {}
       list.forEach(r => {
-        const d = new Date(r.waktu_pencatatan || r.created_at)
+        const d = new Date(r.waktu_pencatatan)
         const h = d.getHours()
         hoursMap[h] = (hoursMap[h] || 0) + 1
       })
@@ -107,7 +108,6 @@ export function useDashboard() {
         count: hoursMap[h]
       }))
 
-      // Loyal Customers
       const custMap = {}
       list.forEach(r => {
         const plat = r.plat_nomor
@@ -120,14 +120,23 @@ export function useDashboard() {
         .sort((a, b) => b.total_liter - a.total_liter)
         .slice(0, 5)
 
-      // Trend 7 hari (Query independen 7 hari terakhir agar grafik selalu lengkap)
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
       sevenDaysAgo.setHours(0, 0, 0, 0)
 
-      const { data: trendRows } = await supabase
-        .from('transaksi_pertalite')
-        .select('harga, waktu_pencatatan, created_at')
-        .gte('waktu_pencatatan', sevenDaysAgo.toISOString())
+      let trendRows = null
+      try {
+        const { data, error: trendErr } = await supabase
+          .from('transaksi_pertalite')
+          .select('harga, waktu_pencatatan')
+          .eq('spbu_id', spbuId)
+          .gte('waktu_pencatatan', sevenDaysAgo.toISOString())
+
+        if (!trendErr && data) {
+          trendRows = data
+        }
+      } catch (e) {
+        console.warn('[Dashboard Trend Fetch] Fallback to main list data:', e)
+      }
 
       const getLocalDateKey = (dateInput) => {
         const d = new Date(dateInput)
@@ -147,8 +156,8 @@ export function useDashboard() {
         trendMap[key] = { label, total: 0 }
       }
 
-      (trendRows || list).forEach(r => {
-        const rawDate = r.waktu_pencatatan || r.created_at
+      ;(trendRows || list).forEach(r => {
+        const rawDate = r.waktu_pencatatan
         if (!rawDate) return
         const key = getLocalDateKey(rawDate)
         if (trendMap[key]) {
@@ -158,7 +167,6 @@ export function useDashboard() {
 
       trendStats.value = Object.values(trendMap)
 
-      // Revenue Share
       const revMap = {}
       list.forEach(r => {
         const type = r.jenis_kendaraan || 'Umum'
@@ -169,16 +177,16 @@ export function useDashboard() {
         total: revMap[type]
       }))
 
-      console.log(`[Dashboard Direct Fetch] Data processed successfully. Total vehicle: ${vehicle}`)
     } catch (err) {
       console.error('[Dashboard Direct Fetch] Error:', err)
     }
   }
 
   const fetchData = async () => {
+    if (!authStore.spbuId) return
+
     try {
       isLoading.value = true
-      console.log(`[Dashboard] Fetching data for filter: ${filter.value}...`)
 
       let rpcSuccess = false
       try {
@@ -197,14 +205,12 @@ export function useDashboard() {
           ticketSizeStats.value = data.ticket_size || []
           revenueShareStats.value = data.revenue_share || []
           rpcSuccess = true
-          console.log('[Dashboard] RPC data loaded successfully.')
         }
       } catch (err) {
         console.warn('[Dashboard] RPC failed, falling back to direct table query:', err)
       }
 
       if (!rpcSuccess) {
-        console.log('[Dashboard] Executing direct table query fallback...')
         await fetchDirectTableData()
       }
     } catch (err) {
