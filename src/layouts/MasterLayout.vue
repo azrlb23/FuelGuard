@@ -1,30 +1,14 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const isSidebarOpen = ref(true)
-const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const globalSearch = ref('')
-
-const userEmail = computed(() => authStore.user?.email || 'superadmin@habijaya.com')
-const userName = computed(() => authStore.user?.user_metadata?.full_name || 'Super Admin')
-const userRole = computed(() => authStore.role || 'Master / Superadmin')
-
 const handleLogout = async () => {
   await authStore.logout()
-}
-
-const handleGlobalSearch = () => {
-  if (globalSearch.value.trim()) {
-    router.push({
-      name: 'master-dashboard',
-      query: { q: globalSearch.value }
-    })
-  }
 }
 
 const menuItems = [

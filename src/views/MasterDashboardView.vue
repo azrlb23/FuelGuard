@@ -1,7 +1,6 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { supabase } from '@/lib/supabaseClient'
+import { ref, computed, onMounted } from 'vue'
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -15,13 +14,11 @@ import {
   Legend,
   Filler
 } from 'chart.js'
-import { Line, Pie, Bar } from 'vue-chartjs'
+import { Bar } from 'vue-chartjs'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
 import { useMasterDashboard } from '@/composables/useMasterDashboard'
-
-const router = useRouter()
 
 // ─── Master Dashboard State via Composable ──────────────────────────────────
 const timeFilters = ['Today', 'Weekly', 'Monthly', 'All-Time']
@@ -29,13 +26,10 @@ const activeSpbuId = ref(null)
 
 const {
   filterTime,
-  setFilterTime,
   searchQuery,
-  isLoading,
   stats,
   spbuList,
   weeklyVolumeByDay,
-  alerts
 } = useMasterDashboard()
 
 const isMounted = ref(false)
@@ -63,9 +57,13 @@ const getRecentTransactions = (spbuId) => {
   if (spbu && spbu.transactions && spbu.transactions.length > 0) {
     return spbu.transactions.slice(0, 10).map((tx, idx) => {
       const date = new Date(tx.waktu_pencatatan)
-      const timeFormatted = isNaN(date.getTime())
-        ? '-'
-        : date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+      const isValid = !isNaN(date.getTime())
+      const dateFormatted = isValid
+        ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '-'
+      const timeFormatted = isValid
+        ? date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        : '-'
 
       return {
         id: idx + 1,
@@ -73,16 +71,13 @@ const getRecentTransactions = (spbuId) => {
         fuel: 'Pertalite',
         liter: `${(Number(tx.liter) || 0).toFixed(1)} L`,
         amount: new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(tx.harga || 0),
+        date: dateFormatted,
         time: timeFormatted
       }
     })
   }
 
   return []
-}
-
-const goToSpbuConsole = (spbu) => {
-  router.push({ path: '/dashboard', query: { spbu_id: spbu.id, spbu_name: spbu.name } })
 }
 
 // ─── Network Statistics Computed Properties ──────────────────────────────────
@@ -256,54 +251,12 @@ const barChartOptions = {
       <div class="lg:col-span-2 bg-white rounded-[2rem] p-6 shadow-xl shadow-green-900/5 border border-gray-100 flex flex-col justify-between">
         <div>
           <h4 class="text-[#143d2e] font-black text-lg mb-0.5">Volume Mingguan Jaringan</h4>
-          <p class="text-gray-400 text-xs font-medium mb-4">Total volume BBM terjual per hari dalam 7 hari terakhir (Real-time Database)</p>
+          <p class="text-gray-400 text-xs font-medium mb-4">Total volume BBM terjual per hari dalam 7 hari terakhir</p>
         </div>
         <div class="h-44 w-full">
           <Bar :data="barChartData" :options="barChartOptions" />
         </div>
       </div>
-
-      <!-- System Alerts / Notifications -->
-      <div class="bg-white rounded-[2rem] p-6 shadow-xl shadow-green-900/5 border border-gray-100 flex flex-col justify-between">
-        <div class="flex items-center justify-between mb-4">
-          <h4 class="text-[#143d2e] font-black text-base">Notifikasi Sistem</h4>
-          <div class="flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 text-[10px] font-black">
-            ● {{ alerts.length }} Aktif
-          </div>
-        </div>
-
-        <div class="space-y-2.5 max-h-48 overflow-y-auto pr-1 hide-scrollbar">
-          <div v-if="alerts.length === 0" class="py-12 text-center text-gray-400 text-xs font-medium">
-            Tidak ada notifikasi sistem aktif saat ini.
-          </div>
-          <div
-            v-for="a in alerts"
-            :key="a.id"
-            class="p-3 rounded-2xl border transition-all"
-            :class="[
-              a.severity === 'critical' ? 'bg-red-50/50 border-red-100' :
-              a.severity === 'warning' ? 'bg-amber-50/50 border-amber-100' :
-              'bg-green-50/50 border-green-100'
-            ]"
-          >
-            <div class="flex items-start gap-2.5">
-              <div
-                class="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-                :class="[
-                  a.severity === 'critical' ? 'bg-red-500 animate-ping' :
-                  a.severity === 'warning' ? 'bg-amber-400' : 'bg-green-500'
-                ]"
-              ></div>
-              <div class="flex-1 min-w-0">
-                <p class="text-gray-800 font-bold text-xs truncate">{{ a.spbu }}</p>
-                <p class="text-gray-600 text-[11px] mt-0.5 leading-snug">{{ a.msg }}</p>
-                <p class="text-gray-400 text-[10px] mt-1 font-medium">{{ a.time }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
 
     <!-- Row 3: SPBU Interactive Expandable Accordion List -->
@@ -410,28 +363,12 @@ const barChartOptions = {
             v-if="activeSpbuId === spbu.id"
             class="px-4 pb-5 pt-3 border-t border-gray-100/80 space-y-4 animate-enter"
           >
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-gray-50/80 border border-gray-100">
-              <div class="text-xs text-gray-600 font-medium">
-                Manager Penanggung Jawab: <strong class="text-[#143d2e] font-bold">{{ spbu.manager }}</strong>
-              </div>
-
-              <div class="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  @click="goToSpbuConsole(spbu)"
-                  class="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-[#143d2e] hover:bg-[#1e5c45] text-white text-xs font-bold transition-all shadow-md shadow-green-900/10 cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  Buka Dashboard SPBU
-                </button>
-              </div>
-            </div>
-
             <!-- 10 Transaksi Terakhir SPBU Ini -->
             <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
                   <h5 class="text-xs font-black text-[#143d2e] uppercase tracking-wider">10 Transaksi Terakhir ({{ periodLabel }})</h5>
                 </div>
-                <span class="text-[10px] text-gray-400 font-medium">Real-time Feed · {{ spbu.name }}</span>
               </div>
 
               <div class="space-y-2 max-h-64 overflow-y-auto pr-1 hide-scrollbar">
@@ -441,18 +378,24 @@ const barChartOptions = {
                 <div
                   v-for="tx in getRecentTransactions(spbu.id)"
                   :key="tx.id"
-                  class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 hover:bg-green-50/40 border border-gray-100 transition-colors"
+                  class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 hover:bg-green-50/40 border border-gray-100 transition-colors gap-2"
                 >
-                  <div class="flex items-center gap-3">
-                    <div class="px-2.5 py-1 bg-[#143d2e] text-white rounded-lg text-xs font-mono font-black tracking-wider shadow-xs">
+                  <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                    <div class="px-2.5 py-1 bg-[#143d2e] text-white rounded-lg text-xs font-mono font-black tracking-wider shadow-xs shrink-0">
                       {{ tx.plat }}
                     </div>
-                    <div>
-                      <p class="text-xs font-bold text-gray-800">{{ tx.time }}</p>
+                    <div class="min-w-0">
+                      <div class="flex flex-col sm:flex-row sm:items-center sm:gap-1.5 leading-tight">
+                        <span class="text-xs font-bold text-gray-800 truncate">{{ tx.date }}</span>
+                        <span class="text-[10px] sm:text-xs font-semibold text-gray-400 sm:text-gray-500 flex items-center gap-1">
+                          <span class="hidden sm:inline text-gray-300">•</span>
+                          {{ tx.time }}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div class="text-right">
+                  <div class="text-right shrink-0">
                     <p class="text-xs font-black text-[#143d2e]">{{ tx.liter }}</p>
                     <p class="text-[10px] text-gray-500 font-semibold">{{ tx.amount }}</p>
                   </div>
