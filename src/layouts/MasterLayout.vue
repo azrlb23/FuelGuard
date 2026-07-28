@@ -1,30 +1,14 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const isSidebarOpen = ref(true)
-const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const globalSearch = ref('')
-
-const userEmail = computed(() => authStore.user?.email || 'superadmin@habijaya.com')
-const userName = computed(() => authStore.user?.user_metadata?.full_name || 'Super Admin')
-const userRole = computed(() => authStore.role || 'Master / Superadmin')
-
 const handleLogout = async () => {
   await authStore.logout()
-}
-
-const handleGlobalSearch = () => {
-  if (globalSearch.value.trim()) {
-    router.push({
-      name: 'master-dashboard',
-      query: { q: globalSearch.value }
-    })
-  }
 }
 
 const menuItems = [
@@ -34,9 +18,9 @@ const menuItems = [
     iconPath: 'M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z'
   },
   {
-    name: 'SPBU Network',
-    route: '/master/network',
-    iconPath: 'M12 21a9 9 0 100-18 9 9 0 000 18z M12 8v4l3 3'
+    name: 'History Transaksi',
+    route: '/master/history',
+    iconPath: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z'
   },
   {
     name: 'Analisis & Laporan',
@@ -53,16 +37,16 @@ const menuItems = [
 
 <template>
   <div class="flex h-screen w-full bg-[#f5f5f5] font-sans text-gray-800 overflow-hidden">
-    
+
     <!-- Mobile Backdrop -->
-    <div 
-      v-if="isSidebarOpen" 
+    <div
+      v-if="isSidebarOpen"
       class="fixed inset-0 bg-black/50 z-30 xl:hidden transition-opacity"
       @click="isSidebarOpen = false"
     ></div>
 
     <!-- Sidebar Master -->
-    <aside 
+    <aside
       class="fixed inset-y-0 left-0 z-40 flex flex-col transition-all duration-300 xl:static h-full overflow-y-auto hide-scrollbar shadow-2xl xl:shadow-none"
       :class="[
         isSidebarOpen ? 'w-64 translate-x-0' : '-translate-x-full xl:translate-x-0 xl:w-20'
@@ -78,7 +62,7 @@ const menuItems = [
           <h1 class="text-white font-black text-sm leading-tight tracking-tight">HABI JAYA</h1>
           <p class="text-green-400 text-[10px] font-bold uppercase tracking-wider">Master Console</p>
         </div>
-        <button 
+        <button
           @click="isSidebarOpen = !isSidebarOpen"
           class="ml-auto text-green-300/60 hover:text-white transition-colors cursor-pointer"
         >
@@ -88,22 +72,11 @@ const menuItems = [
         </button>
       </div>
 
-      <!-- User Info Badge -->
-      <div v-if="isSidebarOpen" class="px-5 py-4 border-b border-white/10 flex items-center gap-3 flex-none">
-        <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-[#143d2e] font-black text-sm shadow-md" style="background: linear-gradient(135deg, #22c55e, #4ade80)">
-          SA
-        </div>
-        <div class="min-w-0 flex-1">
-          <p class="text-white font-bold text-sm truncate">{{ userName }}</p>
-          <p class="text-green-400 text-[10px] font-medium truncate">10 SPBU Network</p>
-        </div>
-      </div>
-
       <!-- Navigation -->
       <nav class="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto hide-scrollbar">
-        <router-link 
-          v-for="item in menuItems" 
-          :key="item.name" 
+        <router-link
+          v-for="item in menuItems"
+          :key="item.name"
           :to="item.route"
           class="flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all duration-200 group cursor-pointer"
           :class="route.path === item.route ? 'bg-white/15 text-white font-bold shadow-lg shadow-black/10' : 'text-green-200/70 hover:bg-white/10 hover:text-white font-medium'"
@@ -112,15 +85,14 @@ const menuItems = [
             <path stroke-linecap="round" stroke-linejoin="round" :d="item.iconPath" />
           </svg>
           <span v-if="isSidebarOpen" class="text-sm tracking-tight truncate">{{ item.name }}</span>
-          <div v-if="isSidebarOpen && route.path === item.route" class="ml-auto w-1.5 h-1.5 rounded-full bg-green-400"></div>
         </router-link>
 
         <div v-if="isSidebarOpen" class="pt-6 pb-2 px-3">
           <p class="text-[10px] font-bold text-green-300/50 uppercase tracking-widest">Pengaturan</p>
         </div>
 
-        <router-link 
-          to="/master/settings" 
+        <router-link
+          to="/master/settings"
           class="flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all duration-200 group cursor-pointer"
           :class="route.path.includes('/master/settings') ? 'bg-white/15 text-white font-bold shadow-lg' : 'text-green-200/70 hover:bg-white/10 hover:text-white font-medium'"
         >
@@ -134,8 +106,8 @@ const menuItems = [
 
       <!-- Logout Button -->
       <div class="p-3 border-t border-white/10 flex-none">
-        <button 
-          @click="handleLogout" 
+        <button
+          @click="handleLogout"
           class="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-red-400/80 hover:bg-red-500/10 hover:text-red-400 transition-all font-medium cursor-pointer"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5 flex-shrink-0">
@@ -148,52 +120,35 @@ const menuItems = [
 
     <!-- Main Workspace -->
     <div class="flex-1 flex flex-col h-full overflow-hidden relative w-full min-w-0">
-      
+
       <!-- Top Bar Header -->
-      <header class="flex-none bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between gap-4 shadow-sm z-20">
-        
+      <header class="flex-none bg-[#f5f5f5] px-6 py-4 flex items-center justify-between gap-4 z-20">
+
         <div class="flex items-center gap-3">
-          <button 
-            @click="isSidebarOpen = !isSidebarOpen" 
-            class="p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer xl:hidden"
+          <button
+            @click="isSidebarOpen = !isSidebarOpen"
+            class="p-2 text-gray-500 hover:bg-gray-200/60 rounded-xl transition-colors cursor-pointer xl:hidden"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
           </button>
-
-          <div>
-            <h1 class="text-[#143d2e] font-black text-xl tracking-tight leading-tight">Dashboard Superadmin</h1>
-            <p class="text-gray-400 text-xs font-medium hidden sm:block">Jabodetabek Network · Integrated Management</p>
-          </div>
         </div>
 
         <div class="flex items-center gap-3">
-
-
-          <!-- Notification Bell -->
-          <div class="relative">
-            <button class="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-[#143d2e] transition-colors cursor-pointer">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a2.37 2.37 0 01-4.214 0M18 10.5a6 6 0 10-12 0 6 6 0 0012 0z" />
-              </svg>
-            </button>
-            <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-black shadow-sm">
-              3
-            </span>
-          </div>
-
-          <!-- Profile Badge -->
-          <div class="flex items-center gap-2 pl-2 border-l border-gray-200">
-            <div class="w-9 h-9 bg-gradient-to-br from-[#143d2e] to-[#258f62] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm ring-2 ring-white">
-              SA
+          <!-- Profile Badge Pill (Navigates to Master Settings) -->
+          <router-link
+            to="/master/settings"
+            class="flex items-center gap-2.5 p-1.5 pl-2 pr-3 bg-white hover:bg-gray-50 rounded-full border border-gray-200/80 shadow-md shadow-gray-200/50 cursor-pointer hover:shadow-lg active:scale-95 transition-all group select-none"
+            title="Pengaturan Master"
+          >
+            <div class="w-8 h-8 bg-[#143d2e] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm group-hover:scale-105 transition-transform">
+              M
             </div>
-            <div class="hidden lg:block text-left">
-              <p class="text-xs font-bold text-gray-900 leading-tight">Super Admin</p>
-              <p class="text-[10px] text-green-700 font-semibold">Master Access</p>
-            </div>
-          </div>
-
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-gray-400 group-hover:text-[#143d2e] group-hover:translate-x-0.5 transition-all">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </router-link>
         </div>
       </header>
 
