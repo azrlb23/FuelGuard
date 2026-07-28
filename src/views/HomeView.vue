@@ -25,9 +25,9 @@ const handleReset = () => {
   step.value = 1
 }
 
-const handleProcess = async (formData) => {
-  const success = await submitTransaction(formData, selectedVehicle.value)
-  if (success) {
+const handleProcess = async (res) => {
+  const isSuccess = res && typeof res === 'object' ? res.success : res
+  if (isSuccess) {
     step.value = 3
     setTimeout(() => {
       if (step.value === 3) handleReset()

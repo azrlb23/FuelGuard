@@ -3,9 +3,12 @@ import { ref, onMounted, watch } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'vue3-toastify'
 import { useExcelExport } from '@/composables/useExcelExport'
+import { useAuthStore } from '@/stores/auth'
 import ReportHeader from '@/components/report/ReportHeader.vue'
 import ReportStats from '@/components/report/ReportStats.vue'
 import HistoryTable from '@/components/history/HistoryTable.vue'
+
+const authStore = useAuthStore()
 
 const startDate = ref('')
 const endDate = ref('')
@@ -35,14 +38,28 @@ const fetchReport = async () => {
     toast.warn("Pilih tanggal.")
     return
   }
+  if (!authStore.spbuId) {
+    toast.error("Data SPBU belum tersedia. Silakan login ulang.")
+    return
+  }
   loading.value = true
   try {
-    const { data: summary, error: rpcError } = await supabase.rpc('get_report_summary', { 
-      start_date: `${startDate.value}T00:00:00`, 
-      end_date: `${endDate.value}T23:59:59` 
-    })
-    if (rpcError) throw rpcError
-    stats.value = { ...summary }
+    // Aggregasi langsung dari transaksi_pertalite (menggantikan RPC get_report_summary yang belum ada)
+    const { data: summaryData, error: summaryError } = await supabase
+      .from('transaksi_pertalite')
+      .select('liter, harga')
+      .eq('spbu_id', authStore.spbuId)
+      .gte('waktu_pencatatan', `${startDate.value}T00:00:00`)
+      .lte('waktu_pencatatan', `${endDate.value}T23:59:59`)
+
+    if (summaryError) throw summaryError
+
+    const rows = summaryData || []
+    stats.value = {
+      volume: rows.reduce((sum, r) => sum + (Number(r.liter) || 0), 0),
+      revenue: rows.reduce((sum, r) => sum + (Number(r.harga) || 0), 0),
+      vehicle: rows.length
+    }
 
     await fetchTableData()
   } catch (err) {
@@ -58,6 +75,7 @@ const fetchTableData = async () => {
   const to = from + itemsPerPage - 1
   const { data, count, error } = await supabase.from('transaksi_pertalite')
     .select('*', { count: 'exact' })
+    .eq('spbu_id', authStore.spbuId)
     .gte('waktu_pencatatan', `${startDate.value}T00:00:00`)
     .lte('waktu_pencatatan', `${endDate.value}T23:59:59`)
     .order('waktu_pencatatan', { ascending: false })

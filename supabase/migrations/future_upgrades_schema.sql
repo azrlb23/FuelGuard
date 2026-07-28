@@ -1,25 +1,99 @@
 -- =============================================================================
--- SQL Migration: Refactor Separation of Concerns
--- Moves business logic, data aggregation, and access control to PostgreSQL
--- 
--- Prerequisites:
---   - Table `fuel_prices` exists (spbu_id, fuel_type, price_per_liter)
---   - Table `shift_config` exists (spbu_id, shift_name, start_time, end_time)
---   - Table `user_roles` exists (user_id, role, spbu_id)
---   - Table `transaksi_pertalite` exists
---   - Table `spbu` exists (id, nama, alamat, manajer_id)
---   - Table `activity_logs` exists (user_id, action, details, timestamp)
---   - Table `support_tickets` exists (user_id, ...)
---   - View `team_members` exists (spbu_id, ...)
---   - Function `get_user_role()` already exists in database
+-- SQL Migration: Complete Production Schema & Future Feature Upgrade
+-- Security: RLS Hardened, Atomic Locks, Strict Role Privilege & Input Validation
+-- Minimal comments for clean documentation
 -- =============================================================================
 
+-- ─── 1. TABLE SCHEMA ALTERATIONS & NEW TABLES ────────────────────────────────
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- 1. HELPER FUNCTION: get_user_spbu_id()
--- ═══════════════════════════════════════════════════════════════════════════════
-DROP FUNCTION IF EXISTS public.get_user_spbu_id() CASCADE;
+ALTER TABLE public.transaksi_pertalite 
+  ADD COLUMN IF NOT EXISTS operator_name text,
+  ADD COLUMN IF NOT EXISTS tgl_pencatatan date DEFAULT CURRENT_DATE,
+  ADD COLUMN IF NOT EXISTS jam_pencatatan time DEFAULT CURRENT_TIME,
+  ADD COLUMN IF NOT EXISTS is_ojol boolean DEFAULT false;
 
+CREATE TABLE IF NOT EXISTS public.region_codes (
+  code text PRIMARY KEY,
+  region_name text NOT NULL
+);
+
+INSERT INTO public.region_codes (code, region_name) VALUES
+-- Jawa & Madura
+('A', 'Banten (Serang, Cilegon, Pandeglang, Lebak, Tangerang Kab)'),
+('B', 'DKI Jakarta, Bekasi, Depok, Tangerang'),
+('D', 'Bandung, Cimahi, Bandung Barat'),
+('E', 'Cirebon, Indramayu, Majalengka, Kuningan'),
+('F', 'Bogor, Sukabumi, Cianjur'),
+('T', 'Purwakarta, Karawang, Subang'),
+('Z', 'Garut, Tasikmalaya, Ciamis, Banjar, Pangandaran'),
+('G', 'Pekalongan, Tegal, Brebes, Batang, Pemalang'),
+('H', 'Semarang, Salatiga, Kendal, Demak'),
+('K', 'Pati, Kudus, Jepara, Rembang, Blora, Grobogan'),
+('R', 'Banyumas, Cilacap, Purbalingga, Banjarnegara'),
+('AA', 'Magelang, Purworejo, Kebumen, Temanggung, Wonosobo'),
+('AB', 'DI Yogyakarta'),
+('AD', 'Surakarta, Boyolali, Sukoharjo, Karanganyar, Wonogiri, Sragen, Klaten'),
+('AE', 'Madiun, Ngawi, Magetan, Ponorogo, Pacitan'),
+('AG', 'Kediri, Blitar, Tulungagung, Nganjuk, Trenggalek'),
+('L', 'Surabaya'),
+('M', 'Madura (Bangkalan, Sampang, Pamekasan, Sumenep)'),
+('N', 'Malang, Probolinggo, Pasuruan, Lumajang, Batu'),
+('P', 'Jember, Banyuwangi, Bondowoso, Situbondo'),
+('S', 'Bojonegoro, Tuban, Lamongan, Mojokerto, Jombang'),
+('W', 'Sidoarjo, Gresik'),
+
+-- Sumatra
+('BL', 'Aceh'),
+('BB', 'Sumatera Utara Barat (Tapanuli, Nias, Sibolga)'),
+('BK', 'Sumatera Utara Timur (Medan, Deli Serdang, Asahan)'),
+('BA', 'Sumatera Barat'),
+('BM', 'Riau'),
+('BP', 'Kepulauan Riau (Batam, Tanjungpinang)'),
+('BG', 'Sumatera Selatan'),
+('BN', 'Kepulauan Bangka Belitung'),
+('BE', 'Lampung'),
+('BD', 'Bengkulu'),
+('BH', 'Jambi'),
+
+-- Kalimantan
+('KB', 'Kalimantan Barat'),
+('DA', 'Kalimantan Selatan'),
+('KH', 'Kalimantan Tengah'),
+('KT', 'Kalimantan Timur'),
+('KU', 'Kalimantan Utara'),
+
+-- Sulawesi
+('DB', 'Sulawesi Utara (Manado, Bitung, Tomohon)'),
+('DL', 'Sulawesi Utara Kepulauan (Sangihe, Talaud)'),
+('DM', 'Gorontalo'),
+('DN', 'Sulawesi Tengah'),
+('DT', 'Sulawesi Tenggara'),
+('DD', 'Sulawesi Selatan (Makassar, Gowa, Maros)'),
+('DP', 'Sulawesi Selatan Bagian Utara (Parepare, Luwu)'),
+('DC', 'Sulawesi Barat'),
+
+-- Bali & Nusa Tenggara
+('DK', 'Bali'),
+('DR', 'Lombok (NTB)'),
+('EA', 'Sumbawa (NTB)'),
+('DH', 'Timor (NTT / Kupang)'),
+('EB', 'Flores (NTT)'),
+('ED', 'Sumba (NTT)'),
+
+-- Maluku & Papua
+('DE', 'Maluku'),
+('DG', 'Maluku Utara'),
+('DS', 'Papua (Induk)'),
+('PA', 'Papua Barat / Papua Pusat'),
+('PB', 'Papua Barat Daya')
+ON CONFLICT (code) DO UPDATE SET region_name = EXCLUDED.region_name;
+
+DELETE FROM public.fuel_prices WHERE LOWER(fuel_type) LIKE '%pertamax%';
+
+
+-- ─── 2. HELPER FUNCTIONS ──────────────────────────────────────────────────────
+
+DROP FUNCTION IF EXISTS public.get_user_spbu_id CASCADE;
 CREATE OR REPLACE FUNCTION public.get_user_spbu_id()
 RETURNS text
 LANGUAGE sql
@@ -28,23 +102,29 @@ STABLE
 AS $$
   SELECT spbu_id FROM public.user_roles WHERE user_id = auth.uid() LIMIT 1;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.get_user_spbu_id() TO authenticated;
 
+DROP FUNCTION IF EXISTS public.get_user_role CASCADE;
+CREATE OR REPLACE FUNCTION public.get_user_role()
+RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT role FROM public.user_roles WHERE user_id = auth.uid() LIMIT 1;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_user_role() TO authenticated;
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- 2. RPC: fn_check_plate_status(p_plat, p_jenis, p_spbu_id)
---    Mengecek status kuota pengisian BBM kendaraan hari ini (GLOBAL LINTAS CABANG)
--- ═══════════════════════════════════════════════════════════════════════════════
-DROP FUNCTION IF EXISTS public.fn_check_plate_status(text, text, text) CASCADE;
-DROP FUNCTION IF EXISTS public.fn_check_plate_status(text, text, uuid) CASCADE;
-DROP FUNCTION IF EXISTS public.fn_check_plate_status(text, text) CASCADE;
-DROP FUNCTION IF EXISTS public.fn_check_plate_status(text) CASCADE;
+
+-- ─── 3. RPC: fn_check_plate_status ───────────────────────────────────────────
+
+DROP FUNCTION IF EXISTS public.fn_check_plate_status CASCADE;
 
 CREATE OR REPLACE FUNCTION public.fn_check_plate_status(
   p_plat text,
   p_jenis text DEFAULT 'Motor',
-  p_spbu_id text DEFAULT NULL
+  p_spbu_id text DEFAULT NULL,
+  p_is_ojol boolean DEFAULT false
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -57,20 +137,21 @@ DECLARE
   v_count_today integer := 0;
   v_has_refueled boolean := false;
   v_remaining_quota numeric := 0;
+  v_max_quota numeric := 50000;
   v_is_motor boolean;
   v_last_trx json := NULL;
   v_last_time text := '';
 BEGIN
-  -- Resolve spbu_id
   v_spbu_id := COALESCE(p_spbu_id, public.get_user_spbu_id());
-  
   IF v_spbu_id IS NULL THEN
     RETURN json_build_object('success', false, 'reason', 'no_spbu');
   END IF;
 
   v_is_motor := LOWER(p_jenis) = 'motor';
+  IF v_is_motor AND p_is_ojol THEN
+    v_max_quota := 100000;
+  END IF;
 
-  -- Hitung total HARGA dan LITER secara GLOBAL (lintas cabang SPBU)
   SELECT 
     COALESCE(SUM(liter), 0),
     COALESCE(SUM(harga), 0),
@@ -81,30 +162,32 @@ BEGIN
     AND waktu_pencatatan >= date_trunc('day', NOW())
     AND waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day';
 
-  -- Tentukan apakah sudah melebihi batas nominal Rp 50.000 untuk Motor (1x untuk Mobil)
   IF v_is_motor THEN
-    v_has_refueled := v_total_harga_today >= 50000;
-    v_remaining_quota := GREATEST(0, 50000 - v_total_harga_today);
+    v_has_refueled := v_total_harga_today >= v_max_quota;
+    v_remaining_quota := GREATEST(0, v_max_quota - v_total_harga_today);
   ELSE
     v_has_refueled := v_count_today > 0;
     v_remaining_quota := 0;
   END IF;
 
-  -- Ambil transaksi terakhir lintas cabang
   IF v_count_today > 0 THEN
     SELECT json_build_object(
-      'id', id,
-      'liter', liter,
-      'harga', harga,
-      'waktu_pencatatan', waktu_pencatatan,
-      'jenis_kendaraan', jenis_kendaraan
+      'id', t.id,
+      'liter', t.liter,
+      'harga', t.harga,
+      'waktu_pencatatan', t.waktu_pencatatan,
+      'jam_pencatatan', t.jam_pencatatan,
+      'jenis_kendaraan', t.jenis_kendaraan,
+      'spbu_id', t.spbu_id,
+      'spbu_nama', COALESCE(s.nama, CONCAT('SPBU #', t.spbu_id))
     )
     INTO v_last_trx
-    FROM public.transaksi_pertalite
-    WHERE plat_nomor = UPPER(TRIM(p_plat))
-      AND waktu_pencatatan >= date_trunc('day', NOW())
-      AND waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day'
-    ORDER BY waktu_pencatatan DESC
+    FROM public.transaksi_pertalite t
+    LEFT JOIN public.spbu s ON s.id = t.spbu_id
+    WHERE t.plat_nomor = UPPER(TRIM(p_plat))
+      AND t.waktu_pencatatan >= date_trunc('day', NOW())
+      AND t.waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day'
+    ORDER BY t.waktu_pencatatan DESC
     LIMIT 1;
 
     SELECT to_char(waktu_pencatatan, 'HH24:MI')
@@ -129,24 +212,20 @@ BEGIN
   );
 END;
 $$;
+GRANT EXECUTE ON FUNCTION public.fn_check_plate_status(text, text, text, boolean) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION public.fn_check_plate_status(text, text, text) TO authenticated;
 
+-- ─── 4. RPC: fn_safe_insert_transaction ──────────────────────────────────────
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- 3. RPC: fn_safe_insert_transaction(p_plat, p_liter, p_jenis, p_shift)
---    Server-side price calculation + atomic quota enforcement (GLOBAL LINTAS CABANG)
--- ═══════════════════════════════════════════════════════════════════════════════
-DROP FUNCTION IF EXISTS public.fn_safe_insert_transaction(text, numeric, text, integer) CASCADE;
-DROP FUNCTION IF EXISTS public.fn_safe_insert_transaction(text, numeric, text, integer, numeric) CASCADE;
-DROP FUNCTION IF EXISTS public.fn_safe_insert_transaction(text, numeric, text) CASCADE;
-DROP FUNCTION IF EXISTS public.fn_safe_insert_transaction(text, numeric) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_safe_insert_transaction CASCADE;
 
 CREATE OR REPLACE FUNCTION public.fn_safe_insert_transaction(
   p_plat text,
   p_liter numeric,
   p_jenis text DEFAULT 'Motor',
-  p_shift integer DEFAULT 1
+  p_shift integer DEFAULT 1,
+  p_operator_name text DEFAULT NULL,
+  p_is_ojol boolean DEFAULT false
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -162,6 +241,7 @@ DECLARE
   v_total_harga_today numeric;
   v_count_today integer;
   v_is_motor boolean;
+  v_max_quota numeric := 50000;
   v_new_id bigint;
 BEGIN
   v_user_id := auth.uid();
@@ -173,12 +253,12 @@ BEGIN
     RETURN json_build_object('success', false, 'reason', 'no_spbu', 'message', 'SPBU tidak ditemukan untuk user ini.');
   END IF;
 
-  -- Validasi input
   IF v_plat_clean = '' OR p_liter <= 0 THEN
     RETURN json_build_object('success', false, 'reason', 'invalid_input', 'message', 'Plat nomor dan liter harus valid.');
   END IF;
 
-  -- Ambil harga per liter dari tabel fuel_prices (server-side, anti-tamper)
+  PERFORM pg_advisory_xact_lock(hashtext(v_plat_clean));
+
   SELECT price_per_liter INTO v_harga_per_liter
   FROM public.fuel_prices
   WHERE spbu_id = v_spbu_id
@@ -186,21 +266,12 @@ BEGIN
   ORDER BY updated_at DESC NULLS LAST
   LIMIT 1;
 
-  -- Fallback jika tidak ada data harga
   IF v_harga_per_liter IS NULL OR v_harga_per_liter <= 0 THEN
     v_harga_per_liter := 10000;
   END IF;
 
   v_total_harga := p_liter * v_harga_per_liter;
 
-  -- ── ATOMIC QUOTA CHECK (Row lock to prevent race condition) ──
-  PERFORM id FROM public.transaksi_pertalite
-  WHERE plat_nomor = v_plat_clean
-    AND waktu_pencatatan >= date_trunc('day', NOW())
-    AND waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day'
-  FOR UPDATE;
-
-  -- Hitung total harga transaksi hari ini LINTAS CABANG (secara GLOBAL)
   SELECT 
     COALESCE(SUM(harga), 0),
     COUNT(id)
@@ -210,13 +281,16 @@ BEGIN
     AND waktu_pencatatan >= date_trunc('day', NOW())
     AND waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day';
 
-  -- Enforce kuota (Motor max Rp 50.000/hari global, Mobil max 1x/hari global)
   IF v_is_motor THEN
-    IF (v_total_harga_today + v_total_harga) > 50000 THEN
+    IF p_is_ojol THEN
+      v_max_quota := 100000;
+    END IF;
+
+    IF (v_total_harga_today + v_total_harga) > v_max_quota THEN
       RETURN json_build_object(
         'success', false,
         'reason', 'quota_exceeded',
-        'message', format('Kuota Motor (Rp 50.000/hari) terlampaui! Pengisian hari ini: Rp %s.', v_total_harga_today)
+        'message', format('Kuota Motor (Rp %s/hari) terlampaui! Sudah terisi: Rp %s.', v_max_quota, v_total_harga_today)
       );
     END IF;
   ELSE
@@ -229,16 +303,16 @@ BEGIN
     END IF;
   END IF;
 
-  -- Ambil email user
   SELECT email INTO v_user_email FROM auth.users WHERE id = v_user_id;
 
-  -- INSERT transaksi
   INSERT INTO public.transaksi_pertalite (
     plat_nomor, liter, harga, jenis_kendaraan, shift,
-    operator_id, operator_email, spbu_id, waktu_pencatatan
+    operator_id, operator_email, operator_name, spbu_id,
+    waktu_pencatatan, tgl_pencatatan, jam_pencatatan, is_ojol
   ) VALUES (
     v_plat_clean, p_liter, v_total_harga, p_jenis, p_shift,
-    v_user_id, v_user_email, v_spbu_id, NOW()
+    v_user_id, v_user_email, COALESCE(p_operator_name, v_user_email), v_spbu_id,
+    NOW(), CURRENT_DATE, CURRENT_TIME, p_is_ojol
   )
   RETURNING id INTO v_new_id;
 
@@ -250,18 +324,12 @@ BEGIN
   );
 END;
 $$;
+GRANT EXECUTE ON FUNCTION public.fn_safe_insert_transaction(text, numeric, text, integer, text, boolean) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION public.fn_safe_insert_transaction(text, numeric, text, integer) TO authenticated;
 
+-- ─── 5. RPC: get_dashboard_summary ───────────────────────────────────────────
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- 4. RPC: get_dashboard_summary(p_filter, p_spbu_id)
---    Full aggregation in SQL — replaces all JS .reduce() calls
--- ═══════════════════════════════════════════════════════════════════════════════
-DROP FUNCTION IF EXISTS public.get_dashboard_summary() CASCADE;
-DROP FUNCTION IF EXISTS public.get_dashboard_summary(text) CASCADE;
-DROP FUNCTION IF EXISTS public.get_dashboard_summary(text, text) CASCADE;
-DROP FUNCTION IF EXISTS public.get_dashboard_summary(text, uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.get_dashboard_summary CASCADE;
 
 CREATE OR REPLACE FUNCTION public.get_dashboard_summary(
   p_filter text DEFAULT 'today',
@@ -285,7 +353,6 @@ DECLARE
 BEGIN
   v_spbu_id := COALESCE(p_spbu_id, public.get_user_spbu_id());
 
-  -- Determine time filter
   IF p_filter = 'today' THEN
     v_start_time := date_trunc('day', NOW());
   ELSIF p_filter = 'weekly' THEN
@@ -296,7 +363,6 @@ BEGIN
     v_start_time := '1970-01-01'::timestamp;
   END IF;
 
-  -- ── 1. Stats ──
   SELECT json_build_object(
     'volume', COALESCE(SUM(liter), 0),
     'revenue', COALESCE(SUM(harga), 0),
@@ -308,10 +374,9 @@ BEGIN
   WHERE (v_spbu_id IS NULL OR spbu_id = v_spbu_id)
     AND waktu_pencatatan >= v_start_time;
 
-  -- ── 2. Live Feed (10 terbaru) ──
   SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) INTO v_feed
   FROM (
-    SELECT id, plat_nomor, liter, harga, jenis_kendaraan, waktu_pencatatan, operator_email
+    SELECT id, plat_nomor, liter, harga, jenis_kendaraan, waktu_pencatatan, tgl_pencatatan, jam_pencatatan, operator_email, operator_name, is_ojol
     FROM public.transaksi_pertalite
     WHERE (v_spbu_id IS NULL OR spbu_id = v_spbu_id)
       AND waktu_pencatatan >= v_start_time
@@ -319,11 +384,10 @@ BEGIN
     LIMIT 10
   ) t;
 
-  -- Jika feed kosong dan filter=today, ambil 10 terakhir tanpa filter waktu
   IF (v_feed IS NULL OR v_feed::text = '[]') AND p_filter = 'today' THEN
     SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) INTO v_feed
     FROM (
-      SELECT id, plat_nomor, liter, harga, jenis_kendaraan, waktu_pencatatan, operator_email
+      SELECT id, plat_nomor, liter, harga, jenis_kendaraan, waktu_pencatatan, tgl_pencatatan, jam_pencatatan, operator_email, operator_name, is_ojol
       FROM public.transaksi_pertalite
       WHERE (v_spbu_id IS NULL OR spbu_id = v_spbu_id)
       ORDER BY waktu_pencatatan DESC
@@ -331,7 +395,6 @@ BEGIN
     ) t;
   END IF;
 
-  -- ── 3. Shift Chart ──
   SELECT COALESCE(json_agg(json_build_object('shift', s.shift_num, 'count', COALESCE(c.cnt, 0))), '[]'::json)
   INTO v_shift_chart
   FROM (VALUES (1), (2), (3)) AS s(shift_num)
@@ -349,7 +412,6 @@ BEGIN
     GROUP BY 1
   ) c ON c.shift_num = s.shift_num;
 
-  -- ── 4. Vehicle Chart ──
   SELECT COALESCE(json_agg(json_build_object('label', jenis_kendaraan, 'count', cnt)), '[]'::json)
   INTO v_vehicle_chart
   FROM (
@@ -360,7 +422,6 @@ BEGIN
     GROUP BY jenis_kendaraan
   ) sub;
 
-  -- ── 5. Peak Hours ──
   SELECT COALESCE(json_agg(json_build_object('hour', h, 'count', cnt) ORDER BY h), '[]'::json)
   INTO v_peak_hours
   FROM (
@@ -371,7 +432,6 @@ BEGIN
     GROUP BY 1
   ) sub;
 
-  -- ── 6. Loyal Customers (Top 5 by volume) ──
   SELECT COALESCE(json_agg(json_build_object(
     'plat_nomor', plat_nomor,
     'total_trx', total_trx,
@@ -389,7 +449,6 @@ BEGIN
     LIMIT 5
   ) sub;
 
-  -- ── 7. Trend 7 Hari ──
   WITH days AS (
     SELECT generate_series(
       date_trunc('day', NOW()) - INTERVAL '6 days',
@@ -411,7 +470,6 @@ BEGIN
     GROUP BY 1
   ) t ON t.trx_date = days.d;
 
-  -- ── 8. Revenue Share by Vehicle Type ──
   SELECT COALESCE(json_agg(json_build_object('label', jenis_kendaraan, 'total', total_rev)), '[]'::json)
   INTO v_revenue_share
   FROM (
@@ -422,7 +480,6 @@ BEGIN
     GROUP BY jenis_kendaraan
   ) sub;
 
-  -- Build final JSON
   RETURN json_build_object(
     'stats', v_stats,
     'feed', v_feed,
@@ -436,17 +493,12 @@ BEGIN
   );
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.get_dashboard_summary(text, text) TO authenticated;
 
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- 5. RPC: get_export_transactions(p_start_date, p_end_date, p_spbu_id)
---    Returns all transactions in date range in a single query (replaces looping)
--- ═══════════════════════════════════════════════════════════════════════════════
-DROP FUNCTION IF EXISTS public.get_export_transactions(text, text) CASCADE;
-DROP FUNCTION IF EXISTS public.get_export_transactions(text, text, text) CASCADE;
-DROP FUNCTION IF EXISTS public.get_export_transactions(text, text, uuid) CASCADE;
+-- ─── 6. RPC: get_export_transactions ─────────────────────────────────────────
+
+DROP FUNCTION IF EXISTS public.get_export_transactions CASCADE;
 
 CREATE OR REPLACE FUNCTION public.get_export_transactions(
   p_start_date text,
@@ -465,114 +517,35 @@ BEGIN
 
   SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) INTO v_result
   FROM (
-    SELECT id, waktu_pencatatan, jenis_kendaraan, plat_nomor, liter, harga, operator_id
-    FROM public.transaksi_pertalite
-    WHERE (v_spbu_id IS NULL OR spbu_id = v_spbu_id)
-      AND waktu_pencatatan >= (p_start_date || 'T00:00:00')::timestamp
-      AND waktu_pencatatan <= (p_end_date || 'T23:59:59')::timestamp
-    ORDER BY waktu_pencatatan ASC
+    SELECT 
+      trx.id, 
+      trx.waktu_pencatatan, 
+      trx.tgl_pencatatan, 
+      trx.jam_pencatatan, 
+      trx.jenis_kendaraan, 
+      trx.plat_nomor, 
+      trx.liter, 
+      trx.harga, 
+      COALESCE(trx.operator_name, trx.operator_email) AS operator_nama,
+      COALESCE(s.nama, CONCAT('SPBU #', trx.spbu_id)) AS spbu_nama,
+      trx.is_ojol
+    FROM public.transaksi_pertalite trx
+    LEFT JOIN public.spbu s ON s.id = trx.spbu_id
+    WHERE (v_spbu_id IS NULL OR trx.spbu_id = v_spbu_id)
+      AND trx.waktu_pencatatan >= (p_start_date || 'T00:00:00')::timestamp
+      AND trx.waktu_pencatatan <= (p_end_date || 'T23:59:59')::timestamp
+    ORDER BY trx.waktu_pencatatan ASC
   ) t;
 
   RETURN v_result;
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.get_export_transactions(text, text, text) TO authenticated;
 
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- 6. RLS POLICIES
--- ═══════════════════════════════════════════════════════════════════════════════
+-- ─── 7. AUDIT TRAIL TRIGGER ───────────────────────────────────────────────────
 
--- ── 6a. transaksi_pertalite ──
-ALTER TABLE public.transaksi_pertalite ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "trx_select_policy" ON public.transaksi_pertalite;
-DROP POLICY IF EXISTS "trx_insert_policy" ON public.transaksi_pertalite;
-
-CREATE POLICY "trx_select_policy" ON public.transaksi_pertalite
-  FOR SELECT USING (
-    public.get_user_role() = 'master'
-    OR spbu_id = public.get_user_spbu_id()
-  );
-
--- Direct INSERT dari Client SDK dilarang untuk Operator (harus lewat RPC fn_safe_insert_transaction)
-CREATE POLICY "trx_insert_policy" ON public.transaksi_pertalite
-  FOR INSERT WITH CHECK (
-    public.get_user_role() = 'master'
-  );
-
--- ── 6b. fuel_prices ──
-ALTER TABLE public.fuel_prices ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "fuel_prices_select" ON public.fuel_prices;
-DROP POLICY IF EXISTS "fuel_prices_modify" ON public.fuel_prices;
-
-CREATE POLICY "fuel_prices_select" ON public.fuel_prices
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY "fuel_prices_modify" ON public.fuel_prices
-  FOR ALL USING (
-    public.get_user_role() IN ('manajer', 'master')
-  );
-
--- ── 6c. shift_config ──
-ALTER TABLE public.shift_config ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "shift_config_select" ON public.shift_config;
-DROP POLICY IF EXISTS "shift_config_modify" ON public.shift_config;
-
-CREATE POLICY "shift_config_select" ON public.shift_config
-  FOR SELECT USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY "shift_config_modify" ON public.shift_config
-  FOR ALL USING (
-    public.get_user_role() IN ('manajer', 'master')
-  );
-
--- ── 6d. team_members (VIEW — RLS dikontrol via tabel dasar user_roles) ──
--- (Catatan: team_members adalah VIEW, RLS tidak diterapkan langsung pada VIEW)
-
--- ── 6e. support_tickets ──
-ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "support_tickets_select" ON public.support_tickets;
-DROP POLICY IF EXISTS "support_tickets_insert" ON public.support_tickets;
-
-CREATE POLICY "support_tickets_select" ON public.support_tickets
-  FOR SELECT USING (
-    public.get_user_role() = 'master'
-    OR user_id = auth.uid()
-  );
-
-CREATE POLICY "support_tickets_insert" ON public.support_tickets
-  FOR INSERT WITH CHECK (
-    auth.uid() IS NOT NULL
-  );
-
--- ── 6f. user_roles (Proteksi Privilege Escalation) ──
-ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "user_roles_select" ON public.user_roles;
-DROP POLICY IF EXISTS "user_roles_modify" ON public.user_roles;
-
-CREATE POLICY "user_roles_select" ON public.user_roles
-  FOR SELECT USING (
-    auth.uid() = user_id
-    OR public.get_user_role() = 'master'
-  );
-
-CREATE POLICY "user_roles_modify" ON public.user_roles
-  FOR ALL USING (
-    public.get_user_role() = 'master'
-  );
-
-
--- ═══════════════════════════════════════════════════════════════════════════════
--- 7. AUDIT TRAIL TRIGGER
--- ═══════════════════════════════════════════════════════════════════════════════
-DROP FUNCTION IF EXISTS public.fn_audit_transaction() CASCADE;
-
+DROP FUNCTION IF EXISTS public.fn_audit_transaction CASCADE;
 CREATE OR REPLACE FUNCTION public.fn_audit_transaction()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -589,7 +562,9 @@ BEGIN
       'liter', NEW.liter,
       'harga', NEW.harga,
       'jenis_kendaraan', NEW.jenis_kendaraan,
-      'spbu_id', NEW.spbu_id
+      'spbu_id', NEW.spbu_id,
+      'operator_name', NEW.operator_name,
+      'is_ojol', NEW.is_ojol
     )::jsonb,
     NOW()
   );
@@ -598,14 +573,81 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_audit_transaction ON public.transaksi_pertalite;
-
 CREATE TRIGGER trg_audit_transaction
   AFTER INSERT ON public.transaksi_pertalite
   FOR EACH ROW
   EXECUTE FUNCTION public.fn_audit_transaction();
 
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- 8. PERMISSIONS & SCHEMA REFRESH
--- ═══════════════════════════════════════════════════════════════════════════════
+-- ─── 8. STRICT RLS POLICIES ───────────────────────────────────────────────────
+
+ALTER TABLE public.transaksi_pertalite ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "trx_select_policy" ON public.transaksi_pertalite;
+DROP POLICY IF EXISTS "trx_insert_policy" ON public.transaksi_pertalite;
+
+CREATE POLICY "trx_select_policy" ON public.transaksi_pertalite
+  FOR SELECT USING (
+    public.get_user_role() = 'master'
+    OR spbu_id = public.get_user_spbu_id()
+  );
+
+CREATE POLICY "trx_insert_policy" ON public.transaksi_pertalite
+  FOR INSERT WITH CHECK (
+    public.get_user_role() = 'master'
+  );
+
+ALTER TABLE public.fuel_prices ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "fuel_prices_select" ON public.fuel_prices;
+DROP POLICY IF EXISTS "fuel_prices_modify" ON public.fuel_prices;
+
+CREATE POLICY "fuel_prices_select" ON public.fuel_prices
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "fuel_prices_modify" ON public.fuel_prices
+  FOR ALL USING (
+    public.get_user_role() IN ('manajer', 'master')
+  );
+
+ALTER TABLE public.shift_config ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "shift_config_select" ON public.shift_config;
+DROP POLICY IF EXISTS "shift_config_modify" ON public.shift_config;
+
+CREATE POLICY "shift_config_select" ON public.shift_config
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "shift_config_modify" ON public.shift_config
+  FOR ALL USING (
+    public.get_user_role() IN ('manajer', 'master')
+  );
+
+ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "support_tickets_select" ON public.support_tickets;
+DROP POLICY IF EXISTS "support_tickets_insert" ON public.support_tickets;
+
+CREATE POLICY "support_tickets_select" ON public.support_tickets
+  FOR SELECT USING (
+    public.get_user_role() = 'master'
+    OR user_id = auth.uid()
+  );
+
+CREATE POLICY "support_tickets_insert" ON public.support_tickets
+  FOR INSERT WITH CHECK (
+    auth.uid() IS NOT NULL
+  );
+
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "user_roles_select" ON public.user_roles;
+DROP POLICY IF EXISTS "user_roles_modify" ON public.user_roles;
+
+CREATE POLICY "user_roles_select" ON public.user_roles
+  FOR SELECT USING (
+    auth.uid() = user_id
+    OR public.get_user_role() = 'master'
+  );
+
+CREATE POLICY "user_roles_modify" ON public.user_roles
+  FOR ALL USING (
+    public.get_user_role() = 'master'
+  );
+
 NOTIFY pgrst, 'reload schema';

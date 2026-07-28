@@ -95,23 +95,19 @@ export function useTransactionAction() {
 
       // Handle response dari RPC
       if (data && !data.success) {
-        if (data.reason === 'quota_exceeded') {
-          toast.warn(data.message || "Kuota maksimal Motor (5 Liter/hari) terlampaui!")
-        } else if (data.reason === 'already_refueled') {
-          toast.warn(data.message || "Mobil hanya boleh mengisi 1x per hari!")
-        } else {
+        if (data.reason !== 'quota_exceeded' && data.reason !== 'already_refueled') {
           toast.error(data.message || "Transaksi ditolak oleh sistem!")
         }
-        return false
+        return { success: false, reason: data.reason, message: data.message }
       }
 
       toast.success("Transaksi Berhasil!")
-      return true
+      return { success: true }
 
     } catch (err) {
       console.error("[submitTransaction] Error:", err)
       toast.error("Gagal: " + (err.message || err))
-      return false
+      return { success: false, reason: 'error', message: err.message || err }
     } finally {
       loading.value = false
     }
