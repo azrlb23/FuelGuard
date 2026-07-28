@@ -11,6 +11,11 @@ export function useExcelExport() {
 
   const formatDate = (date) => new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
+  /**
+   * Download data transaksi dan generate file Excel.
+   * Menggunakan RPC get_export_transactions untuk mengambil semua data
+   * dalam 1 kali request (menggantikan looping pagination sebelumnya).
+   */
   const downloadExcel = async (startDate, endDate) => {
     if (!startDate || !endDate) {
       toast.warn("Pilih rentang tanggal terlebih dahulu.")
@@ -26,41 +31,23 @@ export function useExcelExport() {
     progress.value = 0
 
     try {
-      let allData = []
-      let page = 0
-      let pageSize = 1000
-      let hasMore = true
+      const { data: allData, error } = await supabase.rpc('get_export_transactions', {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_spbu_id: authStore.spbuId
+      })
 
-      while (hasMore) {
-        const from = page * pageSize
-        const to = from + pageSize - 1
+      if (error) throw error
 
-        const { data, error } = await supabase
-          .from('transaksi_pertalite')
-          .select('*')
-          .eq('spbu_id', authStore.spbuId)
-          .gte('waktu_pencatatan', `${startDate}T00:00:00`)
-          .lte('waktu_pencatatan', `${endDate}T23:59:59`)
-          .order('waktu_pencatatan', { ascending: true })
-          .range(from, to)
+      const dataList = allData || []
+      progress.value = dataList.length
 
-        if (error) throw error
-
-        if (data.length > 0) {
-          allData = [...allData, ...data]
-          progress.value = allData.length
-          page++
-        }
-
-        if (data.length < pageSize) hasMore = false
-      }
-
-      if (allData.length === 0) {
+      if (dataList.length === 0) {
         toast.info("Tidak ada data untuk diexport.")
         return
       }
 
-      const formattedData = allData.map(item => ({
+      const formattedData = dataList.map(item => ({
         'ID': item.id,
         'Waktu': formatDate(item.waktu_pencatatan),
         'Jenis': item.jenis_kendaraan,
@@ -78,7 +65,7 @@ export function useExcelExport() {
       XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Transaksi")
 
       XLSX.writeFile(workbook, `Laporan_${startDate}_${endDate}.xlsx`)
-      toast.success(`Berhasil mengunduh ${allData.length} data!`)
+      toast.success(`Berhasil mengunduh ${dataList.length} data!`)
 
     } catch (err) {
       console.error(err)

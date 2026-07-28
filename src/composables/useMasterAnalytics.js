@@ -3,12 +3,12 @@ import { supabase } from '@/lib/supabaseClient'
 
 export function useMasterAnalytics() {
   const loading = ref(false)
-  const dataSource = ref('Checking...')
+  const dataSource = ref('RPC Database (Server-side)')
 
   // Filter state
   const dateFrom = ref('')
   const dateTo = ref('')
-  const selectedSpbuId = ref('') // '' = All SPBUs
+  const selectedSpbuId = ref('')
   const spbuOptions = ref([])
 
   // Data state
@@ -37,102 +37,12 @@ export function useMasterAnalytics() {
     }
   }
 
-  // ─── Direct Table Fallback Query ───────────────────────────────────────────
-  const fetchDirectTableData = async () => {
-    try {
-      let query = supabase
-        .from('transaksi_pertalite')
-        .select('*')
-        .order('waktu_pencatatan', { ascending: true })
-
-      if (selectedSpbuId.value) {
-        query = query.eq('spbu_id', selectedSpbuId.value)
-      }
-      if (dateFrom.value) {
-        query = query.gte('waktu_pencatatan', `${dateFrom.value}T00:00:00`)
-      }
-      if (dateTo.value) {
-        query = query.lte('waktu_pencatatan', `${dateTo.value}T23:59:59`)
-      }
-
-      const { data: allTrx } = await query
-      const trxList = allTrx || []
-
-      // 1. KPI
-      const totalSales = trxList.reduce((s, i) => s + (Number(i.harga) || 0), 0)
-      const totalVol = trxList.reduce((s, i) => s + (Number(i.liter) || 0), 0)
-      const totalTrxCount = trxList.length
-
-      let daysSpan = 30
-      if (dateFrom.value && dateTo.value) {
-        const d1 = new Date(dateFrom.value)
-        const d2 = new Date(dateTo.value)
-        const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)) + 1
-        daysSpan = Math.max(diff, 1)
-      }
-
-      kpi.value = {
-        total_sales: totalSales,
-        total_volume: totalVol,
-        total_trx: totalTrxCount,
-        avg_trx_per_day: Number((totalTrxCount / daysSpan).toFixed(1))
-      }
-
-      // 2. Trend Group by Date
-      const trendMap = {}
-      trxList.forEach(t => {
-        const d = new Date(t.waktu_pencatatan)
-        if (isNaN(d.getTime())) return
-        const dateKey = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
-        if (!trendMap[dateKey]) trendMap[dateKey] = { sales: 0, volume: 0 }
-        trendMap[dateKey].sales += Number(t.harga) || 0
-        trendMap[dateKey].volume += Number(t.liter) || 0
-      })
-
-      trendData.value = Object.keys(trendMap).map(k => ({
-        date: k,
-        sales: trendMap[k].sales,
-        volume: trendMap[k].volume
-      }))
-
-      // 3. Leaderboard Group by SPBU
-      const spbuMap = {}
-      trxList.forEach(t => {
-        const sId = t.spbu_id ? String(t.spbu_id) : '1'
-        if (!spbuMap[sId]) spbuMap[sId] = { sales: 0, volume: 0, total_trx: 0 }
-        spbuMap[sId].sales += Number(t.harga) || 0
-        spbuMap[sId].volume += Number(t.liter) || 0
-        spbuMap[sId].total_trx += 1
-      })
-
-      const rawLeaderboard = spbuOptions.value.map(s => {
-        const stats = spbuMap[s.id] || { sales: 0, volume: 0, total_trx: 0 }
-        const sharePct = totalSales > 0 ? Number(((stats.sales / totalSales) * 100).toFixed(1)) : 0
-        return {
-          spbu_id: s.id,
-          spbu_name: s.name,
-          sales: stats.sales,
-          volume: stats.volume,
-          total_trx: stats.total_trx,
-          share_pct: sharePct
-        }
-      }).sort((a, b) => b.sales - a.sales)
-
-      leaderboard.value = rawLeaderboard.map((item, idx) => ({
-        ...item,
-        rank: idx + 1,
-        status: idx === 0 && item.sales > 0 ? 'Top Performer' : item.sales === 0 ? 'No Activity' : 'Normal'
-      }))
-
-    } catch (err) {
-      console.error('[useMasterAnalytics Direct Query] Error:', err)
-    }
-  }
-
-  // ─── Main Fetch (Prioritas RPC Database -> Fallback Direct Fetch) ─────────────
+  /**
+   * Fetch analytics data via RPC get_master_analytics_summary.
+   * KPI, trend harian, dan leaderboard SPBU dihitung di PostgreSQL.
+   */
   const fetchAnalytics = async () => {
     loading.value = true
-    let rpcSuccess = false
 
     try {
       const { data, error } = await supabase.rpc('get_master_analytics_summary', {
@@ -141,26 +51,24 @@ export function useMasterAnalytics() {
         p_spbu_id: selectedSpbuId.value
       })
 
-      if (!error && data) {
+      if (error) {
+        console.error('[useMasterAnalytics] RPC error:', error)
+        return
+      }
+
+      if (data) {
         kpi.value = data.kpi || kpi.value
         trendData.value = data.trend || []
         leaderboard.value = data.leaderboard || []
-        rpcSuccess = true
-        dataSource.value = 'RPC Database (Server-side)'
       }
     } catch (err) {
-      // RPC not available yet
+      console.error('[useMasterAnalytics] Error:', err)
+    } finally {
+      loading.value = false
     }
-
-    if (!rpcSuccess) {
-      dataSource.value = 'Fallback Direct Query (Frontend)'
-      await fetchDirectTableData()
-    }
-
-    loading.value = false
   }
 
-  // ─── Export Functions ──────────────────────────────────────────────────────
+  // ─── Export Functions (Tetap di Frontend — presentation layer) ──────────────
   const exportToExcel = () => {
     const headers = ['Rank,SPBU Name,Revenue (IDR),Volume (Liter),Total Transactions,Share (%)\n']
     const rows = leaderboard.value.map(row => 
@@ -210,7 +118,7 @@ export function useMasterAnalytics() {
             .kpi-val { font-size: 20px; font-weight: 900; color: #143d2e; margin-top: 5px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
             th { background: #143d2e; color: white; padding: 12px; text-align: left; font-size: 11px; text-transform: uppercase; }
-            .footer { margin-top: 50px; font-size: 11px; color: #888; text-align: right; border-t: 1px solid #eee; padding-top: 15px; }
+            .footer { margin-top: 50px; font-size: 11px; color: #888; text-align: right; border-top: 1px solid #eee; padding-top: 15px; }
           </style>
         </head>
         <body>

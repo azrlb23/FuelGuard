@@ -1,11 +1,9 @@
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { toast } from 'vue3-toastify'
-import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/auth'
 import { useCameraScanner } from '@/composables/useCameraScanner'
 import { useTransactionAction } from '@/composables/useTransactionAction'
-import { supabase } from '@/lib/supabaseClient'
 
 const props = defineProps({
   vehicleType: String,
@@ -249,33 +247,9 @@ const handleScan = async () => {
   }
 }
 
+// Harga per liter digunakan hanya untuk kalkulasi tampilan UI (2 arah liter <-> harga).
+// Harga sesungguhnya dihitung di backend (fn_safe_insert_transaction) dari tabel fuel_prices.
 const hargaPerLiter = ref(10000)
-
-const fetchActiveFuelPrice = async () => {
-  try {
-    let query = supabase
-      .from('fuel_prices')
-      .select('price_per_liter')
-      .ilike('fuel_type', '%pertalite%')
-      .limit(1)
-
-    if (authStore.spbuId) {
-      query = query.eq('spbu_id', authStore.spbuId)
-    }
-
-    const { data } = await query
-
-    if (data && data.length > 0 && Number(data[0].price_per_liter) > 0) {
-      hargaPerLiter.value = Number(data[0].price_per_liter)
-    }
-  } catch (err) {
-    console.warn("Gagal mengambil harga BBM dari database, menggunakan harga default (10.000):", err)
-  }
-}
-
-onMounted(() => {
-  fetchActiveFuelPrice()
-})
 
 // const calculatedPrice = computed(() => {
 //   const liter = parseFloat(form.value.liter) || 0
@@ -349,10 +323,10 @@ const handleSubmit = () => {
     return
   }
 
+  // Hanya kirim plat_nomor dan liter — harga dihitung di backend
   emit('submit', {
     plat_nomor: form.value.plat_nomor,
-    liter: form.value.liter,
-    total_harga: liter * hargaPerLiter.value
+    liter: form.value.liter
   })
 }
 </script>
