@@ -86,3 +86,24 @@ button, [role="button"], input[type="button"], input[type="submit"], input[type=
 .no-spinner {
   -moz-appearance: textfield;
 }
+
+/* Custom Date Input & Calendar Picker Styling */
+input[type="date"]:not(.dark-date-icon) {
+  color-scheme: light;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px;
+  transition: all 0.2s ease;
+}
+
+input[type="date"]:not(.dark-date-icon)::-webkit-calendar-picker-indicator {
+  filter: invert(18%) sepia(28%) saturate(1450%) hue-rotate(114deg) brightness(95%) contrast(92%);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
