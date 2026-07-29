@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const transactions = ref([])
 const loading = ref(false)
@@ -9,6 +12,8 @@ const searchQuery = ref('')
 const formatRupiah = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 
 const fetchTodayHistory = async () => {
+  if (!authStore.spbuId) return
+
   loading.value = true
   try {
     const now = new Date()
@@ -18,6 +23,7 @@ const fetchTodayHistory = async () => {
     let query = supabase
       .from('transaksi_pertalite')
       .select('*')
+      .eq('spbu_id', authStore.spbuId)
       .gte('waktu_pencatatan', startOfDay)
       .lte('waktu_pencatatan', endOfDay)
       .order('waktu_pencatatan', { ascending: false })

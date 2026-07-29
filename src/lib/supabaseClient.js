@@ -8,15 +8,3 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-export const logActivity = async (action, details) => {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    await supabase.from('activity_logs').insert({
-      user_id: user.id,
-      action,
-      details,
-      timestamp: new Date().toISOString()
-    })
-  }
-}

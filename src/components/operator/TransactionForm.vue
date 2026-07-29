@@ -1,11 +1,9 @@
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { toast } from 'vue3-toastify'
-import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/auth'
 import { useCameraScanner } from '@/composables/useCameraScanner'
 import { useTransactionAction } from '@/composables/useTransactionAction'
-import { supabase } from '@/lib/supabaseClient'
 
 const props = defineProps({
   vehicleType: String,
@@ -15,7 +13,7 @@ const props = defineProps({
 const emit = defineEmits(['submit', 'back'])
 
 const { isScanning, isProcessing, startCamera, stopCamera, scanPlateNumber } = useCameraScanner()
-const { checkPlateStatus, checkingPlate } = useTransactionAction()
+const { checkPlateStatus, checkingPlate, submitTransaction } = useTransactionAction()
 const authStore = useAuthStore()
 
 const videoRef = ref(null)
@@ -249,33 +247,9 @@ const handleScan = async () => {
   }
 }
 
+// Harga per liter digunakan hanya untuk kalkulasi tampilan UI (2 arah liter <-> harga).
+// Harga sesungguhnya dihitung di backend (fn_safe_insert_transaction) dari tabel fuel_prices.
 const hargaPerLiter = ref(10000)
-
-const fetchActiveFuelPrice = async () => {
-  try {
-    let query = supabase
-      .from('fuel_prices')
-      .select('price_per_liter')
-      .ilike('fuel_type', '%pertalite%')
-      .limit(1)
-
-    if (authStore.spbuId) {
-      query = query.eq('spbu_id', authStore.spbuId)
-    }
-
-    const { data } = await query
-
-    if (data && data.length > 0 && Number(data[0].price_per_liter) > 0) {
-      hargaPerLiter.value = Number(data[0].price_per_liter)
-    }
-  } catch (err) {
-    console.warn("Gagal mengambil harga BBM dari database, menggunakan harga default (10.000):", err)
-  }
-}
-
-onMounted(() => {
-  fetchActiveFuelPrice()
-})
 
 // const calculatedPrice = computed(() => {
 //   const liter = parseFloat(form.value.liter) || 0
@@ -342,18 +316,34 @@ const onLiterInput = () => {
   lastEdited.value = 'liter'
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   const liter = parseFloat(form.value.liter)
   if (!liter || liter <= 0) {
     toast.warn('Mohon masukkan jumlah liter atau total harga!')
     return
   }
 
-  emit('submit', {
+  const res = await submitTransaction({
     plat_nomor: form.value.plat_nomor,
-    liter: form.value.liter,
-    total_harga: liter * hargaPerLiter.value
-  })
+    liter: form.value.liter
+  }, props.vehicleType)
+
+  if (res && res.success) {
+    emit('submit', { success: true })
+  } else if (res && (res.reason === 'quota_exceeded' || res.reason === 'already_refueled')) {
+    // Ambil info status pengisian plat terbaru dari DB untuk ditampilkan di Popup Modal
+    const statusRes = await checkPlateStatus(form.value.plat_nomor, props.vehicleType)
+    if (statusRes && statusRes.success) {
+      refueledInfo.value = statusRes
+    } else {
+      refueledInfo.value = {
+        plat: form.value.plat_nomor,
+        countToday: 1,
+        message: res.message || 'Kendaraan sudah mencapai kuota/limit pengisian!'
+      }
+    }
+    showRefueledModal.value = true
+  }
 }
 </script>
 
@@ -573,13 +563,45 @@ const handleSubmit = () => {
             </div>
             <div class="flex justify-between items-center border-b border-white/15 pb-2.5">
               <span class="text-xs font-medium text-white/70">Pengisian Hari Ini</span>
-              <span class="text-sm font-bold text-white">{{ refueledInfo?.countToday }} Kali</span>
+              <span class="text-sm font-bold text-white">{{ refueledInfo?.countToday ?? 1 }} Kali</span>
             </div>
-            <div class="flex justify-between items-center border-b border-white/15 pb-2.5">
+            <!-- Total Terisi Hari Ini (Support Rupiah / Liter) -->
+            <div v-if="refueledInfo?.totalHargaToday !== undefined || refueledInfo?.totalLiterToday !== undefined" class="flex justify-between items-center border-b border-white/15 pb-2.5">
+              <span class="text-xs font-medium text-white/70">Total Terisi Hari Ini</span>
+              <span class="text-sm font-bold text-emerald-300">
+                <template v-if="refueledInfo?.totalHargaToday !== undefined">
+                  {{ formatRupiah(refueledInfo.totalHargaToday) }}
+                </template>
+                <template v-else-if="refueledInfo?.totalLiterToday !== undefined">
+                  {{ refueledInfo.totalLiterToday }} Liter
+                </template>
+              </span>
+            </div>
+            <!-- Sisa Kuota Hari Ini -->
+            <div v-if="refueledInfo?.remainingQuota !== undefined" class="flex justify-between items-center border-b border-white/15 pb-2.5">
+              <span class="text-xs font-medium text-white/70">Sisa Kuota Hari Ini</span>
+              <span class="text-sm font-bold text-amber-300">
+                <template v-if="typeof refueledInfo?.remainingQuota === 'number'">
+                  <template v-if="refueledInfo.remainingQuota > 100">
+                    {{ formatRupiah(refueledInfo.remainingQuota) }}
+                  </template>
+                  <template v-else-if="refueledInfo.remainingQuota === 0">
+                    Rp 0 (Habis)
+                  </template>
+                  <template v-else>
+                    {{ refueledInfo.remainingQuota }} Liter
+                  </template>
+                </template>
+                <template v-else>
+                  {{ refueledInfo.remainingQuota }}
+                </template>
+              </span>
+            </div>
+            <div v-if="refueledInfo?.lastTransaction" class="flex justify-between items-center border-b border-white/15 pb-2.5">
               <span class="text-xs font-medium text-white/70">Pengisian Terakhir</span>
-              <span class="text-sm font-bold text-white">{{ refueledInfo?.lastTransaction?.liter }} Liter (Rp {{ formatRupiah(refueledInfo?.lastTransaction?.harga) }})</span>
+              <span class="text-sm font-bold text-white">{{ refueledInfo?.lastTransaction?.liter }} Liter ({{ formatRupiah(refueledInfo?.lastTransaction?.harga) }})</span>
             </div>
-            <div class="flex justify-between items-center">
+            <div v-if="refueledInfo?.timeFormatted" class="flex justify-between items-center">
               <span class="text-xs font-medium text-white/70">Waktu Terakhir</span>
               <span class="text-sm font-bold text-white">{{ refueledInfo?.timeFormatted }} WITA</span>
             </div>
