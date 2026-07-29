@@ -7,6 +7,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  isExporting: {
+    type: Boolean,
+    default: false
+  },
   transactions: {
     type: Array,
     default: () => []
@@ -76,7 +80,8 @@ const emit = defineEmits([
   'update:dateTo',
   'sortChange',
   'resetFilters',
-  'removeFilter'
+  'removeFilter',
+  'exportExcel'
 ])
 
 const visiblePages = computed(() => {
@@ -269,14 +274,33 @@ const setPage = (p) => {
       </table>
     </div>
 
-    <!-- Pagination Bar (Paging Per 10 Transaksi) -->
-    <div class="flex flex-col sm:flex-row items-center justify-between mt-6 pt-5 border-t border-white/15 gap-4">
-      <span class="text-xs text-green-200/70 font-medium order-2 sm:order-1 text-center sm:text-left">
-        Menampilkan {{ transactions.length ? ((currentPage - 1) * itemsPerPage + 1).toLocaleString('id-ID') : 0 }} - 
-        {{ Math.min(currentPage * itemsPerPage, totalItems).toLocaleString('id-ID') }} dari {{ totalItems.toLocaleString('id-ID') }} data
-      </span>
+    <!-- Pagination Bar & Export Excel Button -->
+    <div class="flex flex-col md:flex-row items-center justify-between mt-6 pt-5 border-t border-white/15 gap-4">
+      
+      <!-- Total Items & Download XLSX Button -->
+      <div class="flex flex-wrap items-center gap-3 order-2 md:order-1 text-center md:text-left justify-center md:justify-start">
+        <span class="text-xs text-green-200/70 font-medium">
+          Menampilkan {{ transactions.length ? ((currentPage - 1) * itemsPerPage + 1).toLocaleString('id-ID') : 0 }} - 
+          {{ Math.min(currentPage * itemsPerPage, totalItems).toLocaleString('id-ID') }} dari {{ totalItems.toLocaleString('id-ID') }} data
+        </span>
 
-      <div class="flex items-center gap-1.5 order-1 sm:order-2 flex-wrap justify-center">
+        <!-- Download XLSX Button -->
+        <button
+          @click="$emit('exportExcel')"
+          :disabled="isExporting || totalItems === 0"
+          class="inline-flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 text-emerald-200 hover:text-white px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+          title="Unduh laporan transaksi dalam format Excel (.xlsx)"
+        >
+          <svg v-if="!isExporting" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-emerald-300 shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          <span v-else class="loading loading-spinner loading-xs text-emerald-300"></span>
+          <span>{{ isExporting ? 'Mengeksport...' : 'Unduh XLSX' }}</span>
+        </button>
+      </div>
+
+      <!-- Page Buttons -->
+      <div class="flex items-center gap-1.5 order-1 md:order-2 flex-wrap justify-center">
         <!-- Previous Page Button -->
         <button 
           @click="setPage(currentPage - 1)" 
