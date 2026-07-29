@@ -8,11 +8,29 @@ export function useMasterHistory(itemsPerPage = 10) {
   const currentPage = ref(1)
   const totalItems = ref(0)
 
-  // Filter state
+  // Format tanggal lokal (YYYY-MM-DD)
+  const getSevenDaysAgoStr = () => {
+    const d = new Date()
+    d.setDate(d.getDate() - 7)
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const getTodayStr = () => {
+    const d = new Date()
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // Filter state (Default: 7 hari terakhir agar cepat & ringan)
   const searchQuery = ref('')
   const selectedSpbu = ref('')
-  const dateFrom = ref('')
-  const dateTo = ref('')
+  const dateFrom = ref(getSevenDaysAgoStr())
+  const dateTo = ref(getTodayStr())
   const sortField = ref('waktu_pencatatan')
   const sortDir = ref('desc')
   const spbuList = ref([])
@@ -43,6 +61,7 @@ export function useMasterHistory(itemsPerPage = 10) {
     try {
       const { data, error } = await supabase.rpc('get_master_history_paginated', {
         p_search: searchQuery.value.trim(),
+        p_spbu_id: selectedSpbu.value,
         p_date_from: dateFrom.value,
         p_date_to: dateTo.value,
         p_sort_field: sortField.value,
@@ -56,26 +75,31 @@ export function useMasterHistory(itemsPerPage = 10) {
       if (data) {
         transactions.value = data.transactions || []
         totalItems.value = data.total_count || 0
+      } else {
+        transactions.value = []
+        totalItems.value = 0
       }
     } catch (err) {
-      console.error('[useMasterHistory] Error:', err.message)
+      console.error('[useMasterHistory] Error:', err.message || err)
+      transactions.value = []
+      totalItems.value = 0
     } finally {
       loading.value = false
     }
   }
 
-  // Reset to page 1 and re-fetch when any filter changes
+  // Auto-fetch saat filter berubah
   watch([searchQuery, selectedSpbu, dateFrom, dateTo, sortField, sortDir], () => {
     currentPage.value = 1
     fetchHistory()
   })
 
-  // Re-fetch when page changes
+  // Re-fetch ketika halaman berubah
   watch(currentPage, () => {
     fetchHistory()
   })
 
-  // Sync search from URL query param
+  // Sync search dari URL query param jika ada
   watch(() => route.query.q, (newQuery) => {
     if (newQuery !== undefined) {
       searchQuery.value = newQuery
@@ -85,11 +109,12 @@ export function useMasterHistory(itemsPerPage = 10) {
   const resetFilters = () => {
     searchQuery.value = ''
     selectedSpbu.value = ''
-    dateFrom.value = ''
-    dateTo.value = ''
+    dateFrom.value = getSevenDaysAgoStr()
+    dateTo.value = getTodayStr()
     sortField.value = 'waktu_pencatatan'
     sortDir.value = 'desc'
     currentPage.value = 1
+    fetchHistory()
   }
 
   onMounted(() => {

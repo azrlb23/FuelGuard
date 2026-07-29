@@ -9,7 +9,8 @@ export function useExcelExport() {
   const progress = ref(0)
   const authStore = useAuthStore()
 
-  const formatDate = (date) => new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const formatDateOnly = (date) => new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+  const formatTimeOnly = (date) => new Date(date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':')
 
   /**
    * Download data transaksi dan generate file Excel.
@@ -49,7 +50,8 @@ export function useExcelExport() {
 
       const formattedData = dataList.map(item => ({
         'ID': item.id,
-        'Waktu': formatDate(item.waktu_pencatatan),
+        'Tanggal': formatDateOnly(item.waktu_pencatatan),
+        'Waktu': formatTimeOnly(item.waktu_pencatatan),
         'Jenis': item.jenis_kendaraan,
         'Plat Nomor': item.plat_nomor,
         'Volume (L)': item.liter,
@@ -58,7 +60,7 @@ export function useExcelExport() {
       }))
 
       const worksheet = XLSX.utils.json_to_sheet(formattedData)
-      const colWidths = [{wch:8}, {wch:22}, {wch:10}, {wch:15}, {wch:12}, {wch:15}, {wch:30}]
+      const colWidths = [{wch:8}, {wch:15}, {wch:10}, {wch:10}, {wch:15}, {wch:12}, {wch:15}, {wch:30}]
       worksheet['!cols'] = colWidths
 
       const workbook = XLSX.utils.book_new()

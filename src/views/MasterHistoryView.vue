@@ -84,8 +84,14 @@ const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage) || 
       v-model:searchQuery="searchQuery"
     />
 
-    <!-- Filter Controls Bar & Active Badges -->
-    <MasterHistoryFilterBar
+    <!-- Single Unified History Table Container (Integrated Filters & Table) -->
+    <MasterHistoryTable
+      :loading="loading"
+      :transactions="transactions"
+      v-model:currentPage="currentPage"
+      :itemsPerPage="itemsPerPage"
+      :totalItems="totalItems"
+      :totalPages="totalPages"
       :spbuList="spbuList"
       v-model:selectedSpbu="selectedSpbu"
       :selectedSpbuLabel="selectedSpbuLabel"
@@ -99,16 +105,6 @@ const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage) || 
       @sortChange="onSortSelectChange"
       @resetFilters="resetFilters"
       @removeFilter="removeFilter"
-    />
-
-    <!-- Main History Table Container -->
-    <MasterHistoryTable
-      :loading="loading"
-      :transactions="transactions"
-      v-model:currentPage="currentPage"
-      :itemsPerPage="itemsPerPage"
-      :totalItems="totalItems"
-      :totalPages="totalPages"
     />
 
   </div>

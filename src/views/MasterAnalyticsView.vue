@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import CustomDatePicker from '@/components/common/CustomDatePicker.vue'
 import { useMasterAnalytics } from '@/composables/useMasterAnalytics'
 import {
   Chart as ChartJS,
@@ -14,26 +15,41 @@ import {
   Legend,
   Filler
 } from 'chart.js'
-import { Bar, Doughnut } from 'vue-chartjs'
+import { Line, Doughnut } from 'vue-chartjs'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
-const dateFromRef = ref(null)
-const dateToRef = ref(null)
+const analyticsContainerRef = ref(null)
+const isSpbuDropdownOpen = ref(false)
 
-const triggerDateFrom = () => {
-  if (dateFromRef.value) {
-    if (typeof dateFromRef.value.showPicker === 'function') dateFromRef.value.showPicker()
-    else dateFromRef.value.focus()
+const toggleSpbuDropdown = () => {
+  isSpbuDropdownOpen.value = !isSpbuDropdownOpen.value
+}
+
+const selectSpbu = (id) => {
+  selectedSpbuId.value = id
+  isSpbuDropdownOpen.value = false
+}
+
+const handleClickOutside = (e) => {
+  if (analyticsContainerRef.value && !analyticsContainerRef.value.contains(e.target)) {
+    isSpbuDropdownOpen.value = false
   }
 }
 
-const triggerDateTo = () => {
-  if (dateToRef.value) {
-    if (typeof dateToRef.value.showPicker === 'function') dateToRef.value.showPicker()
-    else dateToRef.value.focus()
-  }
-}
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+const selectedSpbuName = computed(() => {
+  if (!selectedSpbuId.value) return 'Semua SPBU Jaringan'
+  const found = spbuOptions.value.find(s => String(s.id) === String(selectedSpbuId.value))
+  return found ? found.name : `SPBU #${selectedSpbuId.value}`
+})
 
 const {
   loading,
@@ -72,9 +88,22 @@ const trendChartData = computed(() => {
       {
         label: 'Revenue (Juta Rp)',
         data: salesData.length > 0 ? salesData : [0, 0, 0, 0, 0, 0, 0],
-        backgroundColor: '#22c55e',
-        borderRadius: 8,
-        barThickness: 20
+        borderColor: '#22c55e',
+        backgroundColor: (context) => {
+          const ctx = context.chart.ctx
+          const gradient = ctx.createLinearGradient(0, 0, 0, 300)
+          gradient.addColorStop(0, 'rgba(34, 197, 94, 0.25)')
+          gradient.addColorStop(1, 'rgba(34, 197, 94, 0.0)')
+          return gradient
+        },
+        borderWidth: 3,
+        fill: true,
+        tension: 0.35,
+        pointRadius: labels.length > 30 ? 2 : 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#22c55e',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2
       }
     ]
   }
@@ -106,6 +135,13 @@ const trendChartOptions = {
       ticks: { font: { size: 11, weight: '600' }, color: '#9ca3af' }
     }
   }
+}
+
+const formatDateLabel = (dateStr) => {
+  if (!dateStr) return 'Pilih Tanggal'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 const doughnutChartData = computed(() => {
@@ -158,60 +194,78 @@ const doughnutChartOptions = {
     </div>
 
     <!-- Filter Bar: Date Range + SPBU Select -->
-    <div class="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/90 shadow-xs flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
+    <div ref="analyticsContainerRef" class="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/90 shadow-xs flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
       
-      <!-- Date From -->
-      <div
-        @click="triggerDateFrom"
-        class="group relative flex items-center gap-2.5 bg-gray-50/90 hover:bg-gray-100/90 border border-gray-200/90 focus-within:border-[#143d2e] focus-within:ring-2 focus-within:ring-[#143d2e]/15 focus-within:bg-white rounded-full px-4 py-2 text-xs font-bold text-gray-700 flex-1 min-w-[150px] transition-all cursor-pointer shadow-2xs"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-[#143d2e] group-hover:scale-110 transition-transform shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-        </svg>
-        <span class="text-[#143d2e]/60 uppercase text-[10px] tracking-wider font-extrabold shrink-0">Dari</span>
-        <input
-          ref="dateFromRef"
-          v-model="dateFrom"
-          type="date"
-          class="bg-transparent outline-none text-gray-800 font-bold text-xs sm:text-sm cursor-pointer w-full"
-          @click.stop
-        />
-      </div>
+      <!-- Custom Date From -->
+      <CustomDatePicker
+        v-model="dateFrom"
+        label="Dari"
+        placeholder="Pilih Tanggal"
+        variant="light"
+      />
 
-      <!-- Date To -->
-      <div
-        @click="triggerDateTo"
-        class="group relative flex items-center gap-2.5 bg-gray-50/90 hover:bg-gray-100/90 border border-gray-200/90 focus-within:border-[#143d2e] focus-within:ring-2 focus-within:ring-[#143d2e]/15 focus-within:bg-white rounded-full px-4 py-2 text-xs font-bold text-gray-700 flex-1 min-w-[150px] transition-all cursor-pointer shadow-2xs"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-[#143d2e] group-hover:scale-110 transition-transform shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-        </svg>
-        <span class="text-[#143d2e]/60 uppercase text-[10px] tracking-wider font-extrabold shrink-0">Sampai</span>
-        <input
-          ref="dateToRef"
-          v-model="dateTo"
-          type="date"
-          class="bg-transparent outline-none text-gray-800 font-bold text-xs sm:text-sm cursor-pointer w-full"
-          @click.stop
-        />
-      </div>
+      <!-- Custom Date To -->
+      <CustomDatePicker
+        v-model="dateTo"
+        label="Sampai"
+        placeholder="Pilih Tanggal"
+        variant="light"
+      />
 
-      <!-- SPBU Select Dropdown -->
-      <div class="group relative flex items-center gap-2 bg-gray-50/90 hover:bg-gray-100/90 border border-gray-200/90 focus-within:border-[#143d2e] focus-within:ring-2 focus-within:ring-[#143d2e]/15 focus-within:bg-white rounded-full px-4 py-2 text-xs font-bold text-gray-700 flex-1 min-w-[200px] transition-all shadow-2xs">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-[#143d2e] group-hover:scale-110 transition-transform shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.25a.75.75 0 0 1-.75-.75V4.5a.75.75 0 0 1 .75-.75h19.5a.75.75 0 0 1 .75.75v15.75a.75.75 0 0 1-.75.75H18m-4.5 0v-7.5" />
-        </svg>
-        <span class="text-[#143d2e]/60 uppercase text-[10px] tracking-wider font-extrabold shrink-0">SPBU</span>
-        <select
-          v-model="selectedSpbuId"
-          class="appearance-none bg-transparent outline-none text-gray-800 font-bold text-xs sm:text-sm cursor-pointer w-full pr-6 truncate z-10"
+      <!-- Custom SPBU Select Dropdown -->
+      <div class="relative flex-1 min-w-[200px]">
+        <button
+          type="button"
+          @click="toggleSpbuDropdown"
+          class="w-full flex items-center justify-between gap-2.5 bg-gray-50/90 hover:bg-gray-100/90 border border-gray-200/90 focus-within:border-[#143d2e] focus-within:ring-2 focus-within:ring-[#143d2e]/15 rounded-full px-4 py-2 text-xs font-bold text-gray-700 transition-all cursor-pointer select-none shadow-2xs"
         >
-          <option value="">Semua SPBU Jaringan</option>
-          <option v-for="s in spbuOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
-        </select>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 text-gray-400 absolute right-4 pointer-events-none group-hover:text-[#143d2e] transition-colors">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-        </svg>
+          <div class="flex items-center gap-2 min-w-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-[#143d2e] shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.25a.75.75 0 0 1-.75-.75V4.5a.75.75 0 0 1 .75-.75h19.5a.75.75 0 0 1 .75.75v15.75a.75.75 0 0 1-.75.75H18m-4.5 0v-7.5" />
+            </svg>
+            <span class="text-[#143d2e]/60 uppercase text-[10px] tracking-wider font-extrabold shrink-0">SPBU</span>
+            <span class="text-gray-800 font-bold truncate">{{ selectedSpbuName }}</span>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" :class="['w-3.5 h-3.5 text-gray-400 transition-transform duration-200 shrink-0', isSpbuDropdownOpen ? 'rotate-180 text-[#143d2e]' : '']">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+
+        <!-- Custom Floating Dropdown Menu Card -->
+        <div
+          v-if="isSpbuDropdownOpen"
+          class="absolute right-0 mt-2 w-full sm:w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 p-1.5 z-50 animate-enter text-gray-800 text-xs font-bold space-y-0.5"
+        >
+          <button
+            type="button"
+            @click="selectSpbu('')"
+            :class="[
+              'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-left cursor-pointer',
+              selectedSpbuId === '' ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
+            ]"
+          >
+            <span>Semua SPBU Jaringan</span>
+            <svg v-if="selectedSpbuId === ''" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5 text-[#143d2e]">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+          </button>
+
+          <button
+            v-for="s in spbuOptions"
+            :key="s.id"
+            type="button"
+            @click="selectSpbu(s.id)"
+            :class="[
+              'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-left cursor-pointer',
+              String(selectedSpbuId) === String(s.id) ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
+            ]"
+          >
+            <span class="truncate">{{ s.name }}</span>
+            <svg v-if="String(selectedSpbuId) === String(s.id)" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5 text-[#143d2e] shrink-0">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div class="sm:ml-auto text-xs font-bold self-end sm:self-center">
@@ -284,18 +338,15 @@ const doughnutChartOptions = {
     <!-- Row 2: Charts Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <!-- Chart 1: Bar Combined Trend (2 Cols) -->
+      <!-- Chart 1: Line Combined Trend (2 Cols) -->
       <div class="lg:col-span-2 bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
-        <div class="flex justify-between items-center mb-4">
-          <div>
-            <h4 class="text-base font-extrabold text-[#143d2e]">Tren Omzet Penjualan</h4>
-            <p class="text-xs font-semibold text-gray-400">Grafik omzet harian pada periode terpilih</p>
-          </div>
-          <span class="text-xs font-bold px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100">Revenue (Jt)</span>
+        <div class="mb-4">
+          <h4 class="text-base font-extrabold text-[#143d2e]">Tren Omzet Penjualan</h4>
+          <p class="text-xs font-semibold text-gray-400">Grafik omzet harian pada periode terpilih</p>
         </div>
 
         <div class="h-64 relative">
-          <Bar :data="trendChartData" :options="trendChartOptions" />
+          <Line :data="trendChartData" :options="trendChartOptions" />
         </div>
       </div>
 
@@ -346,7 +397,7 @@ const doughnutChartOptions = {
             :key="item.spbu_id"
             class="bg-white rounded-2xl p-4 border border-gray-200 shadow-xs space-y-3 relative overflow-hidden"
           >
-            <!-- Header: Rank + Name + Status -->
+            <!-- Header: Rank + Name -->
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2.5 min-w-0">
                 <span
@@ -361,15 +412,6 @@ const doughnutChartOptions = {
                   {{ item.spbu_name }}
                 </h4>
               </div>
-
-              <span
-                :class="[
-                  'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0',
-                  item.rank === 1 ? 'bg-amber-50 text-amber-700 border-amber-200' : item.sales === 0 ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                ]"
-              >
-                {{ item.status }}
-              </span>
             </div>
 
             <!-- Metrics 2x2 Grid -->
@@ -418,7 +460,6 @@ const doughnutChartOptions = {
               <th class="py-3 px-3 text-right whitespace-nowrap">VOLUME</th>
               <th class="py-3 px-3 text-center whitespace-nowrap">TOTAL TRX</th>
               <th class="py-3 px-3 text-right whitespace-nowrap">SHARE (%)</th>
-              <th class="py-3 px-3 text-right whitespace-nowrap">STATUS PERFORMA</th>
             </tr>
           </thead>
           <tbody class="text-sm">
@@ -430,7 +471,6 @@ const doughnutChartOptions = {
                 <td class="py-4 px-3 text-right"><div class="skeleton h-4 w-16 bg-gray-200 rounded ml-auto"></div></td>
                 <td class="py-4 px-3 text-center"><div class="skeleton h-4 w-12 bg-gray-200 rounded mx-auto"></div></td>
                 <td class="py-4 px-3 text-right"><div class="skeleton h-4 w-12 bg-gray-200 rounded ml-auto"></div></td>
-                <td class="py-4 px-3 text-right"><div class="skeleton h-6 w-20 bg-gray-200 rounded-full ml-auto"></div></td>
               </tr>
             </template>
 
@@ -476,23 +516,11 @@ const doughnutChartOptions = {
                 <td class="py-4 px-3 text-right font-black text-emerald-600 whitespace-nowrap">
                   {{ item.share_pct }}%
                 </td>
-
-                <!-- Status Badge -->
-                <td class="py-4 px-3 text-right whitespace-nowrap">
-                  <span
-                    :class="[
-                      'inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border',
-                      item.rank === 1 ? 'bg-amber-50 text-amber-700 border-amber-200' : item.sales === 0 ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    ]"
-                  >
-                    {{ item.status }}
-                  </span>
-                </td>
               </tr>
             </template>
 
             <tr v-else>
-              <td colspan="7" class="py-12 text-center text-gray-400 font-medium">
+              <td colspan="6" class="py-12 text-center text-gray-400 font-medium">
                 Belum ada data untuk periode ini.
               </td>
             </tr>

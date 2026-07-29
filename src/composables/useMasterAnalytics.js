@@ -1,13 +1,32 @@
 import { ref, watch, onMounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 
+const getDefaultDates = () => {
+  const today = new Date()
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(today.getDate() - 6)
+
+  const formatDateStr = (d) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  return {
+    from: formatDateStr(sevenDaysAgo),
+    to: formatDateStr(today)
+  }
+}
+
 export function useMasterAnalytics() {
   const loading = ref(false)
   const dataSource = ref('RPC Database (Server-side)')
 
-  // Filter state
-  const dateFrom = ref('')
-  const dateTo = ref('')
+  // Filter state (Default: 7 Hari Terakhir / Mingguan)
+  const defaultDates = getDefaultDates()
+  const dateFrom = ref(defaultDates.from)
+  const dateTo = ref(defaultDates.to)
   const selectedSpbuId = ref('')
   const spbuOptions = ref([])
 
