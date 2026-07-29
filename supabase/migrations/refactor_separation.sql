@@ -14,6 +14,13 @@
 --   - Function `get_user_role()` already exists in database
 -- =============================================================================
 
+-- ─── INDEXES PERFORMA JUTAAN DATA (< 1 ms Lookup) ────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_trx_plat_waktu 
+  ON public.transaksi_pertalite (plat_nomor, waktu_pencatatan DESC);
+
+CREATE INDEX IF NOT EXISTS idx_trx_spbu_waktu 
+  ON public.transaksi_pertalite (spbu_id, waktu_pencatatan DESC);
+
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 1. HELPER FUNCTION: get_user_spbu_id()

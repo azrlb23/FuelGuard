@@ -90,6 +90,16 @@ ON CONFLICT (code) DO UPDATE SET region_name = EXCLUDED.region_name;
 
 DELETE FROM public.fuel_prices WHERE LOWER(fuel_type) LIKE '%pertamax%';
 
+-- ─── INDEXES UNTUK PERFORMA JUTAAN DATA (< 1 ms Lookup) ─────────────────────
+CREATE INDEX IF NOT EXISTS idx_trx_plat_waktu 
+  ON public.transaksi_pertalite (plat_nomor, waktu_pencatatan DESC);
+
+CREATE INDEX IF NOT EXISTS idx_trx_spbu_waktu 
+  ON public.transaksi_pertalite (spbu_id, waktu_pencatatan DESC);
+
+CREATE INDEX IF NOT EXISTS idx_trx_tgl_pencatatan 
+  ON public.transaksi_pertalite (tgl_pencatatan DESC);
+
 
 -- ─── 2. HELPER FUNCTIONS ──────────────────────────────────────────────────────
 
