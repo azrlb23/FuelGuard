@@ -73,6 +73,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'operator', layout: 'operator' }
     },
     {
+      path: '/operator/pengetap',
+      name: 'operator-pengetap',
+      component: () => import('../views/OperatorPengetapView.vue'),
+      meta: { requiresAuth: true, role: 'operator', layout: 'operator' }
+    },
+    {
       path: '/laporan',
       name: 'laporan',
       component: () => import('../views/ReportView.vue'),

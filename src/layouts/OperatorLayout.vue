@@ -97,6 +97,18 @@ watch(() => authStore.activeKasirId, (newVal) => {
 
           <div class="h-6 w-px bg-gray-200/80 mx-0.5 hidden sm:block"></div>
 
+          <!-- Aktivitas & Audit Button -->
+          <router-link 
+            to="/operator/history"
+            class="w-9 h-9 flex items-center justify-center text-[#143d2e] hover:text-[#1e5c45] hover:bg-green-50 rounded-full transition-all active:scale-95 border border-transparent hover:border-green-200"
+            title="Riwayat & Audit Pengetap Hari Ini"
+            active-class="bg-[#143d2e]/10 text-[#143d2e] border-green-200 shadow-2xs" 
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.008v.008H3.75V6.75Zm0 5.25h.008v.008H3.75V12Zm0 5.25h.008v.008H3.75v-.008Z" />
+            </svg>
+          </router-link>
+
           <!-- Settings Button -->
           <router-link 
             to="/operator/settings"

@@ -290,6 +290,25 @@ const formatRupiah = (val) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 }
 
+const formatWitaTime = (timeStr, fullDateStr) => {
+  if (fullDateStr) {
+    const d = new Date(fullDateStr)
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':')
+    }
+  }
+  if (timeStr && typeof timeStr === 'string' && timeStr.includes(':')) {
+    const parts = timeStr.split(':')
+    const h = parseInt(parts[0], 10)
+    const m = parts[1]
+    if (!isNaN(h)) {
+      const witaHour = (h + 8) % 24
+      return `${String(witaHour).padStart(2, '0')}:${m}`
+    }
+  }
+  return timeStr || ''
+}
+
 const formatAngka = (val) => {
   if (!val && val !== 0) return ''
   return new Intl.NumberFormat('id-ID').format(val)
@@ -635,9 +654,11 @@ const handleSubmit = async () => {
               <span class="text-xs font-medium text-white/70">Pengisian Terakhir</span>
               <span class="text-sm font-bold text-white">{{ refueledInfo?.lastTransaction?.liter }} Liter ({{ formatRupiah(refueledInfo?.lastTransaction?.harga) }})</span>
             </div>
-            <div v-if="refueledInfo?.timeFormatted" class="flex justify-between items-center">
+            <div v-if="refueledInfo?.lastTransaction?.waktu_pencatatan || refueledInfo?.timeFormatted" class="flex justify-between items-center">
               <span class="text-xs font-medium text-white/70">Waktu Terakhir</span>
-              <span class="text-sm font-bold text-white">{{ refueledInfo?.timeFormatted }} WITA</span>
+              <span class="text-sm font-bold text-white">
+                {{ formatWitaTime(refueledInfo?.timeFormatted, refueledInfo?.lastTransaction?.waktu_pencatatan) }} WITA
+              </span>
             </div>
           </div>
 

@@ -39,6 +39,24 @@ export function useTransactionAction() {
 
       if (error) throw error
 
+      // Jika plat terdeteksi sudah mengisi hari ini / kuota habis saat dicek, catat ke repeated_transaction_logs
+      if (data && (data.hasRefueledToday || data.remainingQuota <= 0)) {
+        try {
+          await supabase.from('repeated_transaction_logs').insert({
+            plat_nomor: platNomor.trim().toUpperCase(),
+            attempt_spbu_id: authStore.spbuId,
+            attempt_operator_id: authStore.activeKasirId,
+            is_ojol: isOjol,
+            attempted_liter: 0,
+            total_harga_today: data.totalHargaToday || 50000,
+            reason: 'quota_exceeded',
+            created_at: new Date().toISOString()
+          })
+        } catch (logErr) {
+          console.error('[checkPlateStatus] Gagal mencatat log perulangan:', logErr)
+        }
+      }
+
       return data || { success: false, reason: 'no_data' }
     } catch (err) {
       console.error("[checkPlateStatus] Error:", err)
