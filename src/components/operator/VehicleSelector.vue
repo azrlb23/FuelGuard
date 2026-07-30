@@ -1,14 +1,18 @@
 <script setup>
-defineEmits(['select'])
+const emit = defineEmits(['select'])
+
+const onSelectCategory = (isOjol) => {
+  emit('select', { type: 'Motor', isOjol })
+}
 </script>
 
 <template>
   <div class="flex flex-col items-center animate-enter w-full py-2 md:py-4">
 
-    <!-- HEADER TEKS: Diberikan margin bawah (mb-8) agar tidak terlalu dekat dengan tombol -->
-    <div class="text-center space-y-2 mb-6 md:mb-10">
+    <!-- HEADER TEKS -->
+    <div class="text-center space-y-2 mb-6 md:mb-10 animate-enter">
       <h3 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight drop-shadow-sm">
-        Pilih Jenis Kendaraan
+        Pilih Kategori Pengisian
       </h3>
       <p class="text-xs md:text-sm text-green-100/80 font-medium max-w-md mx-auto leading-relaxed">
         Silakan pilih kategori motor yang akan diisi BBM Pertalite
@@ -31,7 +35,8 @@ defineEmits(['select'])
       >
         <span class="text-xl md:text-2xl font-black text-white tracking-wider uppercase text-center leading-tight">Motor<br>Umum</span>
       </button>
-
     </div>
+
   </div>
 </template>
+
