@@ -72,9 +72,11 @@ const menuItems = [
       :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full'"
     >
         <div class="mb-10 flex items-center gap-3 px-2 flex-none">
-            <img src="@/assets/HJ_dark.png" alt="Logo" class="w-12 h-12" />
+            <div class="w-10 h-10 rounded-xl bg-[#143d2e] flex items-center justify-center p-2 shadow-md shadow-green-900/20">
+              <img src="@/assets/fuelguard_logo.png" alt="FuelGuard Logo" class="w-full h-full object-contain brightness-0 invert" />
+            </div>
             <div>
-              <h1 class="text-xl font-black text-green-800 leading-none">HABI JAYA</h1>
+              <h1 class="text-xl font-black text-[#143d2e] leading-none">FuelGuard</h1>
               <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Management</p>
             </div>
         </div>

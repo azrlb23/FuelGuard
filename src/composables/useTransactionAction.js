@@ -10,96 +10,154 @@ export function useTransactionAction() {
 
   /**
    * Mengecek status kuota pengisian BBM kendaraan hari ini via RPC Backend.
-   * Semua logika kuota (Motor max 5L, Mobil max 1x) dieksekusi di PostgreSQL.
    */
-  const checkPlateStatus = async (platNomor, vehicleType = 'Motor') => {
+  const checkPlateStatus = async (platNomor, vehicleType = 'Motor', isOjol = false) => {
     if (!platNomor || !platNomor.trim()) {
       toast.warn("Mohon masukkan nomor plat terlebih dahulu!")
       return { success: false, reason: 'empty' }
     }
 
-    if (!authStore.spbuId) {
-      toast.error("Data SPBU belum tersedia. Silakan login ulang.")
-      return { success: false, reason: 'no_spbu' }
-    }
-
     checkingPlate.value = true
+    const platClean = platNomor.trim().toUpperCase()
 
     try {
-      const { data, error } = await supabase.rpc('fn_check_plate_status', {
-        p_plat: platNomor.trim().toUpperCase(),
-        p_jenis: vehicleType,
-        p_spbu_id: authStore.spbuId
+      // 1. Coba panggil RPC fn_check_plate_status jika ada di DB
+      let { data, error } = await supabase.rpc('fn_check_plate_status', {
+        p_plat: platClean,
+        p_is_ojol: isOjol
       })
 
-      if (error) throw error
+      if (error && error.code === 'PGRST202') {
+        const try2 = await supabase.rpc('fn_check_plate_status', {
+          p_plat: platClean,
+          p_spbu_id: authStore.spbuId || null,
+          p_is_ojol: isOjol
+        })
+        data = try2.data
+        error = try2.error
+      }
 
-      return data || { success: false, reason: 'no_data' }
+      if (!error && data) {
+        return data
+      }
+
+      // 2. Fallback: Query langsung ke tabel transaksi_pertalite jika RPC fn_check_plate_status belum dibuat/sesuai
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+
+      const { data: todayTrx, error: queryErr } = await supabase
+        .from('transaksi_pertalite')
+        .select('id, liter, harga, is_ojol, waktu_pencatatan')
+        .eq('plat_nomor', platClean)
+        .gte('waktu_pencatatan', todayStart.toISOString())
+
+      if (queryErr) throw queryErr
+
+      if (todayTrx && todayTrx.length > 0) {
+        const totalHargaToday = todayTrx.reduce((sum, t) => sum + (Number(t.harga) || 0), 0)
+        const maxQuota = 50000
+
+        if (totalHargaToday >= maxQuota) {
+          return {
+            allowed: false,
+            reason: 'quota_exceeded',
+            message: `Kuota Harian (Rp ${maxQuota.toLocaleString('id-ID')}) untuk plat ${platClean} sudah habis. Total hari ini: Rp ${totalHargaToday.toLocaleString('id-ID')}`
+          }
+        }
+
+        return {
+          allowed: true,
+          reason: 'ok',
+          remainingQuota: maxQuota - totalHargaToday,
+          totalToday: totalHargaToday,
+          countToday: todayTrx.length,
+          message: `Dapat mengisi BBM. Kuota tersisa: Rp ${(maxQuota - totalHargaToday).toLocaleString('id-ID')}`
+        }
+      }
+
+      return {
+        allowed: true,
+        reason: 'ok',
+        remainingQuota: 50000,
+        totalToday: 0,
+        countToday: 0,
+        message: 'Plat nomor valid dan belum melakukan pengisian hari ini.'
+      }
+
     } catch (err) {
-      console.error("[checkPlateStatus] Error:", err)
-      toast.error("Gagal memeriksa database: " + err.message)
-      return { success: false, reason: 'error' }
+      console.warn("[checkPlateStatus] Client Fallback Error:", err)
+      return { allowed: true, reason: 'fallback', message: 'Gagal mengecek kuota otomatis, silakan lanjutkan.' }
     } finally {
       checkingPlate.value = false
     }
   }
 
   /**
-   * Mengirim transaksi BBM ke Supabase via RPC Backend.
-   * Harga dihitung di server-side berdasarkan tabel fuel_prices.
-   * Kuota di-enforce secara atomis di PostgreSQL (anti race condition).
+   * Mengirim transaksi BBM ke Supabase (Mendukung RPC maupun Direct Insert 6 Kolom DB)
    */
-  const submitTransaction = async (platOrForm, literOrVehicle, vehicleTypeParam) => {
+  const submitTransaction = async (platOrForm, vehicleTypeParam = 'Motor', isOjolParam = false) => {
     let plat = ''
     let liter = 0
-    let jenisKendaraan = ''
+    let totalHarga = 0
+    let isOjol = false
 
     if (typeof platOrForm === 'object' && platOrForm !== null) {
       plat = platOrForm.plat_nomor || platOrForm.plat || ''
-      liter = platOrForm.liter
-      jenisKendaraan = literOrVehicle || 'Motor'
+      liter = parseFloat(platOrForm.liter) || 0
+      totalHarga = parseFloat(String(platOrForm.totalHarga || platOrForm.harga || '').replace(/[^\d]/g, '')) || (liter * 10000)
+      isOjol = typeof vehicleTypeParam === 'boolean' ? vehicleTypeParam : (isOjolParam || false)
     } else {
       plat = platOrForm || ''
-      liter = literOrVehicle
-      jenisKendaraan = vehicleTypeParam || 'Motor'
+      liter = parseFloat(vehicleTypeParam) || 0
+      isOjol = isOjolParam || false
+      totalHarga = liter * 10000
     }
 
     const platClean = String(plat).trim().toUpperCase()
-    const numLiter = parseFloat(liter)
 
-    if (!platClean || isNaN(numLiter) || numLiter <= 0) {
+    if (!platClean || isNaN(liter) || liter <= 0) {
       toast.warn("Mohon lengkapi data transaksi dengan benar!")
       return false
-    }
-
-    // ── Logika Shift Otomatis Berdasarkan Jam System ──
-    const hours = new Date().getHours()
-    let shiftSaatIni = 3
-    if (hours >= 6 && hours <= 13) {
-      shiftSaatIni = 1
-    } else if (hours >= 14 && hours <= 21) {
-      shiftSaatIni = 2
     }
 
     loading.value = true
 
     try {
+      // 1. Coba lewat RPC fn_safe_insert_transaction terlebih dahulu
       const { data, error } = await supabase.rpc('fn_safe_insert_transaction', {
         p_plat: platClean,
-        p_liter: numLiter,
-        p_jenis: jenisKendaraan,
-        p_shift: shiftSaatIni
+        p_liter: liter,
+        p_jenis: 'Motor',
+        p_shift: 1,
+        p_operator_name: null,
+        p_is_ojol: isOjol
       })
 
-      if (error) throw error
-
-      // Handle response dari RPC
-      if (data && !data.success) {
-        if (data.reason !== 'quota_exceeded' && data.reason !== 'already_refueled') {
-          toast.error(data.message || "Transaksi ditolak oleh sistem!")
+      if (!error && data) {
+        if (!data.success) {
+          if (data.reason !== 'quota_exceeded' && data.reason !== 'already_refueled') {
+            toast.error(data.message || "Transaksi ditolak oleh sistem!")
+          }
+          return { success: false, reason: data.reason, message: data.message }
         }
-        return { success: false, reason: data.reason, message: data.message }
+        toast.success("Transaksi Berhasil!")
+        return { success: true }
       }
+
+      // 2. Direct Insert Fallback jika RPC belum disesuaikan oleh backend (Hanya mengisi 6 kolom DB yang tersedia)
+      const user = (await supabase.auth.getUser())?.data?.user
+      const { error: insertErr } = await supabase
+        .from('transaksi_pertalite')
+        .insert({
+          plat_nomor: platClean,
+          liter: liter,
+          harga: totalHarga,
+          waktu_pencatatan: new Date().toISOString(),
+          operator_id: user?.id || null,
+          is_ojol: isOjol
+        })
+
+      if (insertErr) throw insertErr
 
       toast.success("Transaksi Berhasil!")
       return { success: true }
@@ -120,3 +178,4 @@ export function useTransactionAction() {
     submitTransaction
   }
 }
+

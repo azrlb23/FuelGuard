@@ -34,17 +34,12 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
 
       let query = supabase
         .from('transaksi_pertalite')
-        .select('*', { count: 'exact' })
-        .eq('spbu_id', spbuId)
+        .select('id, plat_nomor, liter, harga, waktu_pencatatan, operator_id, is_ojol', { count: 'exact' })
         .order(sortField.value, { ascending: sortDir.value === 'asc' })
         .range(from, to)
 
       if (searchQuery.value) {
         query = query.ilike('plat_nomor', `%${searchQuery.value}%`)
-      }
-
-      if (vehicleFilter.value) {
-        query = query.eq('jenis_kendaraan', vehicleFilter.value)
       }
 
       if (dateFrom.value) {

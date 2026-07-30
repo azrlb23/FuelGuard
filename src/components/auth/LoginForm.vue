@@ -43,10 +43,10 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <form @submit.prevent="handleLogin" class="space-y-6 animate-enter">
+  <form @submit.prevent="handleLogin" class="space-y-5 animate-enter">
 
-    <div class="space-y-2">
-      <label for="email" class="text-sm font-bold text-green-100 lg:text-gray-700 ml-1 uppercase tracking-wider text-[11px]">
+    <div class="space-y-1.5">
+      <label for="email" class="text-[11px] font-bold text-gray-700 ml-1 uppercase tracking-wider">
         Email Address
       </label>
       <div class="relative group">
@@ -54,15 +54,14 @@ const handleLogin = async () => {
           id="email"
           v-model="email"
           type="email"
-          placeholder="nama@habijaya.com"
-          class="w-full pl-11 pr-4 py-4 rounded-2xl
-                 bg-white/10 border border-white/20 text-white placeholder-white/40
-                 lg:bg-gray-50 lg:border-gray-200 lg:text-gray-900 lg:placeholder-gray-400
-                 focus:outline-none focus:ring-2 focus:ring-green-400/50 lg:focus:ring-[#143d2e]/20 focus:border-transparent
-                 transition-all duration-300"
+          placeholder="nama@fuelguard.com"
+          class="w-full pl-11 pr-4 py-3.5 rounded-2xl
+                 bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400
+                 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] focus:bg-white
+                 transition-all duration-200 text-sm font-medium"
           required
         />
-        <span class="absolute left-4 top-4 text-green-200 lg:text-gray-400 group-focus-within:text-white lg:group-focus-within:text-[#143d2e] transition-colors">
+        <span class="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-[#143d2e] transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
           </svg>
@@ -70,9 +69,9 @@ const handleLogin = async () => {
       </div>
     </div>
 
-    <div class="space-y-2">
+    <div class="space-y-1.5">
       <div class="flex justify-between items-center ml-1">
-        <label for="password" class="text-sm font-bold text-green-100 lg:text-gray-700 uppercase tracking-wider text-[11px]">
+        <label for="password" class="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
           Password
         </label>
       </div>
@@ -82,14 +81,13 @@ const handleLogin = async () => {
           v-model="password"
           type="password"
           placeholder="••••••••"
-          class="w-full pl-11 pr-4 py-4 rounded-2xl
-                 bg-white/10 border border-white/20 text-white placeholder-white/40
-                 lg:bg-gray-50 lg:border-gray-200 lg:text-gray-900 lg:placeholder-gray-400
-                 focus:outline-none focus:ring-2 focus:ring-green-400/50 lg:focus:ring-[#143d2e]/20 focus:border-transparent
-                 transition-all duration-300"
+          class="w-full pl-11 pr-4 py-3.5 rounded-2xl
+                 bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400
+                 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] focus:bg-white
+                 transition-all duration-200 text-sm font-medium"
           required
         />
-        <span class="absolute left-4 top-4 text-green-200 lg:text-gray-400 group-focus-within:text-white lg:group-focus-within:text-[#143d2e] transition-colors">
+        <span class="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-[#143d2e] transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
           </svg>
@@ -100,9 +98,8 @@ const handleLogin = async () => {
     <button
       type="submit"
       :disabled="loading"
-      class="w-full font-black py-4 rounded-2xl shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none
-             bg-white text-[#143d2e] hover:bg-green-50
-             lg:bg-[#143d2e] lg:text-white lg:hover:bg-[#0f2e23]"
+      class="w-full font-black py-4 rounded-2xl shadow-lg shadow-green-900/15 transform hover:-translate-y-0.5 active:scale-95 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none
+             bg-[#143d2e] text-white hover:bg-[#1e5c45] cursor-pointer"
     >
       <span v-if="loading" class="flex items-center justify-center gap-2">
         <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -111,8 +108,22 @@ const handleLogin = async () => {
         </svg>
         Memproses...
       </span>
-      <span v-else class="text-lg">Masuk</span>
+      <span v-else class="text-base">Masuk</span>
     </button>
+
+    <div class="text-center pt-2">
+      <p class="text-xs font-medium text-gray-500">
+        Butuh bantuan akses? 
+        <button
+          id="btn-contact-admin"
+          type="button"
+          class="font-bold text-[#143d2e] hover:underline transition-all bg-transparent border-none cursor-pointer p-0 text-xs inline-block"
+          @click="$emit('open-contact-modal')"
+        >
+          Hubungi Admin
+        </button>
+      </p>
+    </div>
 
   </form>
 </template>

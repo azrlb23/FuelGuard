@@ -55,11 +55,11 @@ const menuItems = [
     >
       <!-- Logo Header -->
       <div class="flex items-center gap-3 px-5 py-6 border-b border-white/10 flex-none">
-        <div class="w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-lg" style="background: linear-gradient(135deg, #22c55e, #4ade80)">
-          <img src="@/assets/HJ_dark.png" alt="Logo" class="w-6 h-6 brightness-0 invert" />
+        <div class="w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center p-2 shadow-lg" style="background: linear-gradient(135deg, #22c55e, #4ade80)">
+          <img src="@/assets/fuelguard_logo.png" alt="FuelGuard Logo" class="w-full h-full object-contain brightness-0 invert" />
         </div>
         <div v-if="isSidebarOpen" class="transition-all">
-          <h1 class="text-white font-black text-sm leading-tight tracking-tight">HABI JAYA</h1>
+          <h1 class="text-white font-black text-sm leading-tight tracking-tight">FuelGuard</h1>
           <p class="text-green-400 text-[10px] font-bold uppercase tracking-wider">Master Console</p>
         </div>
         <button
