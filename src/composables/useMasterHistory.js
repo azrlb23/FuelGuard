@@ -42,7 +42,7 @@ export function useMasterHistory(itemsPerPage = 10) {
   // ─── Fetch SPBU Dropdown Options ───────────────────────────────────────────
   const fetchSpbuOptions = async () => {
     try {
-      const { data } = await supabase.from('spbu').select('id, nama, alamat, manajer_id')
+      const { data } = await supabase.from('spbu').select('id, nama, alamat')
       if (data && data.length > 0) {
         spbuList.value = data.map(s => ({
           id: String(s.id),
@@ -162,7 +162,7 @@ export function useMasterHistory(itemsPerPage = 10) {
           'Waktu': timeStr,
           'SPBU': trx.spbu_name || `SPBU #${trx.spbu_id}`,
           'Plat Nomor': trx.plat_nomor,
-          'Jenis Kendaraan': trx.jenis_kendaraan || 'Mobil',
+          'Jenis Kendaraan': trx.is_ojol ? 'Ojol' : 'Non-Ojol',
           'Liter (L)': trx.liter,
           'Total Harga (Rp)': trx.harga
         }

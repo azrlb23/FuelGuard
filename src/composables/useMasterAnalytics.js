@@ -32,19 +32,20 @@ export function useMasterAnalytics() {
 
   // Data state
   const kpi = ref({
-    total_sales: 0,
-    total_volume: 0,
-    total_trx: 0,
-    avg_trx_per_day: 0
+    totalSales: 0,
+    totalVolume: 0,
+    totalTransactions: 0,
+    avgTrxPerDay: 0
   })
 
   const trendData = ref([])
   const leaderboard = ref([])
+  const spbuShares = ref([])
 
   // ─── Fetch SPBU Dropdown Options ───────────────────────────────────────────
   const fetchSpbuOptions = async () => {
     try {
-      const { data } = await supabase.from('spbu').select('id, nama, alamat, manajer_id')
+      const { data } = await supabase.from('spbu').select('id, nama, alamat')
       if (data) {
         spbuOptions.value = data.map(s => ({
           id: String(s.id),
@@ -76,9 +77,10 @@ export function useMasterAnalytics() {
       }
 
       if (data) {
-        kpi.value = data.kpi || kpi.value
+        kpi.value = data.kpis || kpi.value
         trendData.value = data.trend || []
         leaderboard.value = data.leaderboard || []
+        spbuShares.value = data.spbuShares || []
       }
     } catch (err) {
       console.error('[useMasterAnalytics] Error:', err)
@@ -90,8 +92,8 @@ export function useMasterAnalytics() {
   // ─── Export Functions (Tetap di Frontend — presentation layer) ──────────────
   const exportToExcel = () => {
     const headers = ['Rank,SPBU Name,Revenue (IDR),Volume (Liter),Total Transactions,Share (%)\n']
-    const rows = leaderboard.value.map(row => 
-      `"${row.rank}","${row.spbu_name}","${row.sales}","${row.volume}","${row.total_trx}","${row.share_pct}%"`
+    const rows = leaderboard.value.map((row, index) => 
+      `"${index + 1}","${row.name}","${row.revenue}","${row.volume}","${row.trxCount}","- %"`
     ).join('\n')
 
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' })
@@ -110,14 +112,14 @@ export function useMasterAnalytics() {
 
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val || 0)
 
-    const tableRowsHtml = leaderboard.value.map(row => `
+    const tableRowsHtml = leaderboard.value.map((row, index) => `
       <tr>
-        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center;"><b>#${row.rank}</b></td>
-        <td style="padding:10px; border-bottom:1px solid #eee;"><b>${row.spbu_name}</b></td>
-        <td style="padding:10px; border-bottom:1px solid #eee; text-align:right; font-weight:bold; color:#143d2e;">${formatCurrency(row.sales)}</td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center;"><b>#${index + 1}</b></td>
+        <td style="padding:10px; border-bottom:1px solid #eee;"><b>${row.name}</b></td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:right; font-weight:bold; color:#143d2e;">${formatCurrency(row.revenue)}</td>
         <td style="padding:10px; border-bottom:1px solid #eee; text-align:right;">${row.volume} L</td>
-        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center;">${row.total_trx}</td>
-        <td style="padding:10px; border-bottom:1px solid #eee; text-align:right; font-weight:bold;">${row.share_pct}%</td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:center;">${row.trxCount}</td>
+        <td style="padding:10px; border-bottom:1px solid #eee; text-align:right; font-weight:bold;">- %</td>
       </tr>
     `).join('')
 
@@ -155,19 +157,19 @@ export function useMasterAnalytics() {
           <div class="kpi-grid">
             <div class="kpi-card">
               <div class="kpi-label">Total Gross Sales</div>
-              <div class="kpi-val">${formatCurrency(kpi.value.total_sales)}</div>
+              <div class="kpi-val">${formatCurrency(kpi.value.totalSales)}</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-label">Total Volume BBM</div>
-              <div class="kpi-val">${(kpi.value.total_volume || 0).toLocaleString('id-ID')} Liter</div>
+              <div class="kpi-val">${(kpi.value.totalVolume || 0).toLocaleString('id-ID')} Liter</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-label">Total Transaksi</div>
-              <div class="kpi-val">${kpi.value.total_trx}</div>
+              <div class="kpi-val">${kpi.value.totalTransactions}</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-label">Rerata Trx / Hari</div>
-              <div class="kpi-val">${kpi.value.avg_trx_per_day}</div>
+              <div class="kpi-val">${kpi.value.avgTrxPerDay}</div>
             </div>
           </div>
 
@@ -223,6 +225,7 @@ export function useMasterAnalytics() {
     kpi,
     trendData,
     leaderboard,
+    spbuShares,
     fetchAnalytics,
     exportToExcel,
     exportToPDF

@@ -2,22 +2,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import CustomDatePicker from '@/components/common/CustomDatePicker.vue'
 import { useMasterAnalytics } from '@/composables/useMasterAnalytics'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
-import { Line, Doughnut } from 'vue-chartjs'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
+import LazyLineChart from '@/components/common/LazyLineChart.vue'
+import LazyDoughnutChart from '@/components/common/LazyDoughnutChart.vue'
 
 const analyticsContainerRef = ref(null)
 const isSpbuDropdownOpen = ref(false)
@@ -60,6 +47,7 @@ const {
   kpi,
   trendData,
   leaderboard,
+  spbuShares,
   exportToExcel,
   exportToPDF
 } = useMasterAnalytics()
@@ -145,8 +133,8 @@ const formatDateLabel = (dateStr) => {
 }
 
 const doughnutChartData = computed(() => {
-  const labels = leaderboard.value.map(l => l.spbu_name)
-  const shares = leaderboard.value.map(l => l.share_pct)
+  const labels = spbuShares.value.map(s => s.name)
+  const shares = spbuShares.value.map(s => s.value)
 
   const palette = ['#143d2e', '#22c55e', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0']
 
@@ -187,10 +175,21 @@ const doughnutChartOptions = {
 <template>
   <div class="space-y-6 animate-enter">
 
-    <!-- Header Section: Title & Controls -->
-    <div>
-      <h2 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-black tracking-tight mb-1">Analisis & Laporan</h2>
-      <p class="text-gray-500 text-xs sm:text-sm font-bold">Benchmarking performa jaringan SPBU & rekapitulasi operasional eksekutif</p>
+    <!-- Header Section: Title & Controls (LCP Target) -->
+    <div class="relative p-6 md:p-8 rounded-3xl overflow-hidden shadow-sm mb-4" style="background: linear-gradient(135deg, #143d2e 0%, #0f2e22 100%);">
+      <!-- LCP Background Pattern (Inline SVG) -->
+      <svg class="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+        <defs>
+          <pattern id="patternAnalytics" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M0 40L40 0H20L0 20M40 40V20L20 40" fill="#34d399"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#patternAnalytics)"/>
+      </svg>
+      <div class="relative z-10">
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-2" data-lcp="true">Analisis & Laporan</h2>
+        <p class="text-emerald-100/80 text-xs sm:text-sm font-bold">Benchmarking performa jaringan SPBU & rekapitulasi operasional eksekutif</p>
+      </div>
     </div>
 
     <!-- Filter Bar: Date Range + SPBU Select -->
@@ -288,7 +287,7 @@ const doughnutChartOptions = {
           </div>
         </div>
         <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
-          {{ formatRupiah(kpi.total_sales) }}
+          {{ formatRupiah(kpi.totalSales) }}
         </div>
         <p class="text-[11px] text-green-200/70 font-semibold">Total omzet penjualan BBM</p>
       </div>
@@ -304,7 +303,7 @@ const doughnutChartOptions = {
           </div>
         </div>
         <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
-          {{ formatVolume(kpi.total_volume) }}
+          {{ formatVolume(kpi.totalVolume) }}
         </div>
         <p class="text-[11px] text-green-200/70 font-semibold">Total volume penyaluran</p>
       </div>
@@ -320,7 +319,7 @@ const doughnutChartOptions = {
           </div>
         </div>
         <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
-          {{ (kpi.total_trx || 0).toLocaleString('id-ID') }}
+          {{ kpi.totalTransactions?.toLocaleString('id-ID') || 0 }}
         </div>
         <p class="text-[11px] text-green-200/70 font-semibold">Jumlah struk tercatat</p>
       </div>
@@ -336,7 +335,7 @@ const doughnutChartOptions = {
           </div>
         </div>
         <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
-          {{ kpi.avg_trx_per_day }}
+          {{ kpi.avgTrxPerDay }}
         </div>
         <p class="text-[11px] text-green-200/70 font-semibold">Rata-rata frekuensi harian</p>
       </div>
@@ -353,8 +352,8 @@ const doughnutChartOptions = {
           <p class="text-xs font-semibold text-gray-400">Grafik omzet harian pada periode terpilih</p>
         </div>
 
-        <div class="h-64 relative">
-          <Line :data="trendChartData" :options="trendChartOptions" />
+        <div class="h-64 relative w-full pt-4">
+          <LazyLineChart v-if="trendChartData.labels.length" :data="trendChartData" :options="trendChartOptions" />
         </div>
       </div>
 
@@ -366,7 +365,22 @@ const doughnutChartOptions = {
         </div>
 
         <div class="h-64 relative flex items-center justify-center">
-          <Doughnut :data="doughnutChartData" :options="doughnutChartOptions" />
+          <LazyDoughnutChart v-if="doughnutChartData.labels.length" :data="doughnutChartData" :options="doughnutChartOptions" />
+        </div>
+
+        <div class="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar mt-6">
+          <div v-for="(item, idx) in spbuShares" :key="item.spbu_id" class="flex items-center justify-between group">
+            <div class="flex items-center gap-3">
+              <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: ['#143d2e', '#22c55e', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0'][idx % 6] }"></div>
+              <div>
+                <div class="text-xs font-bold text-gray-800">{{ item.name }}</div>
+                <div class="text-[10px] text-gray-500">{{ formatRupiah(item.sales) }}</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm font-black text-[#143d2e]">{{ item.value }}%</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -417,7 +431,7 @@ const doughnutChartOptions = {
                   #{{ item.rank }}
                 </span>
                 <h4 class="font-bold text-sm text-[#143d2e] truncate">
-                  {{ item.spbu_name }}
+                  {{ item.name }}
                 </h4>
               </div>
             </div>
@@ -426,7 +440,7 @@ const doughnutChartOptions = {
             <div class="grid grid-cols-2 gap-2 bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-xs">
               <div>
                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Revenue</p>
-                <p class="font-black text-[#143d2e] mt-0.5">{{ formatRupiah(item.sales) }}</p>
+                <p class="font-black text-[#143d2e] mt-0.5">{{ formatRupiah(item.revenue) }}</p>
               </div>
               <div>
                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Volume</p>
@@ -434,11 +448,11 @@ const doughnutChartOptions = {
               </div>
               <div class="pt-1.5 border-t border-gray-200/50">
                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Total Trx</p>
-                <p class="font-semibold text-gray-600 mt-0.5">{{ item.total_trx }}</p>
+                <p class="font-semibold text-gray-600 mt-0.5">{{ item.trxCount }}</p>
               </div>
               <div class="pt-1.5 border-t border-gray-200/50">
                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Share (%)</p>
-                <p class="font-black text-emerald-600 mt-0.5">{{ item.share_pct }}%</p>
+                <p class="font-black text-emerald-600 mt-0.5">{{ item.sharePct }}%</p>
               </div>
             </div>
 
@@ -446,7 +460,7 @@ const doughnutChartOptions = {
             <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
               <div
                 class="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                :style="{ width: `${Math.min(100, Math.max(2, item.share_pct))}%` }"
+                :style="{ width: `${Math.min(100, Math.max(2, item.sharePct))}%` }"
               ></div>
             </div>
           </div>
@@ -484,8 +498,8 @@ const doughnutChartOptions = {
 
             <template v-else-if="leaderboard.length > 0">
               <tr
-                v-for="item in leaderboard"
-                :key="item.spbu_id"
+                v-for="(item, index) in leaderboard"
+                :key="item.id"
                 class="hover:bg-gray-50/80 transition-colors border-b border-gray-100 last:border-0"
               >
                 <!-- Rank Badge -->
@@ -493,21 +507,21 @@ const doughnutChartOptions = {
                   <span
                     :class="[
                       'w-7 h-7 rounded-full text-xs font-black inline-flex items-center justify-center shadow-xs',
-                      item.rank === 1 ? 'bg-amber-400 text-amber-950' : item.rank === 2 ? 'bg-slate-200 text-slate-800' : item.rank === 3 ? 'bg-amber-700/20 text-amber-800' : 'bg-gray-100 text-gray-600'
+                      index === 0 ? 'bg-amber-400 text-amber-950' : index === 1 ? 'bg-slate-200 text-slate-800' : index === 2 ? 'bg-amber-700/20 text-amber-800' : 'bg-gray-100 text-gray-600'
                     ]"
                   >
-                    #{{ item.rank }}
+                    #{{ index + 1 }}
                   </span>
                 </td>
 
                 <!-- SPBU Name -->
                 <td class="py-4 px-3 font-bold text-[#143d2e] whitespace-nowrap">
-                  {{ item.spbu_name }}
+                  {{ item.name }}
                 </td>
 
                 <!-- Revenue -->
                 <td class="py-4 px-3 text-right font-black text-[#143d2e] whitespace-nowrap">
-                  {{ formatRupiah(item.sales) }}
+                  {{ formatRupiah(item.revenue) }}
                 </td>
 
                 <!-- Volume -->
@@ -517,12 +531,12 @@ const doughnutChartOptions = {
 
                 <!-- Total Trx -->
                 <td class="py-4 px-3 text-center font-semibold text-gray-600 whitespace-nowrap">
-                  {{ item.total_trx }}
+                  {{ item.trxCount }}
                 </td>
 
                 <!-- Share % -->
                 <td class="py-4 px-3 text-right font-black text-emerald-600 whitespace-nowrap">
-                  {{ item.share_pct }}%
+                  - %
                 </td>
               </tr>
             </template>

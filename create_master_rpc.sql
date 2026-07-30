@@ -384,9 +384,9 @@ $$;
 
 
 -- ─── 4. PERMISSIONS & SCHEMA REFRESH ──────────────────────────────────────────
-GRANT EXECUTE ON FUNCTION public.get_master_dashboard_summary(text) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_master_history_paginated(text, text, text, text, text, integer, integer) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_master_analytics_summary(text, text, text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_master_dashboard_summary(text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_master_history_paginated(text, text, text, text, text, text, integer, integer) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_master_analytics_summary(text, text, text) TO authenticated, service_role;
 
 -- Force PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';

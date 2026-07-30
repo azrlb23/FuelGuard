@@ -52,11 +52,11 @@ export function useExcelExport() {
         'ID': item.id,
         'Tanggal': formatDateOnly(item.waktu_pencatatan),
         'Waktu': formatTimeOnly(item.waktu_pencatatan),
-        'Jenis': item.jenis_kendaraan,
+        'Jenis': item.is_ojol ? 'Ojol' : 'Non-Ojol',
         'Plat Nomor': item.plat_nomor,
         'Volume (L)': item.liter,
         'Harga (Rp)': item.harga,
-        'Operator': item.operator_id || '-'
+        'SPBU': item.spbu_nama || '-'
       }))
 
       const worksheet = XLSX.utils.json_to_sheet(formattedData)

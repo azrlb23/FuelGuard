@@ -9,12 +9,10 @@ export function useDashboard() {
 
   const stats = ref({ volume: 0, revenue: 0, vehicle: 0 })
   const feed = ref([])
-  const shiftStats = ref([])
   const vehicleStats = ref([])
   const peakHourStats = ref([])
   const loyalStats = ref([])
   const trendStats = ref([])
-  const ticketSizeStats = ref([])
   const revenueShareStats = ref([])
 
   /**
@@ -41,12 +39,10 @@ export function useDashboard() {
       if (data) {
         stats.value = data.stats || { volume: 0, revenue: 0, vehicle: 0 }
         feed.value = data.feed || []
-        shiftStats.value = data.shift_chart || []
         vehicleStats.value = data.vehicle_chart || []
         peakHourStats.value = data.peak_hours || []
         loyalStats.value = data.loyal_customers || []
         trendStats.value = data.trend_7_days || []
-        ticketSizeStats.value = data.ticket_size || []
         revenueShareStats.value = data.revenue_share || []
       }
     } catch (err) {
@@ -72,7 +68,7 @@ export function useDashboard() {
 
   return {
     filter, setFilter, isLoading, stats, feed,
-    shiftStats, vehicleStats, peakHourStats, loyalStats,
-    trendStats, ticketSizeStats, revenueShareStats
+    vehicleStats, peakHourStats, loyalStats,
+    trendStats, revenueShareStats
   }
 }

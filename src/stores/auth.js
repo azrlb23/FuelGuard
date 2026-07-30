@@ -9,6 +9,10 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoading = ref(false)
   const isInitialized = ref(false)
 
+  // Kasir / Operator Profile states (Shared Device)
+  const activeKasirId = ref(localStorage.getItem('hj_active_kasir_id') || null)
+  const kasirList = ref([])
+
   let _initPromise = null
 
   const fetchUserMeta = async () => {
@@ -35,6 +39,10 @@ export const useAuthStore = defineStore('auth', () => {
           const meta = await fetchUserMeta()
           role.value = meta.role
           spbuId.value = meta.spbu_id
+          
+          if (meta.role === 'operator' && meta.spbu_id) {
+            await fetchKasirList(meta.spbu_id)
+          }
         }
         isInitialized.value = true
       } finally {
@@ -44,6 +52,37 @@ export const useAuthStore = defineStore('auth', () => {
     })()
 
     return _initPromise
+  }
+
+  const fetchKasirList = async (currentSpbuId) => {
+    if (!currentSpbuId) return
+    try {
+      const { data, error } = await supabase
+        .from('operator_profiles')
+        .select('id, nama_operator, is_active')
+        .eq('spbu_id', currentSpbuId)
+        .eq('is_active', true)
+        .order('nama_operator')
+        
+      if (error) throw error
+      kasirList.value = data || []
+      
+      // Jika activeKasirId saat ini tidak ada di daftar terbaru, reset
+      if (activeKasirId.value && !kasirList.value.find(k => k.id === activeKasirId.value)) {
+        setActiveKasir(null)
+      }
+    } catch (err) {
+      console.error('Failed to fetch kasir list:', err)
+    }
+  }
+
+  const setActiveKasir = (id) => {
+    activeKasirId.value = id
+    if (id) {
+      localStorage.setItem('hj_active_kasir_id', id)
+    } else {
+      localStorage.removeItem('hj_active_kasir_id')
+    }
   }
 
   const login = async (email, password) => {
@@ -60,6 +99,10 @@ export const useAuthStore = defineStore('auth', () => {
       const meta = await fetchUserMeta()
       role.value = meta.role
       spbuId.value = meta.spbu_id
+
+      if (meta.role === 'operator' && meta.spbu_id) {
+        await fetchKasirList(meta.spbu_id)
+      }
 
       isInitialized.value = true
       return { success: true, role: meta.role }
@@ -80,6 +123,8 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
       role.value = null
       spbuId.value = null
+      activeKasirId.value = null
+      kasirList.value = []
       isInitialized.value = false
       isLoading.value = false
       localStorage.clear()
@@ -88,5 +133,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, role, spbuId, isLoading, isInitialized, login, logout, initialize }
+  return { 
+    user, role, spbuId, isLoading, isInitialized, 
+    activeKasirId, kasirList, setActiveKasir, fetchKasirList,
+    login, logout, initialize 
+  }
 })

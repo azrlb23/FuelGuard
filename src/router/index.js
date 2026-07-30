@@ -52,13 +52,13 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
-      meta: { requiresAuth: true, role: 'manajer', layout: 'admin' }
+      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
     },
     {
       path: '/history',
       name: 'history',
       component: () => import('../views/HistoryView.vue'),
-      meta: { requiresAuth: true, role: 'manajer', layout: 'admin' }
+      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
     },
     {
       path: '/operator',
@@ -76,19 +76,19 @@ const router = createRouter({
       path: '/laporan',
       name: 'laporan',
       component: () => import('../views/ReportView.vue'),
-      meta: { requiresAuth: true, role: 'manajer', layout: 'admin' }
+      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
     },
     {
       path: '/support',
       name: 'support',
       component: () => import('../views/SupportView.vue'),
-      meta: { requiresAuth: true, role: 'manajer', layout: 'admin' }
+      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
     },
     {
       path: '/team',
       name: 'team',
       component: () => import('../views/TeamView.vue'),
-      meta: { requiresAuth: true, role: 'manajer', layout: 'admin' }
+      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
     },
     {
       path: '/settings',
@@ -125,7 +125,6 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth) {
     if (to.meta.role && to.meta.role !== userRole) {
       if (userRole === 'master') return next({ name: 'master-dashboard' })
-      if (userRole === 'manajer') return next({ name: 'dashboard' })
       if (userRole === 'operator') return next({ name: 'operator' })
 
       await supabase.auth.signOut()
@@ -135,7 +134,6 @@ router.beforeEach(async (to, from, next) => {
 
   if (to.name === 'login' && session) {
     if (userRole === 'master') return next({ name: 'master-dashboard' })
-    if (userRole === 'manajer') return next({ name: 'dashboard' })
     if (userRole === 'operator') return next({ name: 'operator' })
   }
   next()
