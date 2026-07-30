@@ -185,7 +185,7 @@ const handleCheckPlate = async () => {
   form.value.plat_nomor = cleaned
   platError.value = ''
 
-  const res = await checkPlateStatus(form.value.plat_nomor, props.vehicleType, props.isOjol)
+  const res = await checkPlateStatus(form.value.plat_nomor, props.vehicleType === 'Ojol')
   if (res.success) {
     form.value.plat_nomor = res.plat
     if (res.hasRefueledToday) {
@@ -336,7 +336,7 @@ const handleSubmit = async () => {
     emit('submit', { success: true })
   } else if (res && (res.reason === 'quota_exceeded' || res.reason === 'already_refueled')) {
     // Ambil info status pengisian plat terbaru dari DB untuk ditampilkan di Popup Modal
-    const statusRes = await checkPlateStatus(form.value.plat_nomor, props.vehicleType, props.isOjol)
+    const statusRes = await checkPlateStatus(form.value.plat_nomor, props.vehicleType === 'Ojol')
     if (statusRes && statusRes.success) {
       refueledInfo.value = statusRes
     } else {

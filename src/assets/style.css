@@ -87,110 +87,23 @@ button, [role="button"], input[type="button"], input[type="submit"], input[type=
   -moz-appearance: textfield;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   🎨 Modern Custom Toastify Notification System (FuelGuard Style)
-   ═══════════════════════════════════════════════════════════════════════════ */
-:root {
-  --toastify-[#143d2e]: #143d2e;
+/* Custom Date Input & Calendar Picker Styling */
+input[type="date"]:not(.dark-date-icon) {
+  color-scheme: light;
 }
 
-.Toastify__toast-container--top-right {
-  top: 1.25rem !important;
-  right: 1.25rem !important;
-  padding: 0 !important;
-  width: auto !important;
-  max-width: 420px !important;
-  z-index: 999999 !important;
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px;
+  transition: all 0.2s ease;
 }
 
-.Toastify__toast {
-  border-radius: 1.25rem !important; /* 20px extra rounded */
-  padding: 0.85rem 1.25rem !important;
-  font-family: var(--font-sans), sans-serif !important;
-  font-size: 0.875rem !important;
-  font-weight: 600 !important;
-  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.15), 0 10px 15px -5px rgba(20, 61, 46, 0.1) !important;
-  backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  margin-bottom: 0.75rem !important;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+input[type="date"]:not(.dark-date-icon)::-webkit-calendar-picker-indicator {
+  filter: invert(18%) sepia(28%) saturate(1450%) hue-rotate(114deg) brightness(95%) contrast(92%);
 }
 
-.Toastify__toast:hover {
-  transform: translateY(-2px) scale(1.01) !important;
-}
-
-/* Toast Success (Emerald Gradient Theme) */
-.Toastify__toast--success {
-  background: linear-gradient(135deg, #143d2e 0%, #1e5c45 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(74, 222, 128, 0.3) !important;
-}
-
-.Toastify__toast--success .Toastify__toast-icon svg {
-  fill: #4ade80 !important;
-}
-
-.Toastify__toast--success .Toastify__progress-bar {
-  background: linear-gradient(90deg, #22c55e, #86efac) !important;
-}
-
-/* Toast Error (Danger Theme) */
-.Toastify__toast--error {
-  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(248, 113, 113, 0.3) !important;
-}
-
-.Toastify__toast--error .Toastify__toast-icon svg {
-  fill: #fca5a5 !important;
-}
-
-.Toastify__toast--error .Toastify__progress-bar {
-  background: linear-gradient(90deg, #ef4444, #fca5a5) !important;
-}
-
-/* Toast Warning (Amber Theme) */
-.Toastify__toast--warning {
-  background: linear-gradient(135deg, #78350f 0%, #92400e 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(251, 191, 36, 0.3) !important;
-}
-
-.Toastify__toast--warning .Toastify__toast-icon svg {
-  fill: #fcd34d !important;
-}
-
-.Toastify__toast--warning .Toastify__progress-bar {
-  background: linear-gradient(90deg, #f59e0b, #fde68a) !important;
-}
-
-/* Toast Info (Slate Emerald Theme) */
-.Toastify__toast--info {
-  background: linear-gradient(135deg, #0f2e23 0%, #143d2e 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(52, 211, 153, 0.3) !important;
-}
-
-.Toastify__toast-body {
-  padding: 0 !important;
-  margin: 0 !important;
-  line-height: 1.4 !important;
-}
-
-.Toastify__close-button {
-  color: rgba(255, 255, 255, 0.7) !important;
-  opacity: 0.8 !important;
-  align-self: center !important;
-}
-
-.Toastify__close-button:hover {
-  color: #ffffff !important;
-  opacity: 1 !important;
-}
-
-.Toastify__progress-bar {
-  height: 4px !important;
-  border-radius: 9999px !important;
-  bottom: 2px !important;
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  transform: scale(1.15);
 }

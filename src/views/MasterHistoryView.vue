@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import { useMasterHistory } from '@/composables/useMasterHistory'
 
 import MasterHistoryHeader from '@/components/master/history/MasterHistoryHeader.vue'
-import MasterHistoryFilterBar from '@/components/master/history/MasterHistoryFilterBar.vue'
 import MasterHistoryTable from '@/components/master/history/MasterHistoryTable.vue'
 
 // ─── Master History State via Composable ────────────────────────────────────
@@ -12,6 +11,7 @@ const itemsPerPage = 10
 const {
   transactions,
   loading,
+  isExporting,
   totalItems,
   currentPage,
   searchQuery,
@@ -21,6 +21,7 @@ const {
   dateTo,
   sortField,
   sortDir,
+  exportToExcel,
   resetFilters
 } = useMasterHistory(itemsPerPage)
 
@@ -84,8 +85,15 @@ const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage) || 
       v-model:searchQuery="searchQuery"
     />
 
-    <!-- Filter Controls Bar & Active Badges -->
-    <MasterHistoryFilterBar
+    <!-- Single Unified History Table Container (Integrated Filters & Table) -->
+    <MasterHistoryTable
+      :loading="loading"
+      :isExporting="isExporting"
+      :transactions="transactions"
+      v-model:currentPage="currentPage"
+      :itemsPerPage="itemsPerPage"
+      :totalItems="totalItems"
+      :totalPages="totalPages"
       :spbuList="spbuList"
       v-model:selectedSpbu="selectedSpbu"
       :selectedSpbuLabel="selectedSpbuLabel"
@@ -99,16 +107,7 @@ const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage) || 
       @sortChange="onSortSelectChange"
       @resetFilters="resetFilters"
       @removeFilter="removeFilter"
-    />
-
-    <!-- Main History Table Container -->
-    <MasterHistoryTable
-      :loading="loading"
-      :transactions="transactions"
-      v-model:currentPage="currentPage"
-      :itemsPerPage="itemsPerPage"
-      :totalItems="totalItems"
-      :totalPages="totalPages"
+      @exportExcel="exportToExcel"
     />
 
   </div>

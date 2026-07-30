@@ -48,7 +48,7 @@ const fetchReport = async () => {
     const { data: summaryData, error: summaryError } = await supabase
       .from('transaksi_pertalite')
       .select('liter, harga')
-      .eq('spbu_id', authStore.spbuId)
+      .eq('operator_id', authStore.user?.id)
       .gte('waktu_pencatatan', `${startDate.value}T00:00:00`)
       .lte('waktu_pencatatan', `${endDate.value}T23:59:59`)
 
@@ -75,7 +75,7 @@ const fetchTableData = async () => {
   const to = from + itemsPerPage - 1
   const { data, count, error } = await supabase.from('transaksi_pertalite')
     .select('*', { count: 'exact' })
-    .eq('spbu_id', authStore.spbuId)
+    .eq('operator_id', authStore.user?.id)
     .gte('waktu_pencatatan', `${startDate.value}T00:00:00`)
     .lte('waktu_pencatatan', `${endDate.value}T23:59:59`)
     .order('waktu_pencatatan', { ascending: false })

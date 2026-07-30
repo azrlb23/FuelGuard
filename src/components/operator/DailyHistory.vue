@@ -22,7 +22,8 @@ const fetchTodayHistory = async () => {
 
     let query = supabase
       .from('transaksi_pertalite')
-      .select('id, plat_nomor, liter, harga, waktu_pencatatan, operator_id, is_ojol')
+      .select('*')
+      .eq('operator_id', authStore.user?.id)
       .gte('waktu_pencatatan', startOfDay)
       .lte('waktu_pencatatan', endOfDay)
       .order('waktu_pencatatan', { ascending: false })
@@ -92,8 +93,8 @@ defineExpose({ fetchTodayHistory })
               <td class="px-6 py-4 text-sm font-mono font-bold text-gray-800">{{ trx.plat_nomor }}</td>
               <td class="px-6 py-4 text-sm">
                 <span class="px-2 py-1 rounded-md text-xs font-bold"
-                  :class="trx.is_ojol ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'">
-                  {{ trx.is_ojol ? 'Motor OJOL' : 'Motor Biasa' }}
+                  :class="trx.is_ojol ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'">
+                  {{ trx.is_ojol ? 'Ojol' : 'Non-Ojol' }}
                 </span>
               </td>
               <td class="px-6 py-4 text-sm text-right font-medium">{{ trx.liter }} L</td>

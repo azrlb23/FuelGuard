@@ -1,18 +1,38 @@
 import { ref, watch, onMounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { useRoute } from 'vue-router'
+import * as XLSX from 'xlsx'
 
 export function useMasterHistory(itemsPerPage = 10) {
   const transactions = ref([])
   const loading = ref(false)
+  const isExporting = ref(false)
   const currentPage = ref(1)
   const totalItems = ref(0)
 
-  // Filter state
+  // Format tanggal lokal (YYYY-MM-DD)
+  const getSevenDaysAgoStr = () => {
+    const d = new Date()
+    d.setDate(d.getDate() - 7)
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const getTodayStr = () => {
+    const d = new Date()
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // Filter state (Default: 7 hari terakhir agar cepat & ringan)
   const searchQuery = ref('')
   const selectedSpbu = ref('')
-  const dateFrom = ref('')
-  const dateTo = ref('')
+  const dateFrom = ref(getSevenDaysAgoStr())
+  const dateTo = ref(getTodayStr())
   const sortField = ref('waktu_pencatatan')
   const sortDir = ref('desc')
   const spbuList = ref([])
@@ -22,7 +42,7 @@ export function useMasterHistory(itemsPerPage = 10) {
   // ─── Fetch SPBU Dropdown Options ───────────────────────────────────────────
   const fetchSpbuOptions = async () => {
     try {
-      const { data } = await supabase.from('spbu').select('id, nama, alamat, manajer_id')
+      const { data } = await supabase.from('spbu').select('id, nama, alamat')
       if (data && data.length > 0) {
         spbuList.value = data.map(s => ({
           id: String(s.id),
@@ -43,6 +63,7 @@ export function useMasterHistory(itemsPerPage = 10) {
     try {
       const { data, error } = await supabase.rpc('get_master_history_paginated', {
         p_search: searchQuery.value.trim(),
+        p_spbu_id: selectedSpbu.value,
         p_date_from: dateFrom.value,
         p_date_to: dateTo.value,
         p_sort_field: sortField.value,
@@ -56,26 +77,123 @@ export function useMasterHistory(itemsPerPage = 10) {
       if (data) {
         transactions.value = data.transactions || []
         totalItems.value = data.total_count || 0
+      } else {
+        transactions.value = []
+        totalItems.value = 0
       }
     } catch (err) {
-      console.error('[useMasterHistory] Error:', err.message)
+      console.error('[useMasterHistory] Error:', err.message || err)
+      transactions.value = []
+      totalItems.value = 0
     } finally {
       loading.value = false
     }
   }
 
-  // Reset to page 1 and re-fetch when any filter changes
+  /**
+   * Export SELURUH data transaksi terfilter ke format spreadsheet Excel (.xlsx).
+   * Menggunakan strategi Chunk-Fetching (5000 item/halaman) agar tidak terpotong oleh limit Supabase.
+   */
+  const exportToExcel = async () => {
+    if (isExporting.value) return
+    isExporting.value = true
+    try {
+      const CHUNK_SIZE = 5000
+      let allTransactions = []
+      let page = 1
+      let totalCountToFetch = totalItems.value || 0
+
+      // Ambil Chunk Pertama
+      const { data, error } = await supabase.rpc('get_master_history_paginated', {
+        p_search: searchQuery.value.trim(),
+        p_spbu_id: selectedSpbu.value,
+        p_date_from: dateFrom.value,
+        p_date_to: dateTo.value,
+        p_sort_field: sortField.value,
+        p_sort_dir: sortDir.value,
+        p_page: page,
+        p_page_size: CHUNK_SIZE
+      })
+
+      if (error) throw error
+
+      if (data && data.transactions) {
+        allTransactions.push(...data.transactions)
+        totalCountToFetch = data.total_count || totalCountToFetch
+      }
+
+      // Jika data terfilter melebihi 5000 (misal 10.000+ data), lakukan fetch chunk berikutnya
+      const totalPagesToFetch = Math.ceil(totalCountToFetch / CHUNK_SIZE)
+      while (page < totalPagesToFetch) {
+        page++
+        const { data: chunkData, error: chunkError } = await supabase.rpc('get_master_history_paginated', {
+          p_search: searchQuery.value.trim(),
+          p_spbu_id: selectedSpbu.value,
+          p_date_from: dateFrom.value,
+          p_date_to: dateTo.value,
+          p_sort_field: sortField.value,
+          p_sort_dir: sortDir.value,
+          p_page: page,
+          p_page_size: CHUNK_SIZE
+        })
+
+        if (chunkError) {
+          console.warn('[useMasterHistory] Chunk export warning:', chunkError)
+          break
+        }
+
+        if (chunkData && chunkData.transactions) {
+          allTransactions.push(...chunkData.transactions)
+        } else {
+          break
+        }
+      }
+
+      if (allTransactions.length === 0) return
+
+      const excelData = allTransactions.map((trx, idx) => {
+        const d = new Date(trx.waktu_pencatatan)
+        const dateStr = isNaN(d.getTime()) ? trx.waktu_pencatatan : d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        const timeStr = isNaN(d.getTime()) ? '' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
+        return {
+          'No': idx + 1,
+          'Tanggal': dateStr,
+          'Waktu': timeStr,
+          'SPBU': trx.spbu_name || `SPBU #${trx.spbu_id}`,
+          'Plat Nomor': trx.plat_nomor,
+          'Jenis Kendaraan': trx.is_ojol ? 'Ojol' : 'Non-Ojol',
+          'Liter (L)': trx.liter,
+          'Total Harga (Rp)': trx.harga
+        }
+      })
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat Transaksi')
+
+      const dateTag = new Date().toISOString().split('T')[0]
+      const fileName = `Riwayat_Transaksi_Master_${dateTag}.xlsx`
+      XLSX.writeFile(workbook, fileName)
+    } catch (err) {
+      console.error('[useMasterHistory] Export Excel Error:', err)
+    } finally {
+      isExporting.value = false
+    }
+  }
+
+  // Auto-fetch saat filter berubah
   watch([searchQuery, selectedSpbu, dateFrom, dateTo, sortField, sortDir], () => {
     currentPage.value = 1
     fetchHistory()
   })
 
-  // Re-fetch when page changes
+  // Re-fetch ketika halaman berubah
   watch(currentPage, () => {
     fetchHistory()
   })
 
-  // Sync search from URL query param
+  // Sync search dari URL query param jika ada
   watch(() => route.query.q, (newQuery) => {
     if (newQuery !== undefined) {
       searchQuery.value = newQuery
@@ -85,11 +203,12 @@ export function useMasterHistory(itemsPerPage = 10) {
   const resetFilters = () => {
     searchQuery.value = ''
     selectedSpbu.value = ''
-    dateFrom.value = ''
-    dateTo.value = ''
+    dateFrom.value = getSevenDaysAgoStr()
+    dateTo.value = getTodayStr()
     sortField.value = 'waktu_pencatatan'
     sortDir.value = 'desc'
     currentPage.value = 1
+    fetchHistory()
   }
 
   onMounted(() => {
@@ -103,6 +222,7 @@ export function useMasterHistory(itemsPerPage = 10) {
   return {
     transactions,
     loading,
+    isExporting,
     totalItems,
     currentPage,
     searchQuery,
@@ -113,6 +233,7 @@ export function useMasterHistory(itemsPerPage = 10) {
     sortField,
     sortDir,
     fetchHistory,
+    exportToExcel,
     resetFilters
   }
 }

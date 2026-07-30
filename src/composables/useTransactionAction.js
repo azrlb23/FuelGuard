@@ -11,20 +11,30 @@ export function useTransactionAction() {
   /**
    * Mengecek status kuota pengisian BBM kendaraan hari ini via RPC Backend.
    */
-  const checkPlateStatus = async (platNomor, vehicleType = 'Motor', isOjol = false) => {
+  const checkPlateStatus = async (platNomor, isOjol = false) => {
     if (!platNomor || !platNomor.trim()) {
       toast.warn("Mohon masukkan nomor plat terlebih dahulu!")
       return { success: false, reason: 'empty' }
+    }
+
+    if (!authStore.spbuId) {
+      toast.error("Data SPBU belum tersedia. Silakan login ulang.")
+      return { success: false, reason: 'no_spbu' }
+    }
+
+    if (!authStore.activeKasirId) {
+      toast.warn("Silakan pilih Kasir terlebih dahulu!")
+      return { success: false, reason: 'no_kasir' }
     }
 
     checkingPlate.value = true
     const platClean = platNomor.trim().toUpperCase()
 
     try {
-      // 1. Coba panggil RPC fn_check_plate_status jika ada di DB
-      let { data, error } = await supabase.rpc('fn_check_plate_status', {
-        p_plat: platClean,
-        p_is_ojol: isOjol
+      const { data, error } = await supabase.rpc('fn_check_plate_status', {
+        p_plat: platNomor.trim().toUpperCase(),
+        p_is_ojol: isOjol,
+        p_spbu_id: authStore.spbuId
       })
 
       if (error && error.code === 'PGRST202') {
@@ -95,22 +105,19 @@ export function useTransactionAction() {
   /**
    * Mengirim transaksi BBM ke Supabase (Mendukung RPC maupun Direct Insert 6 Kolom DB)
    */
-  const submitTransaction = async (platOrForm, vehicleTypeParam = 'Motor', isOjolParam = false) => {
+  const submitTransaction = async (platOrForm, literOrVehicle, isOjolParam) => {
     let plat = ''
     let liter = 0
-    let totalHarga = 0
     let isOjol = false
 
     if (typeof platOrForm === 'object' && platOrForm !== null) {
       plat = platOrForm.plat_nomor || platOrForm.plat || ''
-      liter = parseFloat(platOrForm.liter) || 0
-      totalHarga = parseFloat(String(platOrForm.totalHarga || platOrForm.harga || '').replace(/[^\d]/g, '')) || (liter * 10000)
-      isOjol = typeof vehicleTypeParam === 'boolean' ? vehicleTypeParam : (isOjolParam || false)
+      liter = platOrForm.liter
+      isOjol = literOrVehicle === true || literOrVehicle === 'Ojol'
     } else {
       plat = platOrForm || ''
-      liter = parseFloat(vehicleTypeParam) || 0
-      isOjol = isOjolParam || false
-      totalHarga = liter * 10000
+      liter = literOrVehicle
+      isOjol = isOjolParam === true || isOjolParam === 'Ojol'
     }
 
     const platClean = String(plat).trim().toUpperCase()
@@ -120,16 +127,19 @@ export function useTransactionAction() {
       return false
     }
 
+    if (!authStore.activeKasirId) {
+      toast.warn("Silakan pilih Kasir terlebih dahulu!")
+      return false
+    }
+
     loading.value = true
 
     try {
       // 1. Coba lewat RPC fn_safe_insert_transaction terlebih dahulu
       const { data, error } = await supabase.rpc('fn_safe_insert_transaction', {
         p_plat: platClean,
-        p_liter: liter,
-        p_jenis: 'Motor',
-        p_shift: 1,
-        p_operator_name: null,
+        p_liter: numLiter,
+        p_operator_id: authStore.activeKasirId,
         p_is_ojol: isOjol
       })
 

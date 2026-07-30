@@ -8,12 +8,9 @@ defineProps({
 
 const { onlineUserIds } = usePresence()
 
-const getRoleBadge = (role) => {
-  // Update fallback ke nuansa Emerald agar tidak abu-abu kusam
-  if (!role) return 'bg-emerald-50 text-emerald-600 border-emerald-200'
-  return role.toLowerCase() === 'manajer' 
-    ? 'bg-purple-50 text-purple-700 border-purple-200 shadow-sm shadow-purple-100' 
-    : 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm shadow-blue-100'
+const getStatusBadge = (isActive) => {
+  if (isActive) return 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-sm'
+  return 'bg-red-50 text-red-600 border-red-200 shadow-sm'
 }
 
 const isUserOnline = (userId) => {
@@ -53,11 +50,11 @@ const formatDate = (dateString) => {
 
         <div class="flex items-center gap-3 pl-2">
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center font-bold text-emerald-700 border border-emerald-200/50 text-sm shadow-sm">
-            {{ member.email?.charAt(0).toUpperCase() || '?' }}
+            {{ member.nama_operator?.charAt(0).toUpperCase() || '?' }}
           </div>
           <div class="min-w-0 flex-1">
-            <p class="font-bold text-emerald-950 truncate text-sm">{{ member.email?.split('@')[0] }}</p>
-            <p class="text-xs text-emerald-600/70 truncate">{{ member.email }}</p>
+            <p class="font-bold text-emerald-950 truncate text-sm">{{ member.nama_operator }}</p>
+            <p class="text-xs text-emerald-600/70 truncate">Operator SPBU</p>
           </div>
           
           <div class="flex items-center gap-1.5 bg-emerald-50/50 px-2 py-1 rounded-full border border-emerald-100">
@@ -79,15 +76,15 @@ const formatDate = (dateString) => {
         <div class="flex justify-between items-center pl-2">
           <span 
             class="px-2.5 py-1 rounded-lg text-xs font-bold border capitalize"
-            :class="getRoleBadge(member.role)"
+            :class="getStatusBadge(member.is_active)"
           >
-            {{ member.role || 'No Role' }}
+            {{ member.is_active ? 'Aktif' : 'Nonaktif' }}
           </span>
           
           <div class="text-right">
-            <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-0.5">Last Login</p>
+            <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-0.5">Dibuat</p>
             <span class="inline-block px-2 py-0.5 bg-emerald-50 rounded text-[11px] font-medium text-emerald-700 border border-emerald-100">
-              {{ formatDate(member.last_sign_in_at) }}
+              {{ formatDate(member.created_at) }}
             </span>
           </div>
         </div>
@@ -98,10 +95,10 @@ const formatDate = (dateString) => {
       <table class="w-full text-left border-collapse">
         <thead class="bg-emerald-50/90 backdrop-blur-sm sticky top-0 z-10">
           <tr class="text-emerald-700/70 text-xs font-bold uppercase tracking-wider border-b border-emerald-100">
-            <th class="py-5 pl-6">User / Email</th>
-            <th class="py-5">Role Access</th>
-            <th class="py-5">Status</th>
-            <th class="py-5 pr-6 text-right">Terakhir Login</th>
+            <th class="py-5 pl-6">Nama Operator</th>
+            <th class="py-5">Status Akun</th>
+            <th class="py-5">Status PIN</th>
+            <th class="py-5 pr-6 text-right">Tanggal Ditambahkan</th>
           </tr>
         </thead>
         
@@ -126,11 +123,11 @@ const formatDate = (dateString) => {
             <td class="py-4 pl-6">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center font-bold text-emerald-700 border border-emerald-200/50 shadow-sm group-hover:scale-105 transition-transform duration-300">
-                  {{ member.email?.charAt(0).toUpperCase() || '?' }}
+                  {{ member.nama_operator?.charAt(0).toUpperCase() || '?' }}
                 </div>
                 <div class="min-w-0">
-                  <p class="font-bold text-emerald-950 truncate">{{ member.email?.split('@')[0] }}</p>
-                  <p class="text-xs text-emerald-600/60 font-medium truncate">{{ member.email }}</p>
+                  <p class="font-bold text-emerald-950 truncate">{{ member.nama_operator }}</p>
+                  <p class="text-xs text-emerald-600/60 font-medium truncate">Operator SPBU</p>
                 </div>
               </div>
             </td>
@@ -138,33 +135,26 @@ const formatDate = (dateString) => {
             <td class="py-4">
               <span 
                 class="px-3 py-1 rounded-full text-xs font-bold border capitalize inline-flex items-center gap-1"
-                :class="getRoleBadge(member.role)"
+                :class="getStatusBadge(member.is_active)"
               >
-                {{ member.role || 'No Role' }}
+                {{ member.is_active ? 'Aktif' : 'Nonaktif' }}
               </span>
             </td>
 
             <td class="py-4">
               <div class="flex items-center gap-2">
-                <span class="relative flex h-2.5 w-2.5">
-                  <span v-if="isUserOnline(member.id)" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span 
-                    class="relative inline-flex rounded-full h-2.5 w-2.5 transition-colors duration-300" 
-                    :class="isUserOnline(member.id) ? 'bg-emerald-500' : 'bg-slate-300'"
-                  ></span>
-                </span>
                 <span 
                   class="font-medium capitalize text-xs transition-colors"
-                  :class="isUserOnline(member.id) ? 'text-emerald-700 font-bold' : 'text-slate-400'"
+                  :class="member.pin_hash ? 'text-emerald-700' : 'text-orange-500'"
                 >
-                  {{ isUserOnline(member.id) ? 'Online' : 'Offline' }}
+                  {{ member.pin_hash ? 'PIN Diset' : 'Belum Ada PIN' }}
                 </span>
               </div>
             </td>
 
             <td class="py-4 pr-6 text-right">
               <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-50/50 border border-emerald-100 text-emerald-700 text-[11px] font-medium tracking-wide shadow-sm">
-                {{ formatDate(member.last_sign_in_at) }}
+                {{ formatDate(member.created_at) }}
               </span>
             </td>
           </tr>

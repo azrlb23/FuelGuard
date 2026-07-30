@@ -30,7 +30,7 @@ DECLARE
   v_spbu_list json;
   v_alerts json;
   v_result json;
-BEGIN
+BEGIN         
   -- Determine Start Timestamp based on p_filter
   IF p_filter = 'today' THEN
     v_start_time := date_trunc('day', NOW());
@@ -177,8 +177,12 @@ $$;
 
 
 -- ─── 2. FUNCTION: get_master_history_paginated ───────────────────────────────
+DROP FUNCTION IF EXISTS public.get_master_history_paginated(text, text, text, text, text, integer, integer);
+DROP FUNCTION IF EXISTS public.get_master_history_paginated(text, text, text, text, text, text, integer, integer);
+
 CREATE OR REPLACE FUNCTION public.get_master_history_paginated(
   p_search text DEFAULT '',
+  p_spbu_id text DEFAULT '',
   p_date_from text DEFAULT '',
   p_date_to text DEFAULT '',
   p_sort_field text DEFAULT 'waktu_pencatatan',
@@ -202,6 +206,7 @@ BEGIN
   SELECT COUNT(t.id) INTO v_total_count
   FROM public.transaksi_pertalite t
   WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
+    AND (p_spbu_id = '' OR t.spbu_id::text = p_spbu_id)
     AND (p_date_from = '' OR t.waktu_pencatatan >= (p_date_from || 'T00:00:00')::timestamp)
     AND (p_date_to = '' OR t.waktu_pencatatan <= (p_date_to || 'T23:59:59')::timestamp);
 
@@ -219,6 +224,7 @@ BEGIN
     FROM public.transaksi_pertalite t
     LEFT JOIN public.spbu s ON s.id = t.spbu_id
     WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
+      AND (p_spbu_id = '' OR t.spbu_id::text = p_spbu_id)
       AND (p_date_from = '' OR t.waktu_pencatatan >= (p_date_from || 'T00:00:00')::timestamp)
       AND (p_date_to = '' OR t.waktu_pencatatan <= (p_date_to || 'T23:59:59')::timestamp)
     ORDER BY
@@ -378,9 +384,9 @@ $$;
 
 
 -- ─── 4. PERMISSIONS & SCHEMA REFRESH ──────────────────────────────────────────
-GRANT EXECUTE ON FUNCTION public.get_master_dashboard_summary(text) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_master_history_paginated(text, text, text, text, text, integer, integer) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_master_analytics_summary(text, text, text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_master_dashboard_summary(text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_master_history_paginated(text, text, text, text, text, text, integer, integer) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_master_analytics_summary(text, text, text) TO authenticated, service_role;
 
 -- Force PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';
