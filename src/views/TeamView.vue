@@ -4,8 +4,8 @@ import TeamTable from '@/components/team/TeamTable.vue'
 
 const {
   teamMembers,
+  spbuAccounts,
   spbuList,
-  kpis,
   loading,
   isSubmitting,
   searchQuery,
@@ -30,15 +30,15 @@ const handleToggleStatus = async (id) => {
 
 <template>
   <div class="space-y-6 pb-12 max-w-7xl mx-auto">
-    
+
     <!-- Page Header & Summary Section -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <h1 class="text-2xl sm:text-3xl font-black text-[#143d2e] tracking-tight">
-          Kelola Tim & Operator SPBU
+          Kelola Tim & Akun SPBU
         </h1>
         <p class="text-gray-500 text-xs sm:text-sm font-medium mt-1">
-          Manajemen profil petugas operator dan penugasan unit SPBU jaringan Habi Jaya
+          Manajemen profil petugas shift operator dan akun autentikasi unit SPBU jaringan Habi Jaya
         </p>
       </div>
     </div>
@@ -46,6 +46,7 @@ const handleToggleStatus = async (id) => {
     <!-- Row 2: Team Table & Actions Container -->
     <TeamTable
       :members="teamMembers"
+      :accounts="spbuAccounts"
       :spbuList="spbuList"
       :loading="loading"
       :isSubmitting="isSubmitting"

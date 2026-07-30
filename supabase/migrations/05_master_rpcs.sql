@@ -439,6 +439,7 @@ DECLARE
   v_total_spbu integer := 0;
   v_spbu_list json;
   v_operators_json json;
+  v_accounts_json json;
   v_result json;
 BEGIN
   -- Security Authorization Guard: Only Master Role is Allowed
@@ -486,6 +487,31 @@ BEGIN
     )
   ) INTO v_operators_json FROM operator_details;
 
+  -- Get SPBU authentication accounts list
+  WITH account_details AS (
+    SELECT 
+      ur.user_id,
+      ur.spbu_id,
+      COALESCE(s.nama, CONCAT('SPBU #', ur.spbu_id)) AS spbu_name,
+      ur.role,
+      COALESCE(u.email, CONCAT('spbu_', ur.spbu_id, '@habijaya.com')) AS email
+    FROM public.user_roles ur
+    LEFT JOIN public.spbu s ON s.id = ur.spbu_id
+    LEFT JOIN auth.users u ON u.id = ur.user_id
+    WHERE (p_spbu_id = '' OR ur.spbu_id::text = p_spbu_id)
+      AND (p_search = '' OR s.nama ILIKE '%' || p_search || '%' OR COALESCE(u.email, '') ILIKE '%' || p_search || '%')
+    ORDER BY ur.spbu_id ASC
+  )
+  SELECT json_agg(
+    json_build_object(
+      'user_id', user_id,
+      'spbu_id', spbu_id,
+      'spbu_name', spbu_name,
+      'role', role,
+      'email', email
+    )
+  ) INTO v_accounts_json FROM account_details;
+
   v_result := json_build_object(
     'kpis', json_build_object(
       'totalOperators', v_total_operators,
@@ -493,7 +519,8 @@ BEGIN
       'totalSpbu', v_total_spbu
     ),
     'spbuList', COALESCE(v_spbu_list, '[]'::json),
-    'operators', COALESCE(v_operators_json, '[]'::json)
+    'operators', COALESCE(v_operators_json, '[]'::json),
+    'accounts', COALESCE(v_accounts_json, '[]'::json)
   );
 
   RETURN v_result;

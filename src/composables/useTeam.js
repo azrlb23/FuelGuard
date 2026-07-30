@@ -17,6 +17,7 @@ export function useTeam() {
 
   const spbuList = ref([])
   const teamMembers = ref([])
+  const spbuAccounts = ref([])
 
   const fetchTeam = async () => {
     loading.value = true
@@ -33,10 +34,11 @@ export function useTeam() {
         kpis.value = data.kpis || { totalOperators: 0, activeOperators: 0, totalSpbu: 0 }
         spbuList.value = data.spbuList || []
         teamMembers.value = data.operators || []
+        spbuAccounts.value = data.accounts || []
       }
     } catch (err) {
-      console.error('Gagal memuat data tim & operator:', err.message)
-      error.value = err.message
+      console.error('Gagal memuat data tim & operator:', err.message || err)
+      error.value = err.message || 'Gagal terhubung ke RPC database'
     } finally {
       loading.value = false
     }
@@ -47,9 +49,10 @@ export function useTeam() {
     try {
       const { data, error: err } = await supabase.rpc('manage_operator', {
         p_action: 'create',
-        p_spbu_id,
-        p_nama_operator,
-        p_is_active
+        p_id: null,
+        p_spbu_id: spbu_id || '',
+        p_nama_operator: nama_operator || '',
+        p_is_active: is_active ?? true
       })
 
       if (err) throw err
@@ -57,8 +60,8 @@ export function useTeam() {
       await fetchTeam()
       return { success: true, data }
     } catch (err) {
-      console.error('Gagal membuat operator:', err.message)
-      return { success: false, message: err.message }
+      console.error('Gagal membuat operator:', err.message || err)
+      return { success: false, message: err.message || 'Gagal menambah operator' }
     } finally {
       isSubmitting.value = false
     }
@@ -70,9 +73,9 @@ export function useTeam() {
       const { data, error: err } = await supabase.rpc('manage_operator', {
         p_action: 'update',
         p_id: id,
-        p_spbu_id,
-        p_nama_operator,
-        p_is_active
+        p_spbu_id: spbu_id || '',
+        p_nama_operator: nama_operator || '',
+        p_is_active: is_active ?? true
       })
 
       if (err) throw err
@@ -80,8 +83,8 @@ export function useTeam() {
       await fetchTeam()
       return { success: true, data }
     } catch (err) {
-      console.error('Gagal mengupdate operator:', err.message)
-      return { success: false, message: err.message }
+      console.error('Gagal mengupdate operator:', err.message || err)
+      return { success: false, message: err.message || 'Gagal memperbarui operator' }
     } finally {
       isSubmitting.value = false
     }
@@ -91,7 +94,10 @@ export function useTeam() {
     try {
       const { data, error: err } = await supabase.rpc('manage_operator', {
         p_action: 'toggle_status',
-        p_id: id
+        p_id: id,
+        p_spbu_id: '',
+        p_nama_operator: '',
+        p_is_active: true
       })
 
       if (err) throw err
@@ -99,8 +105,8 @@ export function useTeam() {
       await fetchTeam()
       return { success: true, data }
     } catch (err) {
-      console.error('Gagal mengubah status operator:', err.message)
-      return { success: false, message: err.message }
+      console.error('Gagal mengubah status operator:', err.message || err)
+      return { success: false, message: err.message || 'Gagal mengubah status' }
     }
   }
 
@@ -122,6 +128,7 @@ export function useTeam() {
 
   return {
     teamMembers,
+    spbuAccounts,
     spbuList,
     kpis,
     loading,
