@@ -49,22 +49,7 @@ const handleProcess = async (res) => {
       
       <div class="absolute top-0 right-0 w-60 h-60 bg-white/5 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
 
-      <!-- Kasir Selector (Shared Device) -->
-      <div class="absolute top-4 left-4 right-4 md:top-6 md:left-6 md:right-6 flex justify-between items-center z-10">
-        <div class="text-xs md:text-sm font-medium text-white/70">
-          Kasir Aktif:
-        </div>
-        <select 
-          v-model="authStore.activeKasirId"
-          @change="authStore.setActiveKasir($event.target.value)"
-          class="bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2 backdrop-blur-md outline-none cursor-pointer"
-        >
-          <option value="" disabled class="text-gray-800">Pilih Kasir</option>
-          <option v-for="kasir in authStore.kasirList" :key="kasir.id" :value="kasir.id" class="text-gray-800">
-            {{ kasir.nama_operator }}
-          </option>
-        </select>
-      </div>
+
 
       <div class="mt-12 md:mt-10 flex-1 flex flex-col justify-center">
         <div v-if="!authStore.activeKasirId" class="text-center animate-enter">

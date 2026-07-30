@@ -120,20 +120,24 @@ const onSortSelectChange = (e) => {
     <!-- Filter Bar -->
     <div class="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/90 shadow-xs flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
 
-      <!-- Vehicle Type Chips -->
+      <!-- Vehicle Type Chips (Semua, Motor OJOL, Motor Biasa) -->
       <div class="flex items-center justify-center sm:justify-start gap-1 bg-gray-50 border border-gray-200 rounded-full p-1 shadow-2xs">
         <button
-          v-for="v in ['', 'Motor', 'Mobil']"
-          :key="v"
-          @click="$emit('update:vehicleFilter', v)"
+          v-for="opt in [
+            { val: '', label: 'Semua' },
+            { val: 'ojol', label: 'Motor OJOL' },
+            { val: 'non_ojol', label: 'Motor Biasa' }
+          ]"
+          :key="opt.val"
+          @click="$emit('update:vehicleFilter', opt.val)"
           :class="[
             'px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer select-none',
-            vehicleFilter === v
+            vehicleFilter === opt.val
               ? 'bg-[#143d2e] text-white shadow-xs'
               : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/60'
           ]"
         >
-          {{ v || 'Semua' }}
+          {{ opt.label }}
         </button>
       </div>
 

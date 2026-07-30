@@ -1,24 +1,63 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import KasirSelectorModal from '@/components/operator/KasirSelectorModal.vue'
+import { useIdleTimeout } from '@/composables/useIdleTimeout'
 
 const authStore = useAuthStore()
 const router = useRouter()
 
-const userEmail = computed(() => authStore.user?.email || 'Operator')
-const userName = computed(() => userEmail.value.split('@')[0])
+const showKasirModal = ref(false)
+
+// Idle Timeout: 3 Menit (180.000 ms)
+const { isIdle, resetTimer } = useIdleTimeout(3 * 60 * 1000, () => {
+  showKasirModal.value = true
+})
+
+const activeKasir = computed(() => {
+  return authStore.kasirList.find(k => k.id === authStore.activeKasirId)
+})
+
+const activeKasirName = computed(() => {
+  return activeKasir.value?.nama_operator || 'Pilih Kasir'
+})
+
+const handleOpenKasirModal = () => {
+  showKasirModal.value = true
+}
+
+const handleSelectKasir = (kasir) => {
+  showKasirModal.value = false
+  resetTimer()
+}
 
 const handleLogout = async () => {
   await authStore.logout()
 }
+
+// Buka modal otomatis jika saat pertama masuk kasir belum dipilih
+onMounted(async () => {
+  if (!authStore.isInitialized) {
+    await authStore.initialize()
+  }
+  if (!authStore.activeKasirId) {
+    showKasirModal.value = true
+  }
+})
+
+watch(() => authStore.activeKasirId, (newVal) => {
+  if (!newVal) {
+    showKasirModal.value = true
+  }
+})
 </script>
 
 <template>
   <div class="h-screen w-full bg-[#f5f5f5] font-sans text-gray-800 flex flex-col overflow-hidden">
     
     <!-- Modern Floating Header -->
-    <header class="flex-none px-4 md:px-8 pt-4 pb-2 z-50">
+    <header class="flex-none px-4 md:px-8 pt-4 pb-2 z-40">
       <div class="max-w-7xl mx-auto bg-white/80 backdrop-blur-xl border border-white/60 rounded-3xl md:rounded-full px-4 md:px-6 h-16 flex items-center justify-between shadow-lg shadow-green-900/5 transition-all">
         
         <!-- Brand Logo & Title -->
@@ -26,23 +65,33 @@ const handleLogout = async () => {
           <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#143d2e] to-[#258f62] flex items-center justify-center p-2 shadow-md shadow-green-900/20 group-hover:scale-105 transition-transform">
             <img src="@/assets/fuelguard_logo.png" alt="FuelGuard Logo" class="w-full h-full object-contain brightness-0 invert" />
           </div>
-            <div>
-              <h1 class="font-black text-lg tracking-tight text-[#143d2e] leading-none">FuelGuard</h1>
-              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Operator Console</p>
-            </div>
+          <div>
+            <h1 class="font-black text-lg tracking-tight text-[#143d2e] leading-none">FuelGuard</h1>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Operator Console</p>
+          </div>
         </router-link>
 
         <!-- User Profile & Action Controls -->
         <div class="flex items-center gap-2 md:gap-3">
           
-          <!-- User Profile Pill Card -->
-          <div class="flex items-center gap-2.5 bg-gray-50/80 border border-gray-200/80 rounded-full py-1 pl-1.5 pr-3.5 shadow-2xs">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#143d2e] to-[#258f62] flex items-center justify-center text-white font-bold text-xs shadow-inner">
-              {{ userName.charAt(0).toUpperCase() }}
+          <!-- Kasir Display Pill in Header (Static Display) -->
+          <div
+            class="flex items-center gap-2.5 py-1.5 pl-2 pr-3.5 rounded-full border shadow-xs"
+            :class="authStore.activeKasirId ? 'bg-emerald-50/90 border-emerald-200 text-gray-800' : 'bg-amber-50 border-amber-300 text-amber-900 animate-pulse'"
+          >
+            <div
+              class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-inner"
+              :class="authStore.activeKasirId ? 'bg-gradient-to-br from-[#143d2e] to-[#258f62] text-white' : 'bg-amber-500 text-white'"
+            >
+              {{ activeKasirName.charAt(0).toUpperCase() }}
             </div>
-            <div class="hidden sm:block text-left">
-              <p class="text-xs font-bold text-gray-800 leading-tight capitalize">{{ userName }}</p>
-              <p class="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Shift Operasional</p>
+            <div class="text-left">
+              <p class="text-xs font-bold leading-tight uppercase tracking-tight">
+                {{ activeKasirName }}
+              </p>
+              <p class="text-[9px] font-bold uppercase tracking-wider" :class="authStore.activeKasirId ? 'text-emerald-600' : 'text-amber-600'">
+                {{ authStore.activeKasirId ? 'Kasir Bertugas' : 'Belum Dipilih' }}
+              </p>
             </div>
           </div>
 
@@ -83,5 +132,14 @@ const handleLogout = async () => {
     <footer class="flex-none text-center py-4 text-xs text-gray-400 bg-[#f5f5f5]">
       &copy; {{ new Date().getFullYear() }} FuelGuard Management System
     </footer>
+
+    <!-- Modal Popup Pemilihan Operator & Lockscreen Idle -->
+    <KasirSelectorModal
+      :is-open="showKasirModal"
+      :is-idle="isIdle"
+      :can-close="!!authStore.activeKasirId"
+      @select="handleSelectKasir"
+      @close="showKasirModal = false"
+    />
   </div>
 </template>
