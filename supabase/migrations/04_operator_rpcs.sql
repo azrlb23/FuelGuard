@@ -31,6 +31,18 @@ DECLARE
 BEGIN
   v_spbu_id := COALESCE(p_spbu_id, public.get_user_spbu_id());
 
+  -- Validasi Kode Wilayah Plat Indonesia
+  IF NOT EXISTS (
+    SELECT 1 FROM public.region_codes 
+    WHERE code = split_part(UPPER(TRIM(p_plat)), ' ', 1)
+  ) THEN
+    RETURN json_build_object(
+      'success', false,
+      'reason', 'invalid_region',
+      'message', 'Kode wilayah plat (' || split_part(UPPER(TRIM(p_plat)), ' ', 1) || ') tidak terdaftar di Indonesia.'
+    );
+  END IF;
+
   IF p_is_ojol THEN
     v_max_quota := 100000; -- Motor Ojol Rp 100.000/hari
   ELSE
@@ -134,6 +146,18 @@ BEGIN
   v_plat_clean := UPPER(TRIM(p_plat));
   IF v_plat_clean = '' OR p_liter <= 0 THEN
     RETURN json_build_object('success', false, 'reason', 'invalid_input', 'message', 'Plat nomor dan liter harus valid.');
+  END IF;
+
+  -- Validasi Kode Wilayah Plat Indonesia
+  IF NOT EXISTS (
+    SELECT 1 FROM public.region_codes 
+    WHERE code = split_part(v_plat_clean, ' ', 1)
+  ) THEN
+    RETURN json_build_object(
+      'success', false,
+      'reason', 'invalid_region',
+      'message', 'Kode wilayah plat (' || split_part(v_plat_clean, ' ', 1) || ') tidak terdaftar di Indonesia.'
+    );
   END IF;
 
   IF p_is_ojol THEN

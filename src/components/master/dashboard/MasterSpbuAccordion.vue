@@ -36,8 +36,9 @@ const toggleSpbuAccordion = (id) => {
 
 const getRecentTransactions = (spbuId) => {
   const spbu = props.spbuList.find(s => String(s.id) === String(spbuId))
-  if (spbu && spbu.transactions && spbu.transactions.length > 0) {
-    return spbu.transactions.slice(0, 10).map((tx, idx) => {
+  const txs = spbu ? (spbu.recentTransactions || spbu.transactions) : []
+  if (txs && txs.length > 0) {
+    return txs.slice(0, 10).map((tx, idx) => {
       const date = new Date(tx.waktu_pencatatan)
       const isValid = !isNaN(date.getTime())
       const dateFormatted = isValid

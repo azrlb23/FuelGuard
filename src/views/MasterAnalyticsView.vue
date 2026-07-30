@@ -536,7 +536,7 @@ const doughnutChartOptions = {
 
                 <!-- Share % -->
                 <td class="py-4 px-3 text-right font-black text-emerald-600 whitespace-nowrap">
-                  - %
+                  {{ item.sharePct }}%
                 </td>
               </tr>
             </template>

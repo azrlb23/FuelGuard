@@ -79,7 +79,15 @@ export function useMasterAnalytics() {
       if (data) {
         kpi.value = data.kpis || kpi.value
         trendData.value = data.trend || []
-        leaderboard.value = data.leaderboard || []
+        
+        const rawLeaderboard = data.leaderboard || []
+        const totalLeaderboardSales = rawLeaderboard.reduce((sum, item) => sum + (item.revenue || 0), 0)
+        leaderboard.value = rawLeaderboard.map((item, index) => ({
+          ...item,
+          rank: index + 1,
+          sharePct: totalLeaderboardSales > 0 ? ((item.revenue / totalLeaderboardSales) * 100).toFixed(1) : 0
+        }))
+        
         spbuShares.value = data.spbuShares || []
       }
     } catch (err) {
