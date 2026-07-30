@@ -7,10 +7,6 @@ import { useTransactionAction } from '@/composables/useTransactionAction'
 
 const props = defineProps({
   vehicleType: String,
-  isOjol: {
-    type: Boolean,
-    default: false
-  },
   loading: Boolean
 })
 
@@ -360,7 +356,7 @@ const handleSubmit = async () => {
   const res = await submitTransaction({
     plat_nomor: form.value.plat_nomor,
     liter: form.value.liter
-  }, props.vehicleType, props.isOjol)
+  }, props.vehicleType)
 
   if (res && res.success) {
     emit('submit', { success: true })
@@ -395,18 +391,9 @@ const handleSubmit = async () => {
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>
       </button>
-      <div class="flex items-center gap-2">
-        <span class="px-4 py-1.5 rounded-full text-xs md:text-sm font-bold bg-white/10 border border-white/20 text-white capitalize tracking-wide shadow-sm">
-          {{ vehicleType }}
-        </span>
-        <!-- Badge OJOL -->
-        <span
-          v-if="isOjol"
-          class="px-3 py-1.5 rounded-full text-xs font-black bg-emerald-500/30 border border-emerald-400/60 text-emerald-300 tracking-wide shadow-sm"
-        >
-          OJOL
-        </span>
-      </div>
+      <span class="px-4 py-1.5 rounded-full text-xs md:text-sm font-bold bg-white/10 border border-white/20 text-white capitalize tracking-wide shadow-sm">
+        {{ vehicleType }}
+      </span>
     </div>
 
     <!-- TAHAP 1: INPUT & CEK PLAT NOMOR -->
@@ -579,42 +566,43 @@ const handleSubmit = async () => {
       </button>
     </form>
 
-    <!-- MODAL POPUP KENDARAAN SUDAH MENGISI (Minimalist Modern Flat Style) -->
+    <!-- MODAL POPUP KENDARAAN SUDAH MENGISI -->
     <Teleport to="body">
-      <div v-if="showRefueledModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-md animate-enter">
-        <div class="bg-white border border-gray-100 rounded-3xl max-w-md w-full p-6 md:p-8 text-gray-800 shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
+      <div v-if="showRefueledModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 bg-black/80 backdrop-blur-xl animate-enter">
+        <div class="bg-gradient-to-br from-[#143d2e] via-[#1e5c45] to-[#143d2e] border-2 border-white/30 rounded-[2rem] md:rounded-[2.5rem] max-w-md w-full p-6 md:p-8 text-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col items-center text-center relative overflow-hidden">
 
-          <!-- Clean Minimal Icon (No background box / no border) -->
-          <div class="text-amber-500 mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-10 h-10 md:w-12 md:h-12">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          <div class="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div class="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-white/10 border-2 border-white/30 flex items-center justify-center text-white mb-4 shadow-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-10 h-10 md:w-12 md:h-12 text-white">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
           </div>
 
-          <span class="text-[11px] font-extrabold text-amber-600 uppercase tracking-widest mb-1">
-            Batas Pengisian Terdeteksi
+          <span class="px-3.5 py-1 rounded-full text-[11px] font-extrabold bg-white/10 border border-white/20 text-white uppercase tracking-widest mb-2">
+            Peringatan Pengisian Ganda
           </span>
-          <h3 class="text-xl md:text-2xl font-black text-gray-900 tracking-tight">
-            Kendaraan Sudah Mengisi
+          <h3 class="text-2xl md:text-3xl font-black text-white tracking-tight">
+            KENDARAAN SUDAH MENGISI!
           </h3>
-          <p class="text-xs md:text-sm text-gray-500 mt-1 mb-5 leading-relaxed">
-            Sistem mendeteksi transaksi BBM untuk kendaraan ini pada hari yang sama. Transaksi ditolak.
+          <p class="text-xs md:text-sm text-white/80 mt-1 mb-5 leading-relaxed">
+            Sistem mendeteksi transaksi pengisian BBM untuk kendaraan ini pada hari yang sama. Transaksi ditolak.
           </p>
 
-          <!-- Flat Clean Data Box -->
-          <div class="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-left space-y-2.5 mb-6">
-            <div class="flex justify-between items-center border-b border-gray-200/60 pb-2">
-              <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Nomor Polisi</span>
-              <span class="text-lg font-black text-[#143d2e] tracking-wider">{{ refueledInfo?.plat }}</span>
+          <div class="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl md:rounded-3xl p-4 md:p-5 text-left space-y-3 shadow-inner mb-6">
+            <div class="flex justify-between items-center border-b border-white/15 pb-2.5">
+              <span class="text-xs font-medium text-white/70">Nomor Polisi</span>
+              <span class="text-xl font-black text-white tracking-wider">{{ refueledInfo?.plat }}</span>
             </div>
-            <div class="flex justify-between items-center border-b border-gray-200/60 pb-2">
-              <span class="text-xs font-medium text-gray-500">Pengisian Hari Ini</span>
-              <span class="text-sm font-bold text-gray-800">{{ refueledInfo?.countToday ?? 1 }} Kali</span>
+            <div class="flex justify-between items-center border-b border-white/15 pb-2.5">
+              <span class="text-xs font-medium text-white/70">Pengisian Hari Ini</span>
+              <span class="text-sm font-bold text-white">{{ refueledInfo?.countToday ?? 1 }} Kali</span>
             </div>
-            <!-- Total Terisi Hari Ini -->
-            <div v-if="refueledInfo?.totalHargaToday !== undefined || refueledInfo?.totalLiterToday !== undefined" class="flex justify-between items-center border-b border-gray-200/60 pb-2">
-              <span class="text-xs font-medium text-gray-500">Total Terisi Hari Ini</span>
-              <span class="text-sm font-bold text-[#143d2e]">
+            <!-- Total Terisi Hari Ini (Support Rupiah / Liter) -->
+            <div v-if="refueledInfo?.totalHargaToday !== undefined || refueledInfo?.totalLiterToday !== undefined" class="flex justify-between items-center border-b border-white/15 pb-2.5">
+              <span class="text-xs font-medium text-white/70">Total Terisi Hari Ini</span>
+              <span class="text-sm font-bold text-emerald-300">
                 <template v-if="refueledInfo?.totalHargaToday !== undefined">
                   {{ formatRupiah(refueledInfo.totalHargaToday) }}
                 </template>
@@ -624,9 +612,9 @@ const handleSubmit = async () => {
               </span>
             </div>
             <!-- Sisa Kuota Hari Ini -->
-            <div v-if="refueledInfo?.remainingQuota !== undefined" class="flex justify-between items-center border-b border-gray-200/60 pb-2">
-              <span class="text-xs font-medium text-gray-500">Sisa Kuota Hari Ini</span>
-              <span class="text-sm font-bold text-amber-600">
+            <div v-if="refueledInfo?.remainingQuota !== undefined" class="flex justify-between items-center border-b border-white/15 pb-2.5">
+              <span class="text-xs font-medium text-white/70">Sisa Kuota Hari Ini</span>
+              <span class="text-sm font-bold text-amber-300">
                 <template v-if="typeof refueledInfo?.remainingQuota === 'number'">
                   <template v-if="refueledInfo.remainingQuota > 100">
                     {{ formatRupiah(refueledInfo.remainingQuota) }}
@@ -643,22 +631,21 @@ const handleSubmit = async () => {
                 </template>
               </span>
             </div>
-            <div v-if="refueledInfo?.lastTransaction" class="flex justify-between items-center border-b border-gray-200/60 pb-2">
-              <span class="text-xs font-medium text-gray-500">Pengisian Terakhir</span>
-              <span class="text-sm font-bold text-gray-800">{{ refueledInfo?.lastTransaction?.liter }} Liter ({{ formatRupiah(refueledInfo?.lastTransaction?.harga) }})</span>
+            <div v-if="refueledInfo?.lastTransaction" class="flex justify-between items-center border-b border-white/15 pb-2.5">
+              <span class="text-xs font-medium text-white/70">Pengisian Terakhir</span>
+              <span class="text-sm font-bold text-white">{{ refueledInfo?.lastTransaction?.liter }} Liter ({{ formatRupiah(refueledInfo?.lastTransaction?.harga) }})</span>
             </div>
             <div v-if="refueledInfo?.timeFormatted" class="flex justify-between items-center">
-              <span class="text-xs font-medium text-gray-500">Waktu Terakhir</span>
-              <span class="text-sm font-bold text-gray-700">{{ refueledInfo?.timeFormatted }} WITA</span>
+              <span class="text-xs font-medium text-white/70">Waktu Terakhir</span>
+              <span class="text-sm font-bold text-white">{{ refueledInfo?.timeFormatted }} WITA</span>
             </div>
           </div>
 
-          <!-- Minimalist Primary Button -->
           <button
             @click="handleResetPlateCheck"
-            class="w-full bg-[#143d2e] hover:bg-[#1e5c45] text-white font-bold text-sm md:text-base py-3.5 rounded-2xl shadow-lg shadow-green-900/10 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            class="w-full bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-base md:text-lg py-4 rounded-2xl shadow-xl hover:shadow-white/20 transform active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 text-[#143d2e]">
               <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
             <span>PILIH KENDARAAN LAIN</span>
@@ -742,39 +729,5 @@ const handleSubmit = async () => {
 .plat-err-leave-to {
   opacity: 0;
   transform: translateY(-4px);
-}
-
-/* ─── Animasi Transaksi Berhasil Overlay ───────────────────────── */
-.success-pop-enter-active {
-  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.success-pop-leave-active {
-  transition: all 0.25s ease-in;
-}
-.success-pop-enter-from {
-  opacity: 0;
-  transform: scale(0.88);
-}
-.success-pop-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
-}
-
-@keyframes bounceShort {
-  0% { transform: scale(0.4); opacity: 0; }
-  60% { transform: scale(1.12); opacity: 1; }
-  80% { transform: scale(0.95); }
-  100% { transform: scale(1); }
-}
-.animate-bounce-short {
-  animation: bounceShort 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in-up {
-  animation: fadeInUp 0.4s ease-out forwards;
 }
 </style>
