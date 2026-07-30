@@ -17,16 +17,12 @@ export function useRepeatedLogs(itemsPerPage = 10) {
       await authStore.initialize()
     }
 
-    const spbuId = authStore.spbuId
-    if (!spbuId) {
-      console.warn('[useRepeatedLogs] SPBU ID belum tersedia, skip fetch.')
-      return
-    }
-
     loading.value = true
     try {
+      // Panggil RPC get_operator_repeated_logs dengan p_spbu_id: null
+      // agar mengembalikan seluruh log pengetap LINTAS SPBU (Cross-SPBU) hari ini
       const { data, error } = await supabase.rpc('get_operator_repeated_logs', {
-        p_spbu_id: spbuId,
+        p_spbu_id: null,
         p_page: currentPage.value,
         p_page_size: itemsPerPage,
         p_search: searchQuery.value.trim()

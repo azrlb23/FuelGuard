@@ -21,7 +21,7 @@ const formatDateOnly = (dateString) => {
 
 const formatTimeOnly = (dateString) => {
   if (!dateString) return '-'
-  return new Date(dateString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':')
+  return new Date(dateString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':')
 }
 
 
