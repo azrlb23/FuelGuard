@@ -281,8 +281,10 @@ const doughnutChartOptions = {
       <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-3xl p-6 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
         <div class="flex justify-between items-start mb-4">
           <span class="text-xs font-bold text-green-200/80 uppercase tracking-wider">TOTAL GROSS SALES</span>
-          <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-            <span class="text-lg">💰</span>
+          <div class="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-white shadow-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
           </div>
         </div>
         <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
@@ -295,8 +297,10 @@ const doughnutChartOptions = {
       <div class="bg-gradient-to-br from-[#143d2e] to-[#1a4a38] rounded-3xl p-6 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
         <div class="flex justify-between items-start mb-4">
           <span class="text-xs font-bold text-green-200/80 uppercase tracking-wider">TOTAL VOLUME BBM</span>
-          <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-            <span class="text-lg">⛽</span>
+          <div class="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-white shadow-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 1 9 3.603e-7a8.287 8.287 0 0 1 6.362 5.214Z" />
+            </svg>
           </div>
         </div>
         <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
@@ -309,8 +313,10 @@ const doughnutChartOptions = {
       <div class="bg-gradient-to-br from-[#143d2e] to-[#164433] rounded-3xl p-6 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
         <div class="flex justify-between items-start mb-4">
           <span class="text-xs font-bold text-green-200/80 uppercase tracking-wider">TOTAL TRANSAKSI</span>
-          <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-            <span class="text-lg">🧾</span>
+          <div class="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-white shadow-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z" />
+            </svg>
           </div>
         </div>
         <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
@@ -323,8 +329,10 @@ const doughnutChartOptions = {
       <div class="bg-gradient-to-br from-[#143d2e] to-[#0f2e23] rounded-3xl p-6 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
         <div class="flex justify-between items-start mb-4">
           <span class="text-xs font-bold text-green-200/80 uppercase tracking-wider">RERATA TRX / HARI</span>
-          <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-            <span class="text-lg">📈</span>
+          <div class="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-white shadow-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 0 5.814-5.519l2.74-1.22m0 0-5.94-2.28m5.94 2.28-2.28 5.941" />
+            </svg>
           </div>
         </div>
         <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
