@@ -347,15 +347,22 @@ DECLARE
   v_total_count integer := 0;
   v_trx_list json;
   v_result json;
+  v_effective_spbu_id text;
 BEGIN
   v_offset := (GREATEST(p_page, 1) - 1) * p_page_size;
+
+  IF public.get_user_role() = 'master' THEN
+    v_effective_spbu_id := p_spbu_id;
+  ELSE
+    v_effective_spbu_id := public.get_user_spbu_id();
+  END IF;
 
   -- Total count
   SELECT COUNT(t.id) INTO v_total_count
   FROM public.transaksi_pertalite t
   LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
   WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
-    AND (p_spbu_id = '' OR op.spbu_id::text = p_spbu_id)
+    AND (v_effective_spbu_id = '' OR op.spbu_id::text = v_effective_spbu_id)
     AND (p_date_from = '' OR t.waktu_pencatatan >= (p_date_from || 'T00:00:00')::timestamp)
     AND (p_date_to = '' OR t.waktu_pencatatan <= (p_date_to || 'T23:59:59')::timestamp);
 
@@ -374,7 +381,7 @@ BEGIN
     LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
     LEFT JOIN public.spbu s ON s.id = op.spbu_id
     WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
-      AND (p_spbu_id = '' OR op.spbu_id::text = p_spbu_id)
+      AND (v_effective_spbu_id = '' OR op.spbu_id::text = v_effective_spbu_id)
       AND (p_date_from = '' OR t.waktu_pencatatan >= (p_date_from || 'T00:00:00')::timestamp)
       AND (p_date_to = '' OR t.waktu_pencatatan <= (p_date_to || 'T23:59:59')::timestamp)
     ORDER BY
