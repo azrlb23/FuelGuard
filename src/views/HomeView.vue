@@ -4,10 +4,12 @@ import VehicleSelector from '@/components/operator/VehicleSelector.vue'
 import TransactionForm from '@/components/operator/TransactionForm.vue'
 import TransactionSuccess from '@/components/operator/TransactionSuccess.vue'
 import { useTransactionAction } from '@/composables/useTransactionAction'
+import { useAuthStore } from '@/stores/auth'
 
 const step = ref(1)
 const selectedVehicle = ref('')
 
+const authStore = useAuthStore()
 const { loading, submitTransaction } = useTransactionAction()
 
 const handleVehicleSelect = (type) => {
@@ -43,7 +45,36 @@ const handleProcess = async (res) => {
       
       <div class="absolute top-0 right-0 w-60 h-60 bg-white/5 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
 
-      <VehicleSelector v-if="step === 1" @select="handleVehicleSelect" />
+      <!-- Kasir Selector (Shared Device) -->
+      <div class="absolute top-4 left-4 right-4 md:top-6 md:left-6 md:right-6 flex justify-between items-center z-10">
+        <div class="text-xs md:text-sm font-medium text-white/70">
+          Kasir Aktif:
+        </div>
+        <select 
+          v-model="authStore.activeKasirId"
+          @change="authStore.setActiveKasir($event.target.value)"
+          class="bg-white/10 border border-white/20 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2 backdrop-blur-md outline-none cursor-pointer"
+        >
+          <option value="" disabled class="text-gray-800">Pilih Kasir</option>
+          <option v-for="kasir in authStore.kasirList" :key="kasir.id" :value="kasir.id" class="text-gray-800">
+            {{ kasir.nama_operator }}
+          </option>
+        </select>
+      </div>
+
+      <div class="mt-12 md:mt-10 flex-1 flex flex-col justify-center">
+        <div v-if="!authStore.activeKasirId" class="text-center animate-enter">
+          <div class="w-16 h-16 md:w-20 md:h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 md:w-10 md:h-10 text-white/50">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          </div>
+          <h2 class="text-xl md:text-2xl font-bold mb-2">Pilih Kasir</h2>
+          <p class="text-sm text-white/70">Silakan pilih nama Anda pada menu di kanan atas sebelum memulai transaksi.</p>
+        </div>
+
+        <template v-else>
+          <VehicleSelector v-if="step === 1" @select="handleVehicleSelect" />
 
       <TransactionForm 
         v-if="step === 2"
@@ -53,7 +84,9 @@ const handleProcess = async (res) => {
         @back="handleBack"
       />
 
-      <TransactionSuccess v-if="step === 3" @reset="handleReset" />
+        <TransactionSuccess v-if="step === 3" @reset="handleReset" />
+        </template>
+      </div>
     </div>
 
     <router-link 

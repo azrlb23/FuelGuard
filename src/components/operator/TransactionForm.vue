@@ -41,8 +41,10 @@ const lastEdited = ref('liter') // 'liter' | 'harga'
 // Contoh valid: KT 1234 AB, B 1234 CD, DK 123 A, KT 1234
 const PLAT_REGEX = /^[A-Z]{1,2}\s\d{1,4}(\s[A-Z]{1,3})?$/
 
-const platError = ref('')  // pesan error validasi
-const platTouched = ref(false)  // apakah user sudah pernah mengetik
+const platMessage = ref('')
+const platStatus = ref('idle') // 'idle' | 'invalid' | 'validating' | 'valid'
+const platTouched = ref(false)
+let debounceTimeout = null
 
 // Auto-format plat nomor sekuensial:
 // Bagian 1: WAJIB 1-2 Huruf Kode Wilayah di awal (angka di awal ditolak)
@@ -106,33 +108,52 @@ const formatPlatNomor = (val) => {
   return result
 }
 
-// Status visual kolom plat
-const platStatus = computed(() => {
-  if (!platTouched.value || !form.value.plat_nomor) return 'idle'
-  const formatted = formatPlatNomor(form.value.plat_nomor)
-  return PLAT_REGEX.test(formatted.trim()) ? 'valid' : 'invalid'
-})
+// Auto-check live ke database (hanya update status visual, tidak auto-lanjut)
+const checkPlateLive = async (cleaned) => {
+  const res = await checkPlateStatus(cleaned, props.vehicleType === 'Ojol')
+  
+  // Pastikan user tidak mengetik hal lain selagi menunggu
+  if (form.value.plat_nomor.trim() !== cleaned) return 
+
+  if (res && res.success) {
+    if (res.hasRefueledToday) {
+      platStatus.value = 'invalid'
+      platMessage.value = 'Kendaraan ini sudah mencapai limit harian!'
+    } else {
+      platStatus.value = 'valid'
+      platMessage.value = `Sisa Kuota: Rp ${formatAngka(res.remainingQuota)} (Tekan Enter)`
+    }
+  } else if (res && !res.success) {
+    platStatus.value = 'invalid'
+    platMessage.value = (res.message || 'Plat ditolak sistem.')
+  }
+}
 
 // Sanitasi & auto-format input plat saat mengetik
 const onPlatInput = (e) => {
   platTouched.value = true
-
-  // Auto-format otomatis menjadi (KT 1234 AB) tanpa perlu ketik spasi manual
   const formatted = formatPlatNomor(e.target.value)
-
   form.value.plat_nomor = formatted
-
-  // Paksa DOM langsung sinkron dengan format rapi
   e.target.value = formatted
 
-  // Update pesan error
   const cleaned = formatted.trim()
+  if (debounceTimeout) clearTimeout(debounceTimeout)
+  
   if (!cleaned) {
-    platError.value = ''
+    platStatus.value = 'idle'
+    platMessage.value = ''
   } else if (!PLAT_REGEX.test(cleaned)) {
-    platError.value = 'Format tidak valid. Contoh: KT 1234 AB'
+    platStatus.value = 'invalid'
+    platMessage.value = 'Format tidak valid. Contoh: KT 1234 AB'
   } else {
-    platError.value = ''
+    platStatus.value = 'validating'
+    platMessage.value = 'Sedang mengecek ke database...'
+    
+    debounceTimeout = setTimeout(() => {
+      if (subStep.value === 'check_plate' && form.value.plat_nomor.trim() === cleaned) {
+        checkPlateLive(cleaned)
+      }
+    }, 600)
   }
 }
 
@@ -162,27 +183,31 @@ onMounted(() => {
 })
 
 const handleCheckPlate = async () => {
+  if (checkingPlate.value) return
+  if (debounceTimeout) clearTimeout(debounceTimeout)
+  
   platTouched.value = true
-  const formatted = formatPlatNomor(form.value.plat_nomor)
-  const cleaned = formatted.trim()
+  const cleaned = form.value.plat_nomor.trim()
 
   if (!cleaned) {
-    platError.value = 'Mohon masukkan nomor plat kendaraan'
+    platStatus.value = 'invalid'
+    platMessage.value = 'Mohon masukkan nomor plat kendaraan'
     toast.warn('Mohon masukkan nomor plat kendaraan!')
     return
   }
 
   if (!PLAT_REGEX.test(cleaned)) {
-    platError.value = 'Format plat tidak valid. Contoh: KT 1234 AB'
+    platStatus.value = 'invalid'
+    platMessage.value = 'Format plat tidak valid. Contoh: KT 1234 AB'
     toast.warn('Format plat nomor tidak valid!')
     return
   }
 
   form.value.plat_nomor = cleaned
-  platError.value = ''
+  platMessage.value = 'Memproses...'
 
-  const res = await checkPlateStatus(form.value.plat_nomor, props.vehicleType)
-  if (res.success) {
+  const res = await checkPlateStatus(cleaned, props.vehicleType === 'Ojol')
+  if (res && res.success) {
     form.value.plat_nomor = res.plat
     if (res.hasRefueledToday) {
       refueledInfo.value = res
@@ -197,6 +222,10 @@ const handleCheckPlate = async () => {
         literInputRef.value.focus()
       }
     }
+  } else if (res && !res.success) {
+    platStatus.value = 'invalid'
+    platMessage.value = res.message || 'Plat nomor tidak terdaftar.'
+    toast.error(res.message || 'Plat nomor ditolak oleh sistem.')
   }
 }
 
@@ -239,8 +268,9 @@ const handleStartCamera = async () => {
 const handleScan = async () => {
   const result = await scanPlateNumber(videoRef.value)
   if (result) {
-    form.value.plat_nomor = result
-    toast.success("Plat Terdeteksi: " + result)
+    const formatted = formatPlatNomor(result)
+    form.value.plat_nomor = formatted
+    toast.success("Plat Terdeteksi: " + formatted)
     await handleCheckPlate()
   } else {
     toast.warn("Coba lagi, pastikan gambar jelas.")
@@ -332,7 +362,7 @@ const handleSubmit = async () => {
     emit('submit', { success: true })
   } else if (res && (res.reason === 'quota_exceeded' || res.reason === 'already_refueled')) {
     // Ambil info status pengisian plat terbaru dari DB untuk ditampilkan di Popup Modal
-    const statusRes = await checkPlateStatus(form.value.plat_nomor, props.vehicleType)
+    const statusRes = await checkPlateStatus(form.value.plat_nomor, props.vehicleType === 'Ojol')
     if (statusRes && statusRes.success) {
       refueledInfo.value = statusRes
     } else {
@@ -398,17 +428,21 @@ const handleSubmit = async () => {
 
           <!-- Feedback validasi -->
           <Transition name="plat-err">
-            <div v-if="platError" class="flex items-center gap-2 px-1">
+            <div v-if="platStatus === 'invalid'" class="flex items-center gap-2 px-1">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-red-400 shrink-0">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
               </svg>
-              <span class="text-red-300 text-xs font-semibold">{{ platError }}</span>
+              <span class="text-red-300 text-xs font-semibold">{{ platMessage }}</span>
+            </div>
+            <div v-else-if="platStatus === 'validating'" class="flex items-center gap-2 px-1">
+              <span class="loading loading-spinner loading-xs text-blue-300 shrink-0"></span>
+              <span class="text-blue-300 text-xs font-semibold">{{ platMessage }}</span>
             </div>
             <div v-else-if="platStatus === 'valid'" class="flex items-center gap-2 px-1">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-emerald-400 shrink-0">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
               </svg>
-              <span class="text-emerald-300 text-xs font-semibold">Format plat valid</span>
+              <span class="text-emerald-300 text-xs font-semibold">{{ platMessage }}</span>
             </div>
           </Transition>
 

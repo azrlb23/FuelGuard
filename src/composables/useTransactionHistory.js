@@ -23,52 +23,51 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
   const fetchHistory = async () => {
     const spbuId = authStore.spbuId
     if (!spbuId) {
-      console.warn('[TransactionHistory] spbu_id belum tersedia, skip fetch.')
+      console.warn('[TransactionHistory] spbuId belum tersedia, skip fetch.')
       return
     }
 
     loading.value = true
     try {
-      const from = (currentPage.value - 1) * itemsPerPage
-      const to = from + itemsPerPage - 1
+      let rpcDateFrom = dateFrom.value || ''
+      let rpcDateTo = dateTo.value || ''
 
-      let query = supabase
-        .from('transaksi_pertalite')
-        .select('*', { count: 'exact' })
-        .eq('spbu_id', spbuId)
-        .order(sortField.value, { ascending: sortDir.value === 'asc' })
-        .range(from, to)
-
-      if (searchQuery.value) {
-        query = query.ilike('plat_nomor', `%${searchQuery.value}%`)
-      }
-
-      if (vehicleFilter.value) {
-        query = query.eq('jenis_kendaraan', vehicleFilter.value)
-      }
-
-      if (dateFrom.value) {
-        query = query.gte('waktu_pencatatan', `${dateFrom.value}T00:00:00`)
-      }
-      if (dateTo.value) {
-        query = query.lte('waktu_pencatatan', `${dateTo.value}T23:59:59`)
-      }
-
+      // If dateFilter is strictly "today" (Operator History default)
       if (options.dateFilter) {
         const now = new Date()
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0, 0, 0).toISOString()
-        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString()
-
-        query = query.gte('waktu_pencatatan', startOfDay)
-                     .lte('waktu_pencatatan', endOfDay)
+        const y = now.getFullYear()
+        const m = String(now.getMonth() + 1).padStart(2, '0')
+        const d = String(now.getDate()).padStart(2, '0')
+        const todayStr = `${y}-${m}-${d}`
+        rpcDateFrom = todayStr
+        rpcDateTo = todayStr
       }
 
-      const { data, count, error } = await query
+      const { data, error } = await supabase.rpc('get_master_history_paginated', {
+        p_page: currentPage.value,
+        p_page_size: itemsPerPage,
+        p_search: searchQuery.value || '',
+        p_spbu_id: spbuId,
+        p_date_from: rpcDateFrom,
+        p_date_to: rpcDateTo,
+        p_sort_field: sortField.value || 'waktu_pencatatan',
+        p_sort_dir: sortDir.value || 'desc'
+      })
 
       if (error) throw error
 
-      transactions.value = data
-      totalItems.value = count
+      if (data) {
+        let filteredTransactions = data.transactions || []
+        
+        // Filter is_ojol in JS as the current RPC signature doesn't take p_is_ojol yet
+        if (vehicleFilter.value) {
+           const isOjolTarget = vehicleFilter.value === 'ojol'
+           filteredTransactions = filteredTransactions.filter(t => t.is_ojol === isOjolTarget)
+        }
+
+        transactions.value = filteredTransactions
+        totalItems.value = data.total_count || 0
+      }
     } catch (err) {
       console.error('Error fetching history:', err.message)
     } finally {

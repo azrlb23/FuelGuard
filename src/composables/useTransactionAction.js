@@ -12,7 +12,7 @@ export function useTransactionAction() {
    * Mengecek status kuota pengisian BBM kendaraan hari ini via RPC Backend.
    * Semua logika kuota (Motor max 5L, Mobil max 1x) dieksekusi di PostgreSQL.
    */
-  const checkPlateStatus = async (platNomor, vehicleType = 'Motor') => {
+  const checkPlateStatus = async (platNomor, isOjol = false) => {
     if (!platNomor || !platNomor.trim()) {
       toast.warn("Mohon masukkan nomor plat terlebih dahulu!")
       return { success: false, reason: 'empty' }
@@ -23,12 +23,17 @@ export function useTransactionAction() {
       return { success: false, reason: 'no_spbu' }
     }
 
+    if (!authStore.activeKasirId) {
+      toast.warn("Silakan pilih Kasir terlebih dahulu!")
+      return { success: false, reason: 'no_kasir' }
+    }
+
     checkingPlate.value = true
 
     try {
       const { data, error } = await supabase.rpc('fn_check_plate_status', {
         p_plat: platNomor.trim().toUpperCase(),
-        p_jenis: vehicleType,
+        p_is_ojol: isOjol,
         p_spbu_id: authStore.spbuId
       })
 
@@ -49,19 +54,19 @@ export function useTransactionAction() {
    * Harga dihitung di server-side berdasarkan tabel fuel_prices.
    * Kuota di-enforce secara atomis di PostgreSQL (anti race condition).
    */
-  const submitTransaction = async (platOrForm, literOrVehicle, vehicleTypeParam) => {
+  const submitTransaction = async (platOrForm, literOrVehicle, isOjolParam) => {
     let plat = ''
     let liter = 0
-    let jenisKendaraan = ''
+    let isOjol = false
 
     if (typeof platOrForm === 'object' && platOrForm !== null) {
       plat = platOrForm.plat_nomor || platOrForm.plat || ''
       liter = platOrForm.liter
-      jenisKendaraan = literOrVehicle || 'Motor'
+      isOjol = literOrVehicle === true || literOrVehicle === 'Ojol'
     } else {
       plat = platOrForm || ''
       liter = literOrVehicle
-      jenisKendaraan = vehicleTypeParam || 'Motor'
+      isOjol = isOjolParam === true || isOjolParam === 'Ojol'
     }
 
     const platClean = String(plat).trim().toUpperCase()
@@ -72,13 +77,9 @@ export function useTransactionAction() {
       return false
     }
 
-    // ── Logika Shift Otomatis Berdasarkan Jam System ──
-    const hours = new Date().getHours()
-    let shiftSaatIni = 3
-    if (hours >= 6 && hours <= 13) {
-      shiftSaatIni = 1
-    } else if (hours >= 14 && hours <= 21) {
-      shiftSaatIni = 2
+    if (!authStore.activeKasirId) {
+      toast.warn("Silakan pilih Kasir terlebih dahulu!")
+      return false
     }
 
     loading.value = true
@@ -87,8 +88,8 @@ export function useTransactionAction() {
       const { data, error } = await supabase.rpc('fn_safe_insert_transaction', {
         p_plat: platClean,
         p_liter: numLiter,
-        p_jenis: jenisKendaraan,
-        p_shift: shiftSaatIni
+        p_operator_id: authStore.activeKasirId,
+        p_is_ojol: isOjol
       })
 
       if (error) throw error

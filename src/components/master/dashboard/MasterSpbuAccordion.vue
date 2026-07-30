@@ -36,8 +36,9 @@ const toggleSpbuAccordion = (id) => {
 
 const getRecentTransactions = (spbuId) => {
   const spbu = props.spbuList.find(s => String(s.id) === String(spbuId))
-  if (spbu && spbu.transactions && spbu.transactions.length > 0) {
-    return spbu.transactions.slice(0, 10).map((tx, idx) => {
+  const txs = spbu ? (spbu.recentTransactions || spbu.transactions) : []
+  if (txs && txs.length > 0) {
+    return txs.slice(0, 10).map((tx, idx) => {
       const date = new Date(tx.waktu_pencatatan)
       const isValid = !isNaN(date.getTime())
       const dateFormatted = isValid
@@ -130,10 +131,6 @@ const formatVolume = (val) => {
 
             <div class="flex-1 min-w-0">
               <p class="text-gray-900 font-bold text-sm leading-tight break-words sm:truncate">{{ spbu.name }}</p>
-              <div class="flex items-center gap-1.5 mt-0.5 text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-3 h-3 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-                <p class="text-[11px] truncate">{{ spbu.location || '-' }}</p>
-              </div>
             </div>
 
             <!-- Chevron Toggle Button (Mobile Top-Right) -->

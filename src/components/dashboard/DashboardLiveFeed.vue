@@ -68,7 +68,7 @@ const formatRupiah = (val) => {
         <div class="text-right">
           <p class="font-black text-[#143d2e] text-sm">{{ item.liter }} L</p>
           <p class="text-[10px] text-gray-400 font-medium bg-gray-200 px-1.5 py-0.5 rounded text-center inline-block mt-1">
-             {{ item.jenis_kendaraan || 'Umum' }}
+             {{ item.is_ojol ? 'Ojol' : 'Non-Ojol' }}
           </p>
         </div>
 

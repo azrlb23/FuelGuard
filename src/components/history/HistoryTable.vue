@@ -14,9 +14,14 @@ const formatRupiah = (number) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number)
 }
 
-const formatDate = (dateString) => {
-  const options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }
-  return new Date(dateString).toLocaleDateString('id-ID', options)
+const formatDateOnly = (dateString) => {
+  if (!dateString) return '-'
+  return new Date(dateString).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const formatTimeOnly = (dateString) => {
+  if (!dateString) return '-'
+  return new Date(dateString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':')
 }
 
 
@@ -58,15 +63,19 @@ const prevPage = () => {
           class="bg-black/20 rounded-2xl p-4 border border-white/5 flex flex-col gap-3"
         >
           <div class="flex justify-between items-start">
-            <span class="text-xs text-green-200/70 font-medium">{{ formatDate(trx.waktu_pencatatan) }}</span>
+            <div class="flex items-center gap-2 text-xs text-green-200/70 font-medium">
+              <span>{{ formatDateOnly(trx.waktu_pencatatan) }}</span>
+              <span class="text-white/40">•</span>
+              <span class="font-mono text-green-300">{{ formatTimeOnly(trx.waktu_pencatatan) }}</span>
+            </div>
             <span class="text-[10px] font-bold bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full border border-green-500/20">Success</span>
           </div>
 
           <div class="flex justify-between items-center">
             <h3 class="text-xl font-mono font-bold tracking-wider text-white">{{ trx.plat_nomor }}</h3>
              <span class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border border-white/10" 
-                :class="trx.jenis_kendaraan === 'Mobil' ? 'bg-blue-500/20 text-blue-100' : 'bg-yellow-500/20 text-yellow-100'">
-                {{ trx.jenis_kendaraan }}
+                :class="trx.is_ojol ? 'bg-green-500/20 text-green-100' : 'bg-blue-500/20 text-blue-100'">
+                {{ trx.is_ojol ? 'Ojol' : 'Non-Ojol' }}
               </span>
           </div>
 
@@ -95,7 +104,8 @@ const prevPage = () => {
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="text-green-100/70 text-xs uppercase tracking-wider border-b border-white/10">
-            <th class="pb-4 pl-2 font-medium">Waktu</th>
+            <th class="pb-4 pl-2 font-medium">Tanggal</th>
+            <th class="pb-4 font-medium">Waktu</th>
             <th class="pb-4 font-medium">Kendaraan</th>
             <th class="pb-4 font-medium">Plat Nomor</th>
             <th class="pb-4 font-medium">Volume</th>
@@ -107,6 +117,7 @@ const prevPage = () => {
           <template v-if="loading">
             <tr v-for="n in 5" :key="n" class="border-b border-white/5">
               <td class="py-4 pl-2"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
+              <td class="py-4"><div class="skeleton h-4 w-16 bg-white/10 rounded"></div></td>
               <td class="py-4"><div class="skeleton h-6 w-16 bg-white/10 rounded-full"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-20 bg-white/10 rounded"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-12 bg-white/10 rounded"></div></td>
@@ -121,11 +132,12 @@ const prevPage = () => {
               :key="trx.id" 
               class="group hover:bg-white/5 transition-colors duration-200 border-b border-white/5 last:border-0"
             >
-              <td class="py-4 pl-2 text-green-50 font-medium">{{ formatDate(trx.waktu_pencatatan) }}</td>
+              <td class="py-4 pl-2 text-green-50 font-medium">{{ formatDateOnly(trx.waktu_pencatatan) }}</td>
+              <td class="py-4 text-green-200/90 font-mono text-xs md:text-sm">{{ formatTimeOnly(trx.waktu_pencatatan) }}</td>
               <td class="py-4">
                 <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold" 
-                  :class="trx.jenis_kendaraan === 'Mobil' ? 'bg-blue-500/20 text-blue-100' : 'bg-yellow-500/20 text-yellow-100'">
-                  {{ trx.jenis_kendaraan }}
+                  :class="trx.is_ojol ? 'bg-green-500/20 text-green-100' : 'bg-blue-500/20 text-blue-100'">
+                  {{ trx.is_ojol ? 'Ojol' : 'Non-Ojol' }}
                 </span>
               </td>
               <td class="py-4 font-mono text-white/90">{{ trx.plat_nomor }}</td>
@@ -138,7 +150,7 @@ const prevPage = () => {
           </template>
 
           <tr v-else>
-            <td colspan="6" class="py-12 text-center flex flex-col items-center justify-center text-green-100/50">
+            <td colspan="7" class="py-12 text-center flex flex-col items-center justify-center text-green-100/50">
               <span class="text-4xl mb-2">🍃</span>
               <span class="italic">Tidak ada riwayat transaksi ditemukan.</span>
             </td>
