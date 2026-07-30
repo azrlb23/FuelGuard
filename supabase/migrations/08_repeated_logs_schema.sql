@@ -37,11 +37,11 @@ CREATE POLICY "repeated_logs_master_select" ON public.repeated_transaction_logs
     public.get_user_role() = 'master'
   );
 
--- Operator: Dapat melihat log perulangan dari SELURUH SPBU (Cross-SPBU) HARI INI SAJA
+-- Operator: Dapat melihat log perulangan dari SELURUH SPBU (Cross-SPBU) HARI INI WITA SAJA
 CREATE POLICY "repeated_logs_operator_select" ON public.repeated_transaction_logs
   FOR SELECT USING (
     public.get_user_role() = 'operator'
-    AND created_at >= date_trunc('day', NOW())
+    AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar'
   );
 
 -- System RPC: Izinkan pencatatan otomatis via RPC
@@ -194,7 +194,7 @@ BEGIN
   SELECT COUNT(id) INTO v_count_today
   FROM public.repeated_transaction_logs
   WHERE (p_spbu_id IS NULL OR p_spbu_id = '' OR attempt_spbu_id = p_spbu_id)
-    AND created_at >= date_trunc('day', NOW())
+    AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar'
     AND (p_search = '' OR plat_nomor ILIKE '%' || p_search || '%');
 
   SELECT json_agg(t) INTO v_logs
