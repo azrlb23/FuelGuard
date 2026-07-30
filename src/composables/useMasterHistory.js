@@ -161,8 +161,9 @@ export function useMasterHistory(itemsPerPage = 10) {
           'Tanggal': dateStr,
           'Waktu': timeStr,
           'SPBU': trx.spbu_name || `SPBU #${trx.spbu_id}`,
+          'Operator': trx.operator_name || 'Sistem',
+          'Kategori': trx.is_ojol ? 'Ojol' : 'Umum',
           'Plat Nomor': trx.plat_nomor,
-          'Jenis Kendaraan': trx.is_ojol ? 'Ojol' : 'Non-Ojol',
           'Liter (L)': trx.liter,
           'Total Harga (Rp)': trx.harga
         }

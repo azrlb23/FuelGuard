@@ -121,34 +121,21 @@ const menuItems = [
     <!-- Main Workspace -->
     <div class="flex-1 flex flex-col h-full overflow-hidden relative w-full min-w-0">
 
-      <!-- Top Bar Header -->
-      <header class="flex-none bg-[#f5f5f5] px-6 py-4 flex items-center justify-between gap-4 z-20">
+      <!-- Top Bar Header (Mobile/Tablet Only - Hidden on Desktop to maximize screen space) -->
+      <header class="xl:hidden flex-none bg-[#f5f5f5] px-4 py-3 flex items-center justify-between gap-4 z-20 border-b border-gray-200/60">
+        <button
+          @click="isSidebarOpen = true"
+          class="p-2 text-[#143d2e] hover:bg-gray-200/60 rounded-xl transition-colors cursor-pointer"
+          aria-label="Open Navigation Menu"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
 
-        <div class="flex items-center gap-3">
-          <button
-            @click="isSidebarOpen = !isSidebarOpen"
-            class="p-2 text-gray-500 hover:bg-gray-200/60 rounded-xl transition-colors cursor-pointer xl:hidden"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <!-- Profile Badge Pill (Navigates to Master Settings) -->
-          <router-link
-            to="/master/settings"
-            class="flex items-center gap-2.5 p-1.5 pl-2 pr-3 bg-white hover:bg-gray-50 rounded-full border border-gray-200/80 shadow-md shadow-gray-200/50 cursor-pointer hover:shadow-lg active:scale-95 transition-all group select-none"
-            title="Pengaturan Master"
-          >
-            <div class="w-8 h-8 bg-[#143d2e] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm group-hover:scale-105 transition-transform">
-              M
-            </div>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-gray-400 group-hover:text-[#143d2e] group-hover:translate-x-0.5 transition-all">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </router-link>
+        <div class="flex items-center gap-2">
+          <img src="@/assets/HJ_dark.png" alt="Logo" class="w-7 h-7" />
+          <span class="text-sm font-black text-[#143d2e] tracking-tight">HABI JAYA</span>
         </div>
       </header>
 

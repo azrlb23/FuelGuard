@@ -40,7 +40,9 @@ const router = createRouter({
     },
     {
       path: '/master/team',
-      redirect: '/team'
+      name: 'master-team',
+      component: () => import('../views/TeamView.vue'),
+      meta: { requiresAuth: true, role: 'master', layout: 'master' }
     },
     {
       path: '/master/settings',

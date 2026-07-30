@@ -2,28 +2,59 @@
 import { useTeam } from '@/composables/useTeam'
 import TeamTable from '@/components/team/TeamTable.vue'
 
-const { teamMembers, loading } = useTeam()
+const {
+  teamMembers,
+  spbuList,
+  kpis,
+  loading,
+  isSubmitting,
+  searchQuery,
+  selectedSpbuId,
+  createOperator,
+  updateOperator,
+  toggleOperatorStatus
+} = useTeam()
+
+const handleCreateOperator = async (payload) => {
+  await createOperator(payload)
+}
+
+const handleUpdateOperator = async (id, payload) => {
+  await updateOperator(id, payload)
+}
+
+const handleToggleStatus = async (id) => {
+  await toggleOperatorStatus(id)
+}
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 bg-[#f8fafc] lg:bg-transparent pb-24">
+  <div class="space-y-6 pb-12 max-w-7xl mx-auto">
     
-    <div class="flex-none px-6 pt-6 md:px-8 md:pt-8 flex flex-col md:flex-row md:items-end justify-between gap-4 z-10">
+    <!-- Page Header & Summary Section -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h2 class="text-3xl md:text-4xl font-extrabold text-[#1e293b] tracking-tight mb-2">
-          Team Management
-        </h2>
-        <p class="text-slate-500 font-medium text-sm md:text-base max-w-2xl">
-          Daftar akun yang memiliki akses operasional ke sistem Habi Jaya.
+        <h1 class="text-2xl sm:text-3xl font-black text-[#143d2e] tracking-tight">
+          Kelola Tim & Operator SPBU
+        </h1>
+        <p class="text-gray-500 text-xs sm:text-sm font-medium mt-1">
+          Manajemen profil petugas operator dan penugasan unit SPBU jaringan Habi Jaya
         </p>
       </div>
     </div>
 
-    <div class="px-4 md:px-8">
-      <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
-        <TeamTable :members="teamMembers" :loading="loading" />
-      </div>
-    </div>
+    <!-- Row 2: Team Table & Actions Container -->
+    <TeamTable
+      :members="teamMembers"
+      :spbuList="spbuList"
+      :loading="loading"
+      :isSubmitting="isSubmitting"
+      v-model:searchQuery="searchQuery"
+      v-model:selectedSpbuId="selectedSpbuId"
+      @createOperator="handleCreateOperator"
+      @updateOperator="handleUpdateOperator"
+      @toggleStatus="handleToggleStatus"
+    />
 
   </div>
 </template>
