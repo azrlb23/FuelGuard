@@ -53,5 +53,15 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'chart-vendor': ['chart.js', 'vue-chartjs'],
+          'supabase-vendor': ['@supabase/supabase-js']
+        }
+      }
+    }
   }
 })

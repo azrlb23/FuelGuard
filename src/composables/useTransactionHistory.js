@@ -21,9 +21,9 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
   const authStore = useAuthStore()
 
   const fetchHistory = async () => {
-    const spbuId = authStore.spbuId
-    if (!spbuId) {
-      console.warn('[TransactionHistory] spbu_id belum tersedia, skip fetch.')
+    const userId = authStore.user?.id
+    if (!userId) {
+      console.warn('[TransactionHistory] user_id belum tersedia, skip fetch.')
       return
     }
 
@@ -35,7 +35,7 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
       let query = supabase
         .from('transaksi_pertalite')
         .select('*', { count: 'exact' })
-        .eq('spbu_id', spbuId)
+        .eq('operator_id', userId)
         .order(sortField.value, { ascending: sortDir.value === 'asc' })
         .range(from, to)
 
@@ -44,7 +44,7 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
       }
 
       if (vehicleFilter.value) {
-        query = query.eq('jenis_kendaraan', vehicleFilter.value)
+        query = query.eq('is_ojol', vehicleFilter.value === 'ojol')
       }
 
       if (dateFrom.value) {

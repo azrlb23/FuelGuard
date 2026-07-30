@@ -4,10 +4,9 @@ import ProfileCard from '@/components/settings/ProfileCard.vue'
 import SecurityForm from '@/components/settings/SecurityForm.vue'
 import FuelPriceForm from '@/components/settings/FuelPriceForm.vue'
 import ProfileForm from '@/components/settings/ProfileForm.vue'
-import ShiftForm from '@/components/settings/ShiftForm.vue'
 
 const authStore = useAuthStore()
-const isManager = authStore.role === 'manajer'
+const isOperator = authStore.role === 'operator'
 </script>
 
 <template>
@@ -20,15 +19,14 @@ const isManager = authStore.role === 'manajer'
 
     <ProfileCard />
 
-    <div v-if="isManager" class="animate-enter" style="animation-delay: 100ms">
+    <div v-if="isOperator" class="animate-enter" style="animation-delay: 100ms">
       <div class="px-1 mb-2 mt-8">
         <span class="text-xs font-bold text-[#143d2e] bg-green-100 px-2.5 py-1 rounded-full uppercase tracking-wider">
           Admin Zone
         </span>
       </div>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 gap-6">
         <FuelPriceForm />
-        <ShiftForm />
       </div>
     </div>
 

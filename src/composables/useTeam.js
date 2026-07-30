@@ -14,10 +14,10 @@ export function useTeam() {
     loading.value = true
     try {
       const { data, error: err } = await supabase
-        .from('team_members')
+        .from('operator_profiles')
         .select('*')
         .eq('spbu_id', authStore.spbuId)
-        .order('last_sign_in_at', { ascending: false })
+        .order('nama_operator', { ascending: true })
 
       if (err) throw err
 

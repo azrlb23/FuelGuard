@@ -74,8 +74,8 @@ const prevPage = () => {
           <div class="flex justify-between items-center">
             <h3 class="text-xl font-mono font-bold tracking-wider text-white">{{ trx.plat_nomor }}</h3>
              <span class="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border border-white/10" 
-                :class="trx.jenis_kendaraan === 'Mobil' ? 'bg-blue-500/20 text-blue-100' : 'bg-yellow-500/20 text-yellow-100'">
-                {{ trx.jenis_kendaraan }}
+                :class="trx.is_ojol ? 'bg-green-500/20 text-green-100' : 'bg-blue-500/20 text-blue-100'">
+                {{ trx.is_ojol ? 'Ojol' : 'Non-Ojol' }}
               </span>
           </div>
 
@@ -136,8 +136,8 @@ const prevPage = () => {
               <td class="py-4 text-green-200/90 font-mono text-xs md:text-sm">{{ formatTimeOnly(trx.waktu_pencatatan) }}</td>
               <td class="py-4">
                 <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold" 
-                  :class="trx.jenis_kendaraan === 'Mobil' ? 'bg-blue-500/20 text-blue-100' : 'bg-yellow-500/20 text-yellow-100'">
-                  {{ trx.jenis_kendaraan }}
+                  :class="trx.is_ojol ? 'bg-green-500/20 text-green-100' : 'bg-blue-500/20 text-blue-100'">
+                  {{ trx.is_ojol ? 'Ojol' : 'Non-Ojol' }}
                 </span>
               </td>
               <td class="py-4 font-mono text-white/90">{{ trx.plat_nomor }}</td>
