@@ -341,6 +341,7 @@ CREATE OR REPLACE FUNCTION public.get_master_history_paginated(
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_offset integer;
@@ -376,7 +377,8 @@ BEGIN
       t.is_ojol,
       t.waktu_pencatatan,
       op.spbu_id,
-      COALESCE(s.nama, CONCAT('SPBU #', op.spbu_id)) AS spbu_name
+      COALESCE(s.nama, CONCAT('SPBU #', op.spbu_id)) AS spbu_name,
+      COALESCE(op.nama_operator, 'Sistem') AS operator_name
     FROM public.transaksi_pertalite t
     LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
     LEFT JOIN public.spbu s ON s.id = op.spbu_id
@@ -402,7 +404,8 @@ BEGIN
       'is_ojol', is_ojol,
       'waktu_pencatatan', waktu_pencatatan,
       'spbu_id', spbu_id,
-      'spbu_name', spbu_name
+      'spbu_name', spbu_name,
+      'operator_name', operator_name
     )
   ) INTO v_trx_list FROM paginated_trx;
 
