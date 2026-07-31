@@ -187,10 +187,20 @@ export function useMasterHistory(itemsPerPage = 10) {
     }
   }
 
-  // Auto-fetch saat filter berubah
-  watch([searchQuery, selectedSpbu, dateFrom, dateTo, sortField, sortDir], () => {
+  // Auto-fetch saat filter selain searchQuery berubah secara instan
+  watch([selectedSpbu, dateFrom, dateTo, sortField, sortDir], () => {
     currentPage.value = 1
     fetchHistory()
+  })
+
+  // Watch searchQuery dengan Debounce (500ms)
+  let searchDebounceTimer = null
+  watch(searchQuery, () => {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = setTimeout(() => {
+      currentPage.value = 1
+      fetchHistory()
+    }, 500)
   })
 
   // Re-fetch ketika halaman berubah

@@ -35,6 +35,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'master', layout: 'master' }
     },
     {
+      path: '/master/repeated',
+      name: 'master-repeated',
+      component: () => import('../views/MasterRepeatedView.vue'),
+      meta: { requiresAuth: true, role: 'master', layout: 'master' }
+    },
+    {
       path: '/master/network',
       redirect: '/master/history'
     },

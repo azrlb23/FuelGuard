@@ -83,7 +83,6 @@ const formatVolume = (val) => {
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
       <div>
         <h4 class="text-[#143d2e] font-black text-lg">Performa SPBU Jaringan</h4>
-        <p class="text-gray-400 text-xs font-medium mt-0.5">Daftar SPBU terhubung (Filter: {{ periodLabel }})</p>
       </div>
 
       <!-- Search Bar SPBU -->

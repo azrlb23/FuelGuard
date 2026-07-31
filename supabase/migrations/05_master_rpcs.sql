@@ -616,4 +616,160 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION public.manage_operator(text, uuid, text, text, boolean) TO authenticated;
 
+-- ─── 8. RPC: get_master_repeated_transactions ────────────────────────────────
+DROP FUNCTION IF EXISTS public.get_master_repeated_transactions CASCADE;
+CREATE OR REPLACE FUNCTION public.get_master_repeated_transactions(
+  p_spbu_id text DEFAULT NULL,
+  p_date_from text DEFAULT NULL,
+  p_date_to text DEFAULT NULL,
+  p_limit integer DEFAULT 20,
+  p_offset integer DEFAULT 0
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role text;
+  v_total_attempts integer := 0;
+  v_total_plates integer := 0;
+  v_logs json := '[]'::json;
+  v_result json;
+BEGIN
+  -- 1. Security Check: Authenticated user & Role Verification
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: Sesi tidak terautentikasi';
+  END IF;
+
+  v_role := public.get_user_role();
+  IF v_role IS NULL OR LOWER(v_role) != 'master' THEN
+    RAISE EXCEPTION 'Forbidden: Akses ditolak. Membutuhkan hak akses Master Admin.';
+  END IF;
+
+  -- 2. Total Raw Attempt Count
+  SELECT COUNT(r.id) INTO v_total_attempts
+  FROM public.repeated_transaction_logs r
+  WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR r.attempt_spbu_id = p_spbu_id)
+    AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00')::timestamp with time zone)
+    AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999')::timestamp with time zone);
+
+  -- 3. Group by Plat Nomor (Normalized Whitespace)
+  WITH raw_logs AS (
+    SELECT 
+      r.id,
+      regexp_replace(UPPER(TRIM(r.plat_nomor)), '\s+', ' ', 'g') AS plat_nomor,
+      r.attempt_spbu_id,
+      COALESCE(s.nama, 'SPBU ' || r.attempt_spbu_id) AS spbu_nama,
+      r.attempt_operator_id,
+      COALESCE(op.nama_operator, 'Sistem') AS operator_nama,
+      COALESCE(r.is_ojol, false) AS is_ojol,
+      r.attempted_liter,
+      r.total_harga_today,
+      r.reason,
+      r.created_at
+    FROM public.repeated_transaction_logs r
+    LEFT JOIN public.spbu s ON s.id = r.attempt_spbu_id
+    LEFT JOIN public.operator_profiles op ON op.id = r.attempt_operator_id
+    WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR r.attempt_spbu_id = p_spbu_id)
+      AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00')::timestamp with time zone)
+      AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999')::timestamp with time zone)
+  ),
+  grouped_plates AS (
+    SELECT 
+      plat_nomor,
+      bool_or(is_ojol) AS is_ojol,
+      COUNT(id) AS attempt_count,
+      MAX(created_at) AS latest_attempt_at,
+      json_agg(
+        json_build_object(
+          'id', id,
+          'created_at', created_at,
+          'spbu_id', attempt_spbu_id,
+          'spbu_nama', spbu_nama,
+          'operator_id', attempt_operator_id,
+          'operator_nama', operator_nama,
+          'is_ojol', is_ojol,
+          'attempted_liter', attempted_liter,
+          'total_harga_today', total_harga_today,
+          'reason', reason
+        ) ORDER BY created_at DESC
+      ) AS attempts
+    FROM raw_logs
+    GROUP BY plat_nomor
+  )
+  SELECT COUNT(*) INTO v_total_plates FROM grouped_plates;
+
+  WITH raw_logs AS (
+    SELECT 
+      r.id,
+      regexp_replace(UPPER(TRIM(r.plat_nomor)), '\s+', ' ', 'g') AS plat_nomor,
+      r.attempt_spbu_id,
+      COALESCE(s.nama, 'SPBU ' || r.attempt_spbu_id) AS spbu_nama,
+      r.attempt_operator_id,
+      COALESCE(op.nama_operator, 'Sistem') AS operator_nama,
+      COALESCE(r.is_ojol, false) AS is_ojol,
+      r.attempted_liter,
+      r.total_harga_today,
+      r.reason,
+      r.created_at
+    FROM public.repeated_transaction_logs r
+    LEFT JOIN public.spbu s ON s.id = r.attempt_spbu_id
+    LEFT JOIN public.operator_profiles op ON op.id = r.attempt_operator_id
+    WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR r.attempt_spbu_id = p_spbu_id)
+      AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00')::timestamp with time zone)
+      AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999')::timestamp with time zone)
+  ),
+  grouped_plates AS (
+    SELECT 
+      plat_nomor,
+      bool_or(is_ojol) AS is_ojol,
+      COUNT(id) AS attempt_count,
+      MAX(created_at) AS latest_attempt_at,
+      json_agg(
+        json_build_object(
+          'id', id,
+          'created_at', created_at,
+          'spbu_id', attempt_spbu_id,
+          'spbu_nama', spbu_nama,
+          'operator_id', attempt_operator_id,
+          'operator_nama', operator_nama,
+          'is_ojol', is_ojol,
+          'attempted_liter', attempted_liter,
+          'total_harga_today', total_harga_today,
+          'reason', reason
+        ) ORDER BY created_at DESC
+      ) AS attempts
+    FROM raw_logs
+    GROUP BY plat_nomor
+  )
+  SELECT json_agg(
+    json_build_object(
+      'plat_nomor', plat_nomor,
+      'is_ojol', is_ojol,
+      'attempt_count', attempt_count,
+      'latest_attempt_at', latest_attempt_at,
+      'attempts', attempts
+    ) ORDER BY latest_attempt_at DESC
+  ) INTO v_logs
+  FROM (
+    SELECT * FROM grouped_plates
+    ORDER BY latest_attempt_at DESC
+    LIMIT LEAST(GREATEST(p_limit, 1), 100)
+    OFFSET GREATEST(p_offset, 0)
+  ) g;
+
+  v_result := json_build_object(
+    'success', true,
+    'total_attempts', v_total_attempts,
+    'total_plates', v_total_plates,
+    'data', COALESCE(v_logs, '[]'::json)
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_master_repeated_transactions(text, text, text, integer, integer) TO authenticated;
+
 NOTIFY pgrst, 'reload schema';

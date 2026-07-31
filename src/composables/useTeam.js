@@ -115,7 +115,7 @@ export function useTeam() {
     clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       fetchTeam()
-    }, 300)
+    }, 500)
   })
 
   watch(selectedSpbuId, () => {

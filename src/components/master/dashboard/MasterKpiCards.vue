@@ -43,7 +43,6 @@ defineProps({
         </div>
       </div>
       <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-white mb-1">{{ totalNetworkRevenue }}</h3>
-      <p class="text-xs text-green-200/80 mb-3 font-medium">{{ periodLabel }} · {{ spbuCount }} SPBU</p>
       <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
     </div>
 
@@ -56,7 +55,6 @@ defineProps({
         </div>
       </div>
       <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-white mb-1">{{ totalNetworkVolume }}</h3>
-      <p class="text-xs text-green-200/80 mb-3 font-medium">Total liter terjual ({{ periodLabel }})</p>
       <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
     </div>
 
@@ -69,7 +67,6 @@ defineProps({
         </div>
       </div>
       <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-white mb-1">{{ activeSpbuCountText }}</h3>
-      <p class="text-xs text-green-200/80 mb-3 font-medium">Total jaringan SPBU terhubung</p>
       <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
     </div>
 
@@ -82,7 +79,6 @@ defineProps({
         </div>
       </div>
       <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-white mb-1">{{ totalTransactionsCount }}</h3>
-      <p class="text-xs text-green-200/80 mb-3 font-medium">Total transaksi ({{ periodLabel }})</p>
       <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
     </div>
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   members: {
@@ -17,7 +17,11 @@ const props = defineProps({
   loading: Boolean,
   isSubmitting: Boolean,
   searchQuery: String,
-  selectedSpbuId: String
+  selectedSpbuId: String,
+  activeTab: {
+    type: String,
+    default: 'operators'
+  }
 })
 
 const emit = defineEmits([
@@ -28,20 +32,63 @@ const emit = defineEmits([
   'toggleStatus'
 ])
 
-// Tab State
-const activeTab = ref('operators') // 'operators' | 'accounts'
-
-// Modal State
+// Modal & Dropdown State
 const isModalOpen = ref(false)
 const isResetModalOpen = ref(false)
 const modalMode = ref('create') // 'create' | 'edit'
 const selectedAccount = ref(null)
+
+const isFormSpbuDropdownOpen = ref(false)
+const spbuModalDropdownRef = ref(null)
 
 const formData = ref({
   id: null,
   nama_operator: '',
   spbu_id: '',
   is_active: true
+})
+
+const selectFormSpbu = (spbuId) => {
+  formData.value.spbu_id = spbuId
+  isFormSpbuDropdownOpen.value = false
+}
+
+const getSelectedSpbuName = () => {
+  if (!formData.value || !formData.value.spbu_id) return 'Pilih Unit SPBU'
+  if (!props.spbuList || !Array.isArray(props.spbuList) || props.spbuList.length === 0) {
+    return `SPBU #${formData.value.spbu_id}`
+  }
+  const spbu = props.spbuList.find(s => s && String(s.id) === String(formData.value.spbu_id))
+  return spbu ? spbu.name : `SPBU #${formData.value.spbu_id}`
+}
+
+// Filter Bar SPBU Custom Dropdown State
+const isFilterSpbuDropdownOpen = ref(false)
+const filterSpbuDropdownContainerRef = ref(null)
+
+const selectFilterSpbuOption = (spbuId) => {
+  emit('update:selectedSpbuId', spbuId)
+  isFilterSpbuDropdownOpen.value = false
+}
+
+const selectedFilterSpbuLabel = computed(() => {
+  if (!props.selectedSpbuId) return 'Semua Unit SPBU'
+  const found = props.spbuList.find(s => String(s.id) === String(props.selectedSpbuId))
+  return found ? found.name : `SPBU #${props.selectedSpbuId}`
+})
+
+const handleFilterSpbuClickOutside = (e) => {
+  if (filterSpbuDropdownContainerRef.value && !filterSpbuDropdownContainerRef.value.contains(e.target)) {
+    isFilterSpbuDropdownOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleFilterSpbuClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleFilterSpbuClickOutside)
 })
 
 // Reset Password State
@@ -81,13 +128,21 @@ const openResetModal = (account) => {
   isResetModalOpen.value = true
 }
 
+const isConfirmModalOpen = ref(false)
+
 const handleSubmit = () => {
   if (!formData.value.nama_operator.trim()) return
   if (modalMode.value === 'create') {
     emit('createOperator', { ...formData.value })
+    isModalOpen.value = false
   } else {
-    emit('updateOperator', formData.value.id, { ...formData.value })
+    isConfirmModalOpen.value = true
   }
+}
+
+const confirmUpdateOperator = () => {
+  emit('updateOperator', formData.value.id, { ...formData.value })
+  isConfirmModalOpen.value = false
   isModalOpen.value = false
 }
 
@@ -110,42 +165,87 @@ const formatDate = (dateString) => {
 </script>
 
 <template>
-  <div class="w-full space-y-4">
-    
-    <!-- Top Bar: Navigation Tabs & Search/Filters -->
-    <div class="bg-white rounded-3xl p-4 md:p-6 border border-gray-200 shadow-sm flex flex-col gap-4">
-      
-      <!-- Section Tabs -->
-      <div class="flex items-center justify-between border-b border-gray-100 pb-3 gap-2 overflow-x-auto">
-        <div class="flex items-center gap-2">
-          <button
-            @click="activeTab = 'operators'"
-            class="px-5 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 shrink-0"
-            :class="activeTab === 'operators' ? 'bg-[#143d2e] text-white shadow-md shadow-green-900/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-            </svg>
-            <span>Profil Operator Shift ({{ members.length }})</span>
-          </button>
+  <div class="w-full">
 
-          <button
-            @click="activeTab = 'accounts'"
-            class="px-5 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 shrink-0"
-            :class="activeTab === 'accounts' ? 'bg-[#143d2e] text-white shadow-md shadow-green-900/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+    <!-- Single Unified Card: Tabs + Filters + Table -->
+    <div class="bg-gradient-to-br from-[#103427] via-[#143d2e] to-[#0d2b20] rounded-[2rem] p-5 md:p-6 border border-emerald-800/40 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
+
+      <!-- Background Glow Effect -->
+      <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Filters Bar -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10 pb-4 border-b border-emerald-800/40">
+        <!-- Search Input -->
+        <div class="relative flex-1">
+          <span class="absolute left-3 top-3 text-green-300 pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
-            <span>Akun Login SPBU ({{ accounts.length }})</span>
-          </button>
+          </span>
+          <input 
+            :value="searchQuery"
+            @input="$emit('update:searchQuery', $event.target.value)"
+            type="text"
+            :placeholder="activeTab === 'operators' ? 'Cari nama operator...' : 'Cari nama SPBU atau email...'"
+            class="w-full pl-9 pr-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/15 focus:border-white focus:ring-2 focus:ring-white/20 focus:outline-none rounded-full text-xs font-bold text-white placeholder-green-200/60 transition-all shadow-sm"
+          />
         </div>
 
-        <!-- Action: Tambah Operator Button (Only for Operator Profiles tab) -->
+        <!-- SPBU Filter Dropdown (Custom Premium Card) -->
+        <div ref="filterSpbuDropdownContainerRef" class="relative w-full sm:w-56">
+          <button
+            type="button"
+            @click="isFilterSpbuDropdownOpen = !isFilterSpbuDropdownOpen"
+            class="w-full flex items-center justify-between gap-2 bg-white/10 hover:bg-white/20 border border-white/15 focus:border-white focus:ring-2 focus:ring-white/20 rounded-full px-4 py-2.5 text-xs font-bold text-white transition-all shadow-sm cursor-pointer select-none"
+          >
+            <span class="truncate">{{ selectedFilterSpbuLabel }}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" :class="['w-3.5 h-3.5 text-green-200/70 transition-transform duration-200 shrink-0', isFilterSpbuDropdownOpen ? 'rotate-180 text-white' : '']">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          <!-- Floating SPBU Menu Card -->
+          <div
+            v-if="isFilterSpbuDropdownOpen"
+            class="absolute left-0 mt-1.5 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 p-1.5 z-[110] text-gray-800 text-xs font-bold space-y-0.5 max-h-56 overflow-y-auto animate-enter"
+          >
+            <button
+              type="button"
+              @click="selectFilterSpbuOption('')"
+              :class="[
+                'w-full flex items-center justify-between px-3.5 py-2 rounded-xl transition-all text-left cursor-pointer',
+                !selectedSpbuId ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
+              ]"
+            >
+              <span>Semua Unit SPBU</span>
+              <svg v-if="!selectedSpbuId" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4 h-4 text-[#143d2e] shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            </button>
+
+            <button
+              v-for="spbu in spbuList"
+              :key="spbu.id"
+              type="button"
+              @click="selectFilterSpbuOption(spbu.id)"
+              :class="[
+                'w-full flex items-center justify-between px-3.5 py-2 rounded-xl transition-all text-left cursor-pointer',
+                String(selectedSpbuId) === String(spbu.id) ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
+              ]"
+            >
+              <span class="truncate">{{ spbu.name }} ({{ spbu.id }})</span>
+              <svg v-if="String(selectedSpbuId) === String(spbu.id)" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4 h-4 text-[#143d2e] shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action: Tambah Operator Button -->
         <button
           v-if="activeTab === 'operators'"
           @click="openCreateModal"
-          class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#143d2e] to-[#258f62] text-white text-xs font-bold rounded-full shadow-md shadow-green-900/10 hover:brightness-110 active:scale-95 transition-all cursor-pointer shrink-0"
+          class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500/20 border border-emerald-400/50 text-emerald-200 text-xs font-bold rounded-full shadow-sm hover:bg-emerald-500/30 active:scale-95 transition-all cursor-pointer shrink-0 w-full sm:w-auto"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -154,44 +254,10 @@ const formatDate = (dateString) => {
         </button>
       </div>
 
-      <!-- Filters Bar -->
-      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <!-- Search Input -->
-        <div class="relative flex-1">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-          </svg>
-          <input 
-            :value="searchQuery"
-            @input="$emit('update:searchQuery', $event.target.value)"
-            type="text"
-            :placeholder="activeTab === 'operators' ? 'Cari nama operator...' : 'Cari nama SPBU atau email...'"
-            class="w-full pl-9 pr-4 py-2.5 rounded-full bg-gray-50 border border-gray-200 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] transition-all shadow-xs"
-          />
-        </div>
-
-        <!-- SPBU Filter Dropdown -->
-        <div class="w-full sm:w-56">
-          <select
-            :value="selectedSpbuId"
-            @change="$emit('update:selectedSpbuId', $event.target.value)"
-            class="w-full px-4 py-2.5 rounded-full bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] transition-all shadow-xs cursor-pointer"
-          >
-            <option value="">Semua Unit SPBU</option>
-            <option v-for="spbu in spbuList" :key="spbu.id" :value="spbu.id">
-              {{ spbu.name }}
-            </option>
-          </select>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Container Table & Mobile Cards -->
-    <div class="bg-[#143d2e] rounded-3xl p-5 md:p-6 text-white shadow-xl shadow-green-900/10 overflow-hidden border border-emerald-800/30">
+      <!-- Table/Cards Content (no gap, same card) -->
       
       <!-- TAB 1: PROFIL OPERATOR (SHIFT WORKERS) -->
-      <div v-if="activeTab === 'operators'">
+      <div v-if="activeTab === 'operators'" class="pt-4">
         
         <!-- Mobile List View -->
         <div class="block md:hidden space-y-3">
@@ -219,13 +285,12 @@ const formatDate = (dateString) => {
                   <p class="text-[11px] text-green-200/70 font-semibold">{{ member.spbu_name }}</p>
                 </div>
               </div>
-              <button 
-                @click="$emit('toggleStatus', member.id)"
-                class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-pointer"
+              <span 
+                class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
                 :class="member.is_active ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'"
               >
                 {{ member.is_active ? 'Aktif' : 'Nonaktif' }}
-              </button>
+              </span>
             </div>
 
             <div class="h-px bg-white/10 w-full"></div>
@@ -293,14 +358,12 @@ const formatDate = (dateString) => {
                 </td>
 
                 <td class="py-4">
-                  <button 
-                    @click="$emit('toggleStatus', member.id)"
-                    class="px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer active:scale-95"
-                    :class="member.is_active ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30'"
-                    title="Klik untuk mengubah status"
+                  <span 
+                    class="px-3 py-1 rounded-full text-xs font-bold border"
+                    :class="member.is_active ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'"
                   >
                     {{ member.is_active ? '● Aktif' : '○ Nonaktif' }}
-                  </button>
+                  </span>
                 </td>
 
                 <td class="py-4 text-green-100 font-medium text-xs">
@@ -460,29 +523,63 @@ const formatDate = (dateString) => {
 
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1.5">Unit SPBU Penugasan</label>
-            <select
-              v-model="formData.spbu_id"
-              required
-              class="w-full px-4 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] transition-all cursor-pointer"
-            >
-              <option value="" disabled>Pilih Unit SPBU</option>
-              <option v-for="spbu in spbuList" :key="spbu.id" :value="spbu.id">
-                {{ spbu.name }}
-              </option>
-            </select>
+            <div ref="spbuModalDropdownRef" class="relative">
+              <button
+                type="button"
+                @click.stop="isFormSpbuDropdownOpen = !isFormSpbuDropdownOpen"
+                class="w-full flex items-center justify-between gap-2 bg-gray-50 hover:bg-gray-100/80 border border-gray-200 focus:ring-2 focus:ring-[#143d2e]/20 rounded-2xl px-4 py-2.5 text-sm font-semibold text-gray-800 transition-all cursor-pointer select-none"
+              >
+                <span class="truncate">{{ getSelectedSpbuName() }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" :class="['w-4 h-4 text-gray-500 transition-transform duration-200 shrink-0', isFormSpbuDropdownOpen ? 'rotate-180' : '']">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+
+              <!-- Dropdown Menu Options -->
+              <div
+                v-if="isFormSpbuDropdownOpen"
+                class="absolute left-0 mt-1.5 w-full bg-white rounded-2xl shadow-2xl border border-gray-100 p-1.5 z-[120] text-gray-700 text-sm font-semibold space-y-0.5 max-h-48 overflow-y-auto"
+              >
+                <button
+                  v-for="spbu in spbuList"
+                  :key="spbu.id"
+                  type="button"
+                  @click="selectFormSpbu(spbu.id)"
+                  :class="[
+                    'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-left cursor-pointer',
+                    String(formData.spbu_id) === String(spbu.id) ? 'bg-[#143d2e]/10 text-[#143d2e] font-bold' : 'hover:bg-gray-50 text-gray-600'
+                  ]"
+                >
+                  <span class="truncate">{{ spbu.name }}</span>
+                  <svg v-if="String(formData.spbu_id) === String(spbu.id)" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4 h-4 text-[#143d2e] shrink-0">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1.5">Status Petugas</label>
-            <div class="flex items-center gap-4 pt-1">
-              <label class="inline-flex items-center gap-2 cursor-pointer">
-                <input type="radio" v-model="formData.is_active" :value="true" class="radio radio-success radio-sm" />
-                <span class="text-sm font-bold text-emerald-700">Aktif</span>
-              </label>
-              <label class="inline-flex items-center gap-2 cursor-pointer">
-                <input type="radio" v-model="formData.is_active" :value="false" class="radio radio-error radio-sm" />
-                <span class="text-sm font-bold text-red-600">Nonaktif</span>
-              </label>
+            <div class="bg-gray-50 p-1.5 rounded-2xl flex max-w-[280px] border border-gray-200">
+              <button
+                type="button"
+                @click="formData.is_active = true"
+                class="flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
+                :class="formData.is_active ? 'bg-emerald-600 text-white shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'"
+              >
+                <span class="w-2 h-2 rounded-full bg-current"></span>
+                Aktif
+              </button>
+              <button
+                type="button"
+                @click="formData.is_active = false"
+                class="flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
+                :class="!formData.is_active ? 'bg-red-600 text-white shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'"
+              >
+                <span class="w-2 h-2 rounded-full bg-current"></span>
+                Nonaktif
+              </button>
             </div>
           </div>
 
@@ -550,6 +647,61 @@ const formatDate = (dateString) => {
             class="px-6 py-2.5 rounded-full text-xs font-bold bg-gray-800 text-white hover:bg-gray-900 transition-colors shadow-md cursor-pointer"
           >
             Selesai
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Modern Confirmation Modal (Edit Profil) -->
+    <div v-if="isConfirmModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-gray-100 space-y-5 animate-enter text-center">
+        <!-- Icon Badge -->
+        <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 flex items-center justify-center mx-auto shadow-inner">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </div>
+
+        <div>
+          <h3 class="text-base font-black text-[#143d2e]">Konfirmasi Pembaruan</h3>
+          <p class="text-xs text-gray-500 font-medium mt-1.5 leading-relaxed">
+            Apakah Anda yakin ingin menyimpan perubahan data profil operator ini?
+          </p>
+        </div>
+
+        <!-- Summary Preview Box -->
+        <div class="bg-gray-50 rounded-2xl p-3.5 border border-gray-150 text-left space-y-2 text-xs font-semibold text-gray-700">
+          <div class="flex justify-between items-center">
+            <span class="text-gray-400 font-bold uppercase text-[10px]">Nama Operator</span>
+            <span class="font-bold text-gray-900 truncate max-w-[170px]">{{ formData.nama_operator }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-400 font-bold uppercase text-[10px]">Unit SPBU</span>
+            <span class="font-bold text-[#143d2e] bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60">{{ getSelectedSpbuName() }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-400 font-bold uppercase text-[10px]">Status</span>
+            <span :class="formData.is_active ? 'text-emerald-700 font-extrabold' : 'text-red-600 font-extrabold'">
+              {{ formData.is_active ? 'Aktif' : 'Nonaktif' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-3 pt-1">
+          <button
+            type="button"
+            @click="isConfirmModalOpen = false"
+            class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-100 active:scale-95 transition-all cursor-pointer select-none"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            @click="confirmUpdateOperator"
+            class="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#143d2e] to-[#1a4a38] text-white text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer select-none"
+          >
+            Ya, Perbarui
           </button>
         </div>
       </div>
