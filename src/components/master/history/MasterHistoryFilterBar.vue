@@ -39,6 +39,10 @@ const props = defineProps({
     type: Array,
     required: true
   },
+  searchQuery: {
+    type: String,
+    default: ''
+  },
   activeFilters: {
     type: Array,
     default: () => []
@@ -46,6 +50,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'update:searchQuery',
   'update:selectedSpbu',
   'update:dateFrom',
   'update:dateTo',
@@ -213,6 +218,22 @@ onUnmounted(() => {
             </svg>
           </button>
         </div>
+      </div>
+
+      <!-- Search Input (Posisi Paling Kanan) -->
+      <div class="relative flex-1 min-w-[200px]">
+        <input 
+          :value="searchQuery"
+          @input="$emit('update:searchQuery', $event.target.value)"
+          type="text" 
+          placeholder="Cari Plat Nomor..." 
+          class="w-full pl-9 pr-4 py-2 bg-white/10 hover:bg-white/20 border border-white/15 focus:border-white focus:ring-2 focus:ring-white/20 focus:outline-none rounded-full text-xs font-bold text-white placeholder-green-200/60 transition-all shadow-sm"
+        />
+        <span class="absolute left-3 top-2.5 text-green-300 pointer-events-none">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+        </span>
       </div>
 
     </div>

@@ -28,9 +28,9 @@ BEGIN
   IF p_filter = 'today' THEN
     v_start_time := date_trunc('day', NOW());
   ELSIF p_filter = 'weekly' THEN
-    v_start_time := NOW() - INTERVAL '7 days';
+    v_start_time := date_trunc('day', NOW() - INTERVAL '6 days');
   ELSIF p_filter = 'monthly' THEN
-    v_start_time := NOW() - INTERVAL '30 days';
+    v_start_time := date_trunc('day', NOW() - INTERVAL '29 days');
   ELSE
     v_start_time := '1970-01-01 00:00:00'::timestamp; -- 'all-time'
   END IF;
@@ -365,7 +365,7 @@ BEGIN
   FROM public.transaksi_pertalite t
   LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
   WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
-    AND (v_effective_spbu_id = '' OR COALESCE(t.spbu_id, op.spbu_id)::text = v_effective_spbu_id)
+    AND (v_effective_spbu_id = '' OR op.spbu_id::text = v_effective_spbu_id)
     AND (p_date_from = '' OR t.waktu_pencatatan::date >= p_date_from::date)
     AND (p_date_to = '' OR t.waktu_pencatatan::date <= p_date_to::date);
 
@@ -378,14 +378,14 @@ BEGIN
       t.harga,
       t.is_ojol,
       t.waktu_pencatatan,
-      COALESCE(t.spbu_id, op.spbu_id) AS spbu_id,
-      COALESCE(s.nama, CONCAT('SPBU #', COALESCE(t.spbu_id, op.spbu_id))) AS spbu_name,
-      COALESCE(op.nama_operator, 'Sistem') AS operator_name
+      op.spbu_id AS spbu_id,
+      COALESCE(s.nama, CONCAT('SPBU #', op.spbu_id)) AS spbu_name,
+      COALESCE(op.nama_operator, '-') AS operator_name
     FROM public.transaksi_pertalite t
     LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
-    LEFT JOIN public.spbu s ON s.id = COALESCE(t.spbu_id, op.spbu_id)
+    LEFT JOIN public.spbu s ON s.id = op.spbu_id
     WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
-      AND (v_effective_spbu_id = '' OR COALESCE(t.spbu_id, op.spbu_id)::text = v_effective_spbu_id)
+      AND (v_effective_spbu_id = '' OR op.spbu_id::text = v_effective_spbu_id)
       AND (p_date_from = '' OR t.waktu_pencatatan::date >= p_date_from::date)
       AND (p_date_to = '' OR t.waktu_pencatatan::date <= p_date_to::date)
     ORDER BY

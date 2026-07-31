@@ -67,6 +67,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  searchQuery: {
+    type: String,
+    default: ''
+  },
   activeFilters: {
     type: Array,
     default: () => []
@@ -74,6 +78,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'update:searchQuery',
   'update:currentPage',
   'update:selectedSpbu',
   'update:dateFrom',
@@ -110,6 +115,7 @@ const formatDateOnly = (dateString) => {
   if (!dateString) return '-'
   const d = new Date(dateString)
   return d.toLocaleDateString('id-ID', {
+    timeZone: 'Asia/Makassar',
     day: '2-digit',
     month: 'short',
     year: 'numeric'
@@ -120,8 +126,10 @@ const formatTimeOnly = (dateString) => {
   if (!dateString) return '-'
   const d = new Date(dateString)
   return d.toLocaleTimeString('id-ID', {
+    timeZone: 'Asia/Makassar',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: false
   }).replace('.', ':')
 }
 
@@ -141,6 +149,8 @@ const setPage = (p) => {
 
     <!-- Integrated Filter Bar -->
     <MasterHistoryFilterBar
+      :searchQuery="searchQuery"
+      @update:searchQuery="$emit('update:searchQuery', $event)"
       :spbuList="spbuList"
       :selectedSpbu="selectedSpbu"
       @update:selectedSpbu="$emit('update:selectedSpbu', $event)"
@@ -178,14 +188,13 @@ const setPage = (p) => {
           :key="trx.id" 
           class="bg-black/20 rounded-2xl p-4 border border-white/10 flex flex-col gap-3"
         >
-          <!-- Top Bar: Date/Time & Success Badge -->
+          <!-- Top Bar: Date/Time -->
           <div class="flex justify-between items-start">
             <div class="flex items-center gap-2 text-xs text-green-200/70 font-medium">
               <span>{{ formatDateOnly(trx.waktu_pencatatan) }}</span>
               <span class="text-white/40">•</span>
               <span class="font-mono text-green-300">{{ formatTimeOnly(trx.waktu_pencatatan) }}</span>
             </div>
-            <span class="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/20">Success</span>
           </div>
 
           <!-- Plat Nomor & Category Badge -->
@@ -203,20 +212,20 @@ const setPage = (p) => {
             </div>
             <div class="text-green-200/80 font-medium flex items-center gap-1.5">
               <span>Operator:</span>
-              <span class="text-white font-semibold">{{ trx.operator_name || 'Sistem' }}</span>
+              <span class="text-white font-semibold">{{ trx.operator_name || '-' }}</span>
             </div>
           </div>
 
           <div class="h-px w-full bg-white/10"></div>
 
-          <!-- Bottom Metrics: Volume & Revenue -->
+          <!-- Bottom Metrics: Volume & Harga -->
           <div class="flex justify-between items-end">
             <div>
               <p class="text-[10px] text-green-100/50 uppercase tracking-widest mb-0.5">Volume</p>
               <p class="text-sm font-bold text-white">{{ trx.liter }} L</p>
             </div>
             <div class="text-right">
-              <p class="text-[10px] text-green-100/50 uppercase tracking-widest mb-0.5">Revenue</p>
+              <p class="text-[10px] text-green-100/50 uppercase tracking-widest mb-0.5">Harga</p>
               <p class="text-lg font-black text-emerald-300">{{ formatRupiah(trx.harga) }}</p>
             </div>
           </div>
@@ -241,8 +250,7 @@ const setPage = (p) => {
             <th class="pb-4">KATEGORI</th>
             <th class="pb-4">PLAT NOMOR</th>
             <th class="pb-4">VOLUME</th>
-            <th class="pb-4">REVENUE</th>
-            <th class="pb-4 pr-3 text-right">STATUS</th>
+            <th class="pb-4 pr-3 text-right">HARGA</th>
           </tr>
         </thead>
         <tbody class="text-sm">
@@ -255,8 +263,7 @@ const setPage = (p) => {
               <td class="py-4"><div class="skeleton h-6 w-16 bg-white/10 rounded-full"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-20 bg-white/10 rounded"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-16 bg-white/10 rounded"></div></td>
-              <td class="py-4"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
-              <td class="py-4 pr-3 flex justify-end"><div class="skeleton h-6 w-16 bg-white/10 rounded-md"></div></td>
+              <td class="py-4 pr-3 text-right"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
             </tr>
           </template>
 
@@ -274,7 +281,7 @@ const setPage = (p) => {
                 </span>
               </td>
               <td class="py-4 text-green-100 font-semibold text-xs md:text-sm">
-                {{ trx.operator_name || 'Sistem' }}
+                {{ trx.operator_name || '-' }}
               </td>
               <td class="py-4">
                 <span v-if="trx.is_ojol" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
@@ -287,10 +294,7 @@ const setPage = (p) => {
               </td>
               <td class="py-4 font-mono font-bold text-white tracking-wider">{{ trx.plat_nomor }}</td>
               <td class="py-4 text-white/90 font-semibold">{{ trx.liter }} L</td>
-              <td class="py-4 font-black text-emerald-300">{{ formatRupiah(trx.harga) }}</td>
-              <td class="py-4 pr-3 text-right">
-                <span class="text-xs text-emerald-300 font-bold bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30">Success</span>
-              </td>
+              <td class="py-4 pr-3 text-right font-black text-emerald-300">{{ formatRupiah(trx.harga) }}</td>
             </tr>
           </template>
 

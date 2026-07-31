@@ -1,5 +1,6 @@
 import { ref, watch, onMounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
+import * as XLSX from 'xlsx'
 
 const getDefaultDates = () => {
   const today = new Date()
@@ -99,19 +100,29 @@ export function useMasterAnalytics() {
 
   // ─── Export Functions (Tetap di Frontend — presentation layer) ──────────────
   const exportToExcel = () => {
-    const headers = ['Rank,SPBU Name,Revenue (IDR),Volume (Liter),Total Transactions,Share (%)\n']
-    const rows = leaderboard.value.map((row, index) => 
-      `"${index + 1}","${row.name}","${row.revenue}","${row.volume}","${row.trxCount}","- %"`
-    ).join('\n')
+    if (!leaderboard.value || leaderboard.value.length === 0) return
 
-    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `Laporan_Analisis_SPBU_${new Date().toISOString().slice(0, 10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    const excelData = leaderboard.value.map((row, index) => ({
+      'Rank': `#${index + 1}`,
+      'Nama SPBU': row.name,
+      'Omzet (Rp)': row.revenue,
+      'Volume (Liter)': row.volume,
+      'Total Transaksi': row.trxCount,
+      'Lokasi': row.location || '-'
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Analisis SPBU')
+
+    const dNow = new Date()
+    const year = dNow.getFullYear()
+    const month = String(dNow.getMonth() + 1).padStart(2, '0')
+    const day = String(dNow.getDate()).padStart(2, '0')
+    const dateTag = `${year}-${month}-${day}`
+    const fileName = `Laporan_Analisis_SPBU_${dateTag}.xlsx`
+
+    XLSX.writeFile(workbook, fileName)
   }
 
   const exportToPDF = () => {

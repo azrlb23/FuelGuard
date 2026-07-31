@@ -10,10 +10,10 @@ export function useMasterHistory(itemsPerPage = 10) {
   const currentPage = ref(1)
   const totalItems = ref(0)
 
-  // Format tanggal lokal (YYYY-MM-DD)
+  // Format tanggal lokal (YYYY-MM-DD) untuk 7 hari terakhir (termasuk hari ini)
   const getSevenDaysAgoStr = () => {
     const d = new Date()
-    d.setDate(d.getDate() - 7)
+    d.setDate(d.getDate() - 6)
     const year = d.getFullYear()
     const month = String(d.getMonth() + 1).padStart(2, '0')
     const day = String(d.getDate()).padStart(2, '0')
@@ -161,11 +161,11 @@ export function useMasterHistory(itemsPerPage = 10) {
           'Tanggal': dateStr,
           'Waktu': timeStr,
           'SPBU': trx.spbu_name || `SPBU #${trx.spbu_id}`,
-          'Operator': trx.operator_name || 'Sistem',
+          'Operator': trx.operator_name || '-',
           'Kategori': trx.is_ojol ? 'Ojol' : 'Umum',
           'Plat Nomor': trx.plat_nomor,
           'Liter (L)': trx.liter,
-          'Total Harga (Rp)': trx.harga
+          'Harga (Rp)': trx.harga
         }
       })
 
@@ -173,7 +173,11 @@ export function useMasterHistory(itemsPerPage = 10) {
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat Transaksi')
 
-      const dateTag = new Date().toISOString().split('T')[0]
+      const dNow = new Date()
+      const year = dNow.getFullYear()
+      const month = String(dNow.getMonth() + 1).padStart(2, '0')
+      const day = String(dNow.getDate()).padStart(2, '0')
+      const dateTag = `${year}-${month}-${day}`
       const fileName = `Riwayat_Transaksi_Master_${dateTag}.xlsx`
       XLSX.writeFile(workbook, fileName)
     } catch (err) {
@@ -204,8 +208,8 @@ export function useMasterHistory(itemsPerPage = 10) {
   const resetFilters = () => {
     searchQuery.value = ''
     selectedSpbu.value = ''
-    dateFrom.value = getSevenDaysAgoStr()
-    dateTo.value = getTodayStr()
+    dateFrom.value = ''
+    dateTo.value = ''
     sortField.value = 'waktu_pencatatan'
     sortDir.value = 'desc'
     currentPage.value = 1

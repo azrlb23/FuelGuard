@@ -119,8 +119,13 @@ const trendChartOptions = {
       ticks: { font: { size: 11, weight: '600' }, color: '#9ca3af' }
     },
     y: {
+      beginAtZero: true,
       grid: { color: '#f3f4f6' },
-      ticks: { font: { size: 11, weight: '600' }, color: '#9ca3af' }
+      ticks: {
+        font: { size: 11, weight: '600' },
+        color: '#9ca3af',
+        callback: (val) => `Rp ${val} Jt`
+      }
     }
   }
 }
@@ -155,10 +160,7 @@ const doughnutChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: {
-      position: 'bottom',
-      labels: { font: { size: 11, weight: 'bold' }, padding: 14, usePointStyle: true, pointStyle: 'circle' }
-    },
+    legend: { display: false },
     tooltip: {
       backgroundColor: '#0f2e23',
       padding: 10,
@@ -168,33 +170,23 @@ const doughnutChartOptions = {
       }
     }
   },
-  cutout: '70%'
+  cutout: '72%'
 }
 </script>
 
 <template>
   <div class="space-y-6 animate-enter">
 
-    <!-- Header Section: Title & Controls (LCP Target) -->
-    <div class="relative p-6 md:p-8 rounded-3xl overflow-hidden shadow-sm mb-4" style="background: linear-gradient(135deg, #143d2e 0%, #0f2e22 100%);">
-      <!-- LCP Background Pattern (Inline SVG) -->
-      <svg class="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-        <defs>
-          <pattern id="patternAnalytics" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M0 40L40 0H20L0 20M40 40V20L20 40" fill="#34d399"/>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#patternAnalytics)"/>
-      </svg>
-      <div class="relative z-10">
-        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-2" data-lcp="true">Analisis & Laporan</h2>
-        <p class="text-emerald-100/80 text-xs sm:text-sm font-bold">Benchmarking performa jaringan SPBU & rekapitulasi operasional eksekutif</p>
+    <!-- Header Section: Title (LCP Target) -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+      <div>
+        <h2 class="text-3xl md:text-4xl font-extrabold text-[#143d2e] tracking-tight" data-lcp="true">Analisis & Laporan</h2>
       </div>
     </div>
 
     <!-- Filter Bar: Date Range + SPBU Select -->
     <div ref="analyticsContainerRef" class="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/90 shadow-xs flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
-      
+
       <!-- Custom Date From -->
       <CustomDatePicker
         v-model="dateFrom"
@@ -275,7 +267,7 @@ const doughnutChartOptions = {
 
     <!-- Row 1: KPI Summary Cards (Rich Dark Green Palette) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      
+
       <!-- Card 1: Total Revenue -->
       <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-3xl p-6 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
         <div class="flex justify-between items-start mb-4">
@@ -346,39 +338,61 @@ const doughnutChartOptions = {
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
       <!-- Chart 1: Line Combined Trend (2 Cols) -->
-      <div class="lg:col-span-2 bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
-        <div class="mb-4">
-          <h4 class="text-base font-extrabold text-[#143d2e]">Tren Omzet Penjualan</h4>
-          <p class="text-xs font-semibold text-gray-400">Grafik omzet harian pada periode terpilih</p>
+      <div class="lg:col-span-2 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col hover:shadow-md transition-all duration-300">
+        <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100 shrink-0">
+          <div>
+            <h4 class="text-base font-extrabold text-[#143d2e]">Tren Omzet Penjualan</h4>
+            <p class="text-xs font-semibold text-gray-400">Grafik omzet harian pada periode terpilih</p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200/60 shadow-2xs">
+            Skala: Juta Rupiah
+          </span>
         </div>
 
-        <div class="h-64 relative w-full pt-4">
+        <div class="flex-1 min-h-[260px] relative w-full pt-2">
           <LazyLineChart v-if="trendChartData.labels.length" :data="trendChartData" :options="trendChartOptions" />
         </div>
       </div>
 
       <!-- Chart 2: Donut Contribution Share (1 Col) -->
-      <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
-        <div class="mb-4">
+      <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col hover:shadow-md transition-all duration-300">
+        <div class="mb-3 pb-3 border-b border-gray-100 shrink-0">
           <h4 class="text-base font-extrabold text-[#143d2e]">Kontribusi Penjualan</h4>
           <p class="text-xs font-semibold text-gray-400">Pangsa pasar omzet antar SPBU (%)</p>
         </div>
 
-        <div class="h-64 relative flex items-center justify-center">
+        <!-- Doughnut Chart Container with Center Badge -->
+        <div class="h-44 relative flex items-center justify-center my-1 shrink-0">
           <LazyDoughnutChart v-if="doughnutChartData.labels.length" :data="doughnutChartData" :options="doughnutChartOptions" />
+          
+          <!-- Center Stat Badge -->
+          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">TOTAL</span>
+            <span class="text-base font-black text-[#143d2e]">{{ spbuShares.length }} SPBU</span>
+          </div>
         </div>
 
-        <div class="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar mt-6">
-          <div v-for="(item, idx) in spbuShares" :key="item.spbu_id" class="flex items-center justify-between group">
-            <div class="flex items-center gap-3">
-              <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: ['#143d2e', '#22c55e', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0'][idx % 6] }"></div>
-              <div>
-                <div class="text-xs font-bold text-gray-800">{{ item.name }}</div>
-                <div class="text-[10px] text-gray-500">{{ formatRupiah(item.sales) }}</div>
+        <!-- Modernized Legend List -->
+        <div class="space-y-1.5 max-h-[190px] overflow-y-auto pr-1 custom-scrollbar mt-2 pt-2 border-t border-gray-100">
+          <div
+            v-for="(item, idx) in spbuShares"
+            :key="item.spbu_id"
+            class="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50/80 transition-all duration-200 border border-transparent hover:border-gray-100 text-xs"
+          >
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div
+                class="w-3 h-3 rounded-full shrink-0 shadow-xs"
+                :style="{ backgroundColor: ['#143d2e', '#22c55e', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0'][idx % 6] }"
+              ></div>
+              <div class="min-w-0">
+                <div class="font-bold text-gray-800 truncate">{{ item.name }}</div>
+                <div class="text-[10px] text-gray-400 font-semibold">{{ formatRupiah(item.sales) }}</div>
               </div>
             </div>
-            <div class="text-right">
-              <div class="text-sm font-black text-[#143d2e]">{{ item.value }}%</div>
+            <div class="text-right shrink-0">
+              <span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-50 text-[#143d2e] border border-emerald-200/50">
+                {{ item.value }}%
+              </span>
             </div>
           </div>
         </div>
@@ -423,10 +437,7 @@ const doughnutChartOptions = {
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2.5 min-w-0">
                 <span
-                  :class="[
-                    'w-7 h-7 rounded-full text-xs font-black inline-flex items-center justify-center shrink-0 shadow-xs',
-                    item.rank === 1 ? 'bg-amber-400 text-amber-950' : item.rank === 2 ? 'bg-slate-200 text-slate-800' : item.rank === 3 ? 'bg-amber-700/20 text-amber-800' : 'bg-gray-100 text-gray-600'
-                  ]"
+                  class="w-7 h-7 rounded-full text-xs font-black inline-flex items-center justify-center shrink-0 bg-gray-100 text-gray-600 shadow-2xs"
                 >
                   #{{ item.rank }}
                 </span>
@@ -505,10 +516,7 @@ const doughnutChartOptions = {
                 <!-- Rank Badge -->
                 <td class="py-4 px-3 text-center whitespace-nowrap">
                   <span
-                    :class="[
-                      'w-7 h-7 rounded-full text-xs font-black inline-flex items-center justify-center shadow-xs',
-                      index === 0 ? 'bg-amber-400 text-amber-950' : index === 1 ? 'bg-slate-200 text-slate-800' : index === 2 ? 'bg-amber-700/20 text-amber-800' : 'bg-gray-100 text-gray-600'
-                    ]"
+                    class="w-7 h-7 rounded-full text-xs font-black inline-flex items-center justify-center bg-gray-100 text-gray-600 shadow-2xs"
                   >
                     #{{ index + 1 }}
                   </span>
@@ -555,7 +563,7 @@ const doughnutChartOptions = {
     <div class="bg-white rounded-3xl p-5 md:p-6 border border-gray-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
       <div>
         <h4 class="text-base font-extrabold text-[#143d2e]">Unduh Laporan & Analytics</h4>
-        <p class="text-xs font-semibold text-gray-400">Ekspor rekapitulasi data ke format Excel (.csv) atau Dokumen PDF</p>
+        <p class="text-xs font-semibold text-gray-400">Ekspor rekapitulasi data ke format Excel (.xlsx) atau Dokumen PDF</p>
       </div>
 
       <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
@@ -566,7 +574,7 @@ const doughnutChartOptions = {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-emerald-600 shrink-0">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-8.625 1.125L12 10.5m0 0 4.5 4.5M12 10.5V3" />
           </svg>
-          <span>Export Excel (.csv)</span>
+          <span>Export Excel (.xlsx)</span>
         </button>
 
         <button
