@@ -113,7 +113,7 @@ const onSortSelectChange = (e) => {
         v-for="opt in [
           { val: '', label: 'Semua' },
           { val: 'ojol', label: 'Ojol' },
-          { val: 'non_ojol', label: 'Biasa' }
+          { val: 'non_ojol', label: 'Umum' }
         ]"
         :key="opt.val"
         @click="$emit('update:vehicleFilter', opt.val)"

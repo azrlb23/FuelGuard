@@ -140,7 +140,7 @@ const prevPage = () => {
                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold"
                         :class="item.is_ojol ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30' : 'bg-white/10 text-white/80 border border-white/10'"
                       >
-                        {{ item.is_ojol ? 'Motor OJOL' : 'Motor Biasa' }}
+                        {{ item.is_ojol ? 'Ojol' : 'Umum' }}
                       </span>
                     </td>
                     <td class="py-3.5 text-right text-white/90 font-medium">

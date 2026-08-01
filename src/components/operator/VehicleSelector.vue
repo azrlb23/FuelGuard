@@ -16,20 +16,20 @@ defineEmits(['select'])
     </div>
 
     <div class="flex flex-col sm:flex-row gap-4 md:gap-6 w-full max-w-xl justify-center px-2">
-      <!-- Button Motor Ojol -->
+      <!-- Button Ojol -->
       <button
         @click="$emit('select', { type: 'Ojol', isOjol: true })"
         class="group relative flex-1 bg-white/10 hover:bg-white/20 border-2 border-white/30 hover:border-white rounded-2xl md:rounded-3xl p-6 md:p-8 transition-all duration-300 flex flex-col items-center justify-center gap-3 hover:scale-[1.03] active:scale-95 shadow-xl hover:shadow-emerald-500/20 backdrop-blur-sm cursor-pointer"
       >
-        <span class="text-xl md:text-2xl font-black text-white tracking-wider uppercase text-center leading-tight">Motor<br>Ojol</span>
+        <span class="text-xl md:text-2xl font-black text-white tracking-wider uppercase text-center leading-tight">Ojol</span>
       </button>
 
-      <!-- Button Motor Umum / Biasa -->
+      <!-- Button Umum -->
       <button
         @click="$emit('select', { type: 'Non-Ojol', isOjol: false })"
         class="group relative flex-1 bg-white/10 hover:bg-white/20 border-2 border-white/30 hover:border-white rounded-2xl md:rounded-3xl p-6 md:p-8 transition-all duration-300 flex flex-col items-center justify-center gap-3 hover:scale-[1.03] active:scale-95 shadow-xl hover:shadow-emerald-500/20 backdrop-blur-sm cursor-pointer"
       >
-        <span class="text-xl md:text-2xl font-black text-white tracking-wider uppercase text-center leading-tight">Motor<br>Biasa</span>
+        <span class="text-xl md:text-2xl font-black text-white tracking-wider uppercase text-center leading-tight">Umum</span>
       </button>
 
     </div>

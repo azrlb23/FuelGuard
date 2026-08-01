@@ -109,7 +109,7 @@ const prevPage = () => {
                 class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border border-white/15"
                 :class="trx.is_ojol ? 'bg-green-500/20 text-green-200' : 'bg-white/10 text-white/90'"
               >
-                {{ trx.is_ojol ? 'Motor Ojol' : 'Motor Biasa' }}
+                {{ trx.is_ojol ? 'Ojol' : 'Umum' }}
               </span>
             </div>
 
@@ -156,8 +156,7 @@ const prevPage = () => {
             <th class="pb-4 font-medium">Kendaraan</th>
             <th class="pb-4 font-medium">Plat Nomor</th>
             <th class="pb-4 font-medium">Volume</th>
-            <th class="pb-4 font-medium">Revenue</th>
-            <th class="pb-4 pr-2 font-medium text-right">Status</th>
+            <th class="pb-4 pr-2 font-medium">Revenue</th>
           </tr>
         </thead>
         <tbody class="text-sm">
@@ -168,8 +167,7 @@ const prevPage = () => {
               <td class="py-4"><div class="skeleton h-6 w-16 bg-white/10 rounded-full"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-20 bg-white/10 rounded"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-12 bg-white/10 rounded"></div></td>
-              <td class="py-4"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
-              <td class="py-4 pr-2 flex justify-end"><div class="skeleton h-6 w-16 bg-white/10 rounded-md"></div></td>
+              <td class="py-4 pr-2"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
             </tr>
           </template>
 
@@ -187,20 +185,17 @@ const prevPage = () => {
               </td>
               <td class="py-4">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-white/90 border border-white/15">
-                  {{ trx.is_ojol ? 'Motor OJOL' : 'Motor Biasa' }}
+                  {{ trx.is_ojol ? 'Ojol' : 'Umum' }}
                 </span>
               </td>
               <td class="py-4 font-mono font-bold text-white tracking-wider">{{ trx.plat_nomor }}</td>
               <td class="py-4 text-white/80 font-medium">{{ trx.liter }} L</td>
-              <td class="py-4 font-bold text-white">{{ formatRupiah(trx.harga) }}</td>
-              <td class="py-4 pr-2 text-right">
-                <span class="text-xs text-green-300 font-bold bg-green-500/20 px-2.5 py-1 rounded-md border border-green-500/30">Berhasil</span>
-              </td>
+              <td class="py-4 pr-2 font-bold text-white">{{ formatRupiah(trx.harga) }}</td>
             </tr>
           </template>
 
           <tr v-else>
-            <td colspan="7" class="py-12 text-center flex flex-col items-center justify-center text-green-100/50">
+            <td colspan="6" class="py-12 text-center flex flex-col items-center justify-center text-green-100/50">
               <span class="text-4xl mb-2">🍃</span>
               <span class="italic">Tidak ada riwayat transaksi ditemukan.</span>
             </td>
