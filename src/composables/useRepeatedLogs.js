@@ -1,9 +1,9 @@
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'vue3-toastify'
 
-export function useRepeatedLogs(itemsPerPage = 10) {
+export function useRepeatedLogs(itemsPerPage = 50) {
   const logs = ref([])
   const loading = ref(false)
   const totalCount = ref(0)
@@ -34,20 +34,7 @@ export function useRepeatedLogs(itemsPerPage = 10) {
       }
 
       if (data) {
-        // Hitung awal hari ini dalam WITA (UTC+8) sebagai UTC timestamp
-        // Contoh: 2026-07-31 00:00 WITA = 2026-07-30 16:00 UTC
-        const todayWita = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' }) // 'YYYY-MM-DD'
-        const startOfTodayWITA = new Date(todayWita + 'T00:00:00+08:00')
-
-        // Filter: buang log yang created_at-nya sebelum tengah malam WITA hari ini
-        // (RPC mengembalikan tanggal & waktu dalam UTC, reconstruct lalu bandingkan)
-        const rawLogs = (data.logs || []).filter(item => {
-          if (!item.tanggal || !item.waktu) return true
-          const entryUTC = new Date(`${item.tanggal} ${item.waktu} UTC`)
-          return entryUTC >= startOfTodayWITA
-        })
-
-        logs.value = rawLogs
+        logs.value = data.logs || []
         totalCount.value = data.total_count || 0
       }
     } catch (err) {
@@ -92,10 +79,17 @@ export function useRepeatedLogs(itemsPerPage = 10) {
     }))
   })
 
-  watch([searchQuery], () => {
-    currentPage.value = 1
-    fetchOperatorLogs()
+  // Debounce search (300ms) to avoid flooding RPC on every keystroke
+  let searchDebounceTimer = null
+  watch(searchQuery, () => {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = setTimeout(() => {
+      currentPage.value = 1
+      fetchOperatorLogs()
+    }, 300)
   })
+
+  onUnmounted(() => clearTimeout(searchDebounceTimer))
 
   watch(currentPage, () => {
     fetchOperatorLogs()

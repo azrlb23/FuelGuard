@@ -31,6 +31,7 @@ export function useTransactionAction() {
     checkingPlate.value = true
 
     try {
+      // READ-ONLY: Panggil RPC fn_check_plate_status tanpa melakukan INSERT apapun
       const { data, error } = await supabase.rpc('fn_check_plate_status', {
         p_plat: platNomor.trim().toUpperCase(),
         p_is_ojol: isOjol,
@@ -39,31 +40,34 @@ export function useTransactionAction() {
 
       if (error) throw error
 
-      // Jika plat terdeteksi sudah mengisi hari ini / kuota habis saat dicek, catat ke repeated_transaction_logs
-      if (data && (data.hasRefueledToday || data.remainingQuota <= 0)) {
-        try {
-          await supabase.from('repeated_transaction_logs').insert({
-            plat_nomor: platNomor.trim().toUpperCase(),
-            attempt_spbu_id: authStore.spbuId,
-            attempt_operator_id: authStore.activeKasirId,
-            is_ojol: isOjol,
-            attempted_liter: 0,
-            total_harga_today: data.totalHargaToday || 50000,
-            reason: 'quota_exceeded',
-            created_at: new Date().toISOString()
-          })
-        } catch (logErr) {
-          console.error('[checkPlateStatus] Gagal mencatat log perulangan:', logErr)
-        }
-      }
-
       return data || { success: false, reason: 'no_data' }
     } catch (err) {
       console.error("[checkPlateStatus] Error:", err)
-      toast.error("Gagal memeriksa database: " + err.message)
-      return { success: false, reason: 'error' }
+      return { success: false, reason: 'error', message: err.message || err }
     } finally {
       checkingPlate.value = false
+    }
+  }
+
+  /**
+   * CATAT LOG PERULANGAN EKSPLISIT (Hanya dipanggil ketika Operator menekan tombol CEK PLAT / ENTER)
+   */
+  const recordRepeatedLog = async (platNomor, isOjol, reason, totalHargaToday = 0) => {
+    if (!platNomor || !authStore.spbuId || !authStore.activeKasirId) return
+
+    try {
+      await supabase.from('repeated_transaction_logs').insert({
+        plat_nomor: platNomor.trim().toUpperCase(),
+        attempt_spbu_id: authStore.spbuId,
+        attempt_operator_id: authStore.activeKasirId,
+        is_ojol: isOjol,
+        attempted_liter: 0,
+        total_harga_today: totalHargaToday,
+        reason: reason || 'quota_exceeded',
+        created_at: new Date().toISOString()
+      })
+    } catch (err) {
+      console.error('[recordRepeatedLog] Gagal mencatat log perulangan:', err)
     }
   }
 
@@ -78,9 +82,9 @@ export function useTransactionAction() {
     let isOjol = false
 
     if (typeof platOrForm === 'object' && platOrForm !== null) {
-      plat = platOrForm.plat_nomor || platOrForm.plat || ''
+      plat = platOrForm.platNomor || platOrForm.plat_nomor || platOrForm.plat || ''
       liter = platOrForm.liter
-      isOjol = literOrVehicle === true || literOrVehicle === 'Ojol'
+      isOjol = platOrForm.isOjol !== undefined ? !!platOrForm.isOjol : (literOrVehicle === true || literOrVehicle === 'Ojol')
     } else {
       plat = platOrForm || ''
       liter = literOrVehicle
@@ -136,6 +140,7 @@ export function useTransactionAction() {
     loading,
     checkingPlate,
     checkPlateStatus,
+    recordRepeatedLog,
     submitTransaction
   }
 }

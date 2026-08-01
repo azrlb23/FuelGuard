@@ -27,7 +27,7 @@ const {
 } = useTransactionHistory(10, { dateFilter: true })
 
 // Composable 2: Log Alert Pengetap (grouped accordion)
-const itemsPerPagePengetap = 10
+const itemsPerPagePengetap = 50
 const {
   groupedLogs: pengetapGrouped,
   loading: loadingPengetap,
@@ -56,22 +56,14 @@ watch(activeTab, (newTab) => {
     fetchOperatorLogs()
   }
 })
-
+  
 const formatRupiah = (number) => {
   if (!number && number !== 0) return 'Rp 0'
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number)
 }
 
 const formatWitaTime = (timeStr) => {
-  if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return timeStr || '-'
-  const parts = timeStr.split(':')
-  const h = parseInt(parts[0], 10)
-  const m = parts[1]
-  if (!isNaN(h)) {
-    const witaHour = (h + 8) % 24
-    return `${String(witaHour).padStart(2, '0')}:${m}`
-  }
-  return timeStr
+  return timeStr || '-'
 }
 
 const nextPagePengetap = () => {
@@ -88,31 +80,22 @@ const prevPagePengetap = () => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full gap-4 animate-enter overflow-hidden pb-2">
+  <div class="flex flex-col gap-4 animate-enter pb-6">
     
     <!-- Header Navigation & Tab Switcher Bar -->
     <div class="flex-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-1">
       
-      <!-- Back Button & Page Title -->
-      <div class="flex items-center gap-3">
+      <!-- Back Button (Desktop Only) -->
+      <div class="hidden sm:flex items-center gap-3">
         <router-link 
           to="/operator" 
-          class="w-11 h-11 rounded-2xl bg-white hover:bg-green-50 border border-green-200 flex items-center justify-center text-[#143d2e] shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer shrink-0"
+          class="w-11 h-11 rounded-2xl bg-white hover:bg-gray-100 border border-gray-200 flex items-center justify-center text-[#143d2e] shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer shrink-0"
           title="Kembali ke Dashboard"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
           </svg>
         </router-link>
-
-        <div>
-          <h2 class="text-xl md:text-2xl font-black text-[#143d2e] tracking-tight leading-none">
-            Aktivitas Operasional
-          </h2>
-          <p class="text-xs text-gray-500 font-medium mt-1">
-            Pantau riwayat pengisian sukses & audit alert pengetap hari ini
-          </p>
-        </div>
       </div>
 
       <!-- Segmented Tab Switcher (Riwayat vs Alert Pengetap) -->
@@ -133,19 +116,12 @@ const prevPagePengetap = () => {
         <button
           @click="activeTab = 'pengetap'"
           class="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 select-none relative"
-          :class="activeTab === 'pengetap' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
+          :class="activeTab === 'pengetap' ? 'bg-[#143d2e] text-white shadow-md' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
           Alert Pengetap
-          <span 
-            v-if="totalPengetap > 0"
-            class="px-1.5 py-0.5 rounded-full text-[10px] font-black"
-            :class="activeTab === 'pengetap' ? 'bg-white text-amber-700' : 'bg-amber-500 text-white'"
-          >
-            {{ totalPengetap }}
-          </span>
         </button>
       </div>
 
@@ -154,7 +130,7 @@ const prevPagePengetap = () => {
     <!-- TAB 1 CONTENT: Riwayat Transaksi Hari Ini -->
     <div 
       v-if="activeTab === 'history'"
-      class="flex-1 min-h-0 bg-white rounded-3xl border border-gray-100 shadow-xs flex flex-col overflow-hidden animate-fade-in"
+      class="bg-white rounded-3xl border border-gray-100 shadow-xs flex flex-col animate-fade-in"
     >
       <!-- Top Section: Filter Bar -->
       <div class="p-4 border-b border-gray-100 bg-white">
@@ -170,7 +146,7 @@ const prevPagePengetap = () => {
       </div>
 
       <!-- Bottom Section: History Table -->
-      <div class="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+      <div class="flex-1 p-4 bg-gray-50/50">
         <HistoryTable 
           :transactions="transactions"
           :loading="loadingHistory"
@@ -185,7 +161,7 @@ const prevPagePengetap = () => {
     <!-- TAB 2 CONTENT: Alert Pengetap Terdeteksi Hari Ini -->
     <div 
       v-else-if="activeTab === 'pengetap'"
-      class="flex-1 min-h-0 bg-white rounded-3xl border border-gray-100 shadow-xs flex flex-col overflow-hidden animate-fade-in"
+      class="bg-white rounded-3xl border border-gray-100 shadow-xs flex flex-col animate-fade-in"
     >
       <!-- Filter Bar -->
       <div class="p-4 border-b border-gray-100 bg-white flex flex-col sm:flex-row justify-between items-center gap-3">
@@ -194,47 +170,26 @@ const prevPagePengetap = () => {
           <input
             v-model="searchPengetap"
             type="text"
-            placeholder="Cari Plat Terduga..."
-            class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition-all"
+            placeholder="Cari Plat, Operator, Jam (21:00), atau Alasan..."
+            class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#143d2e]/15 focus:border-[#143d2e] focus:bg-white transition-all shadow-2xs"
           />
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-gray-400 absolute left-3.5 top-2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
         </div>
 
-        <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+        <div v-if="searchPengetap" class="flex items-center gap-3 w-full sm:w-auto justify-end">
           <button
-            v-if="searchPengetap"
             @click="resetPengetap"
             class="text-xs font-bold text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
           >
             Reset Pencarian
           </button>
-
-          <button
-            @click="fetchOperatorLogs"
-            :disabled="loadingPengetap"
-            class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            title="Segarkan Data Log"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke-width="2" 
-              stroke="currentColor" 
-              class="w-3.5 h-3.5"
-              :class="{ 'animate-spin': loadingPengetap }"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
-            Segarkan Log
-          </button>
         </div>
       </div>
 
       <!-- Accordion Pengetap Section -->
-      <div class="flex-1 overflow-y-auto p-4 bg-gray-50/40">
+      <div class="flex-1 p-4 bg-gray-50/40">
         <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-8 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
           
           <!-- Glow decoration -->
@@ -272,65 +227,45 @@ const prevPagePengetap = () => {
               <button
                 type="button"
                 @click="togglePlate(group.plat_nomor)"
-                class="w-full flex items-center gap-3 px-4 py-3.5 text-left cursor-pointer transition-colors"
+                class="w-full flex items-center justify-between px-3 md:px-5 py-3 md:py-4 text-left cursor-pointer transition-colors gap-2"
               >
-                <!-- Chevron -->
-                <div class="shrink-0 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300"
-                  :class="expandedPlates.has(group.plat_nomor) ? 'rotate-180' : ''">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 text-white/80">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
+                <!-- Kiri: Plat Nomor & Kategori Badge -->
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-base md:text-xl font-mono font-black text-white tracking-wider whitespace-nowrap">
+                    {{ group.plat_nomor }}
+                  </span>
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold bg-white/10 text-white/90 border border-white/15 shrink-0"
+                  >
+                    {{ group.is_ojol ? 'Ojol' : 'Biasa' }}
+                  </span>
                 </div>
 
-                <!-- Plat Nomor -->
-                <span class="text-lg font-mono font-black text-white tracking-widest flex-shrink-0">
-                  {{ group.plat_nomor }}
-                </span>
-
-                <!-- Kategori badge -->
-                <span
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0"
-                  :class="group.is_ojol ? 'bg-green-500/20 text-green-200 border border-green-500/30' : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'"
-                >
-                  {{ group.is_ojol ? 'Motor OJOL' : 'Motor Biasa' }}
-                </span>
-
-                <!-- Spacer -->
-                <div class="flex-1"></div>
-
-                <!-- Attempt count badge -->
-                <div class="flex items-center gap-1.5 shrink-0">
-                  <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-200 text-xs font-bold">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
+                <!-- Kanan: Ikon Alert + Jumlah Percobaan + Chevron -->
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-200 text-[10px] md:text-xs font-bold shadow-xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-red-300">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                     </svg>
-                    {{ group.attempt_count }}x Percobaan
+                    {{ group.attempt_count }}x <span class="hidden sm:inline">Percobaan</span>
                   </span>
 
-                  <!-- Latest time badge -->
-                  <span class="hidden sm:inline-flex items-center px-2 py-1 rounded-lg bg-amber-400/20 border border-amber-400/30 text-amber-300 font-mono text-xs font-bold">
-                    {{ formatWitaTime(group.latest_waktu) }} WITA
-                  </span>
-
-                  <!-- SPBU list pill -->
-                  <span class="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 border border-white/10 text-green-100 text-xs font-bold">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-green-300">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                  <!-- Chevron indicator -->
+                  <div class="shrink-0 w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300"
+                    :class="expandedPlates.has(group.plat_nomor) ? 'rotate-180' : ''">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3 md:w-3.5 md:h-3.5 text-white/80">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                     </svg>
-                    {{ group.spbu_ids.join(', ') }}
-                  </span>
+                  </div>
                 </div>
               </button>
 
               <!-- ── EXPANDED DETAIL ROWS ── -->
               <div v-if="expandedPlates.has(group.plat_nomor)" class="border-t border-white/10">
-                <!-- Sub-header -->
-                <div class="hidden md:grid grid-cols-5 gap-4 px-4 py-2 bg-black/20 text-[10px] uppercase tracking-widest text-green-100/50 font-semibold">
+                <!-- Sub-header (3 Columns - Desktop) -->
+                <div class="hidden md:grid grid-cols-3 gap-4 px-5 py-2.5 bg-black/20 text-[10px] uppercase tracking-widest text-green-100/50 font-semibold">
                   <span>Jam (WITA)</span>
                   <span>Lokasi SPBU</span>
-                  <span>Operator Bertugas</span>
-                  <span class="text-right">Akumulasi Terisi</span>
                   <span class="text-right">Status</span>
                 </div>
 
@@ -338,44 +273,37 @@ const prevPagePengetap = () => {
                 <div
                   v-for="(entry, idx) in group.entries"
                   :key="entry.id"
-                  class="px-4 py-3 flex flex-col md:grid md:grid-cols-5 gap-2 md:gap-4 items-start md:items-center transition-colors hover:bg-white/5"
+                  class="px-3 md:px-5 py-2.5 md:py-3 flex flex-col md:grid md:grid-cols-3 gap-1.5 md:gap-4 items-start md:items-center transition-colors hover:bg-white/5"
                   :class="idx < group.entries.length - 1 ? 'border-b border-white/5' : ''"
                 >
-                  <!-- Jam -->
-                  <div>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-400/15 text-amber-300 font-mono text-xs font-bold border border-amber-400/20">
+                  <!-- Line 1 Mobile (Waktu + SPBU In-Line) -->
+                  <div class="flex items-center justify-between w-full md:w-auto">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded bg-white/10 text-white font-mono text-[11px] font-bold border border-white/10">
                       {{ formatWitaTime(entry.waktu) }} WITA
                     </span>
-                    <span class="md:hidden text-[10px] text-green-100/40 ml-2">{{ entry.tanggal }}</span>
+
+                    <div class="flex items-center gap-1 md:hidden">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-green-300 shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                      </svg>
+                      <span class="text-[11px] text-green-100 font-bold">SPBU {{ entry.attempt_spbu_id }}</span>
+                    </div>
                   </div>
 
-                  <!-- SPBU -->
-                  <div class="flex items-center gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-green-300 shrink-0">
+                  <!-- 2. SPBU (Desktop Only) -->
+                  <div class="hidden md:flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-green-300 shrink-0">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                     </svg>
-                    <span class="text-xs text-green-100/80 font-medium">SPBU {{ entry.attempt_spbu_id }}</span>
+                    <span class="text-xs text-green-100/90 font-bold">SPBU {{ entry.attempt_spbu_id }}</span>
                   </div>
 
-                  <!-- Operator -->
-                  <div class="flex items-center gap-2">
-                    <div class="w-5 h-5 rounded-full bg-white/15 flex items-center justify-center text-[9px] text-green-200 border border-white/20 font-bold shrink-0">
-                      {{ (entry.nama_operator || 'O')[0] }}
-                    </div>
-                    <span class="text-xs text-white/80 font-medium uppercase">{{ entry.nama_operator || 'Operator' }}</span>
-                  </div>
-
-                  <!-- Akumulasi -->
-                  <div class="text-right">
-                    <span class="text-sm font-black text-amber-300">{{ formatRupiah(entry.total_harga_today) }}</span>
-                    <p class="md:hidden text-[10px] text-amber-200/50">Akumulasi Terisi</p>
-                  </div>
-
-                  <!-- Status -->
-                  <div class="text-right">
-                    <span class="text-xs text-red-300 font-bold bg-red-500/15 px-2 py-0.5 rounded-md border border-red-500/20 whitespace-nowrap">
-                      Ditolak
+                  <!-- 3. Status -->
+                  <div class="w-full md:w-auto md:text-right">
+                    <span class="text-[10px] md:text-xs text-red-300 font-bold bg-red-500/15 px-2 py-0.5 rounded border border-red-500/20 whitespace-nowrap inline-block">
+                      {{ entry.reason === 'category_mismatch' ? 'Ditolak (Beda Kategori)' : 'Ditolak (Kuota Habis)' }}
                     </span>
                   </div>
                 </div>

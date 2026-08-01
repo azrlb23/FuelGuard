@@ -101,9 +101,49 @@ BEGIN
     END IF;
   END IF;
 
-  IF p_is_ojol THEN
-    v_max_quota := 100000;
-  END IF;
+  -- Lock Status Kategori Harian:
+  -- Cek apakah plat ini sudah punya transaksi pertama hari ini
+  DECLARE
+    v_first_is_ojol boolean := NULL;
+    v_today_start timestamptz;
+  BEGIN
+    v_today_start := date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar';
+
+    SELECT is_ojol INTO v_first_is_ojol
+    FROM public.transaksi_pertalite
+    WHERE plat_nomor = v_plat_clean
+      AND waktu_pencatatan >= v_today_start
+    ORDER BY waktu_pencatatan ASC
+    LIMIT 1;
+
+    -- Jika plat sudah pernah transaksi hari ini dengan kategori berbeda -> TOLAK & CATAT LOG
+    IF v_first_is_ojol IS NOT NULL AND v_first_is_ojol != p_is_ojol THEN
+      INSERT INTO public.repeated_transaction_logs (
+        plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, 
+        attempted_liter, total_harga_today, reason, created_at
+      ) VALUES (
+        v_plat_clean, v_spbu_id, p_operator_id, p_is_ojol,
+        p_liter, 0, 'category_mismatch', NOW()
+      );
+
+      RETURN json_build_object(
+        'success', false,
+        'reason', 'category_mismatch',
+        'message', format('Kendaraan %s hari ini sudah terdaftar sebagai %s! Tidak dapat bertransaksi sebagai %s.',
+          v_plat_clean,
+          CASE WHEN v_first_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END,
+          CASE WHEN p_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END
+        )
+      );
+    END IF;
+
+    -- Max Quota berdasarkan status kategori harian
+    IF COALESCE(v_first_is_ojol, p_is_ojol) THEN
+      v_max_quota := 100000;
+    ELSE
+      v_max_quota := 50000;
+    END IF;
+  END;
 
   PERFORM pg_advisory_xact_lock(hashtext(v_plat_clean));
 
@@ -121,15 +161,14 @@ BEGIN
 
   v_total_harga := p_liter * v_harga_per_liter;
 
-  -- Quota Check
+  -- Quota Check (waktu WITA)
   SELECT 
     COALESCE(SUM(harga), 0),
     COUNT(id)
   INTO v_total_harga_today, v_count_today
   FROM public.transaksi_pertalite
   WHERE plat_nomor = v_plat_clean
-    AND waktu_pencatatan >= date_trunc('day', NOW())
-    AND waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day';
+    AND waktu_pencatatan >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar';
 
   -- ANTI-PENGETAP LOGGING INJECTION
   IF (v_total_harga_today + v_total_harga) > v_max_quota THEN
@@ -191,11 +230,19 @@ DECLARE
 BEGIN
   v_offset := (GREATEST(p_page, 1) - 1) * p_page_size;
 
-  SELECT COUNT(id) INTO v_count_today
-  FROM public.repeated_transaction_logs
-  WHERE (p_spbu_id IS NULL OR p_spbu_id = '' OR attempt_spbu_id = p_spbu_id)
-    AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar'
-    AND (p_search = '' OR plat_nomor ILIKE '%' || p_search || '%');
+  SELECT COUNT(l.id) INTO v_count_today
+  FROM public.repeated_transaction_logs l
+  LEFT JOIN public.operator_profiles op ON op.id = l.attempt_operator_id
+  WHERE (p_spbu_id IS NULL OR p_spbu_id = '' OR l.attempt_spbu_id = p_spbu_id)
+    AND l.created_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar'
+    AND (
+      p_search = '' OR
+      l.plat_nomor ILIKE '%' || p_search || '%' OR
+      COALESCE(op.nama_operator, '') ILIKE '%' || p_search || '%' OR
+      l.attempt_spbu_id ILIKE '%' || p_search || '%' OR
+      l.reason ILIKE '%' || p_search || '%' OR
+      to_char(l.created_at AT TIME ZONE 'Asia/Makassar', 'HH24:MI') ILIKE '%' || p_search || '%'
+    );
 
   SELECT json_agg(t) INTO v_logs
   FROM (
@@ -213,8 +260,15 @@ BEGIN
     FROM public.repeated_transaction_logs l
     LEFT JOIN public.operator_profiles op ON op.id = l.attempt_operator_id
     WHERE (p_spbu_id IS NULL OR p_spbu_id = '' OR l.attempt_spbu_id = p_spbu_id)
-      AND l.created_at >= date_trunc('day', NOW())
-      AND (p_search = '' OR l.plat_nomor ILIKE '%' || p_search || '%')
+      AND l.created_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar'
+      AND (
+        p_search = '' OR
+        l.plat_nomor ILIKE '%' || p_search || '%' OR
+        COALESCE(op.nama_operator, '') ILIKE '%' || p_search || '%' OR
+        l.attempt_spbu_id ILIKE '%' || p_search || '%' OR
+        l.reason ILIKE '%' || p_search || '%' OR
+        to_char(l.created_at AT TIME ZONE 'Asia/Makassar', 'HH24:MI') ILIKE '%' || p_search || '%'
+      )
     ORDER BY l.created_at DESC
     LIMIT p_page_size OFFSET v_offset
   ) t;
@@ -352,8 +406,15 @@ BEGIN
   SELECT COUNT(t.id) INTO v_total_count
   FROM public.transaksi_pertalite t
   JOIN public.operator_profiles op ON op.id = t.operator_id
+  LEFT JOIN public.spbu s ON s.id = op.spbu_id
   WHERE (v_effective_spbu IS NULL OR op.spbu_id = v_effective_spbu)
-    AND (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
+    AND (
+      p_search = '' OR
+      t.plat_nomor ILIKE '%' || p_search || '%' OR
+      COALESCE(op.nama_operator, '') ILIKE '%' || p_search || '%' OR
+      COALESCE(s.nama, op.spbu_id) ILIKE '%' || p_search || '%' OR
+      to_char(t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar', 'HH24:MI') ILIKE '%' || p_search || '%'
+    )
     AND (v_date_from IS NULL OR t.waktu_pencatatan >= v_date_from)
     AND (v_date_to IS NULL OR t.waktu_pencatatan <= v_date_to);
 
@@ -375,7 +436,13 @@ BEGIN
     JOIN public.operator_profiles op ON op.id = t.operator_id
     LEFT JOIN public.spbu s ON s.id = op.spbu_id
     WHERE (v_effective_spbu IS NULL OR op.spbu_id = v_effective_spbu)
-      AND (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
+      AND (
+        p_search = '' OR
+        t.plat_nomor ILIKE '%' || p_search || '%' OR
+        COALESCE(op.nama_operator, '') ILIKE '%' || p_search || '%' OR
+        COALESCE(s.nama, op.spbu_id) ILIKE '%' || p_search || '%' OR
+        to_char(t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar', 'HH24:MI') ILIKE '%' || p_search || '%'
+      )
       AND (v_date_from IS NULL OR t.waktu_pencatatan >= v_date_from)
       AND (v_date_to IS NULL OR t.waktu_pencatatan <= v_date_to)
     ORDER BY

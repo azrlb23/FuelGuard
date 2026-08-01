@@ -13,9 +13,14 @@ const isOjol = ref(false)
 const authStore = useAuthStore()
 const { loading, submitTransaction } = useTransactionAction()
 
-const handleVehicleSelect = ({ type, isOjol: ojol }) => {
-  selectedVehicle.value = type
-  isOjol.value = ojol
+const handleVehicleSelect = (payload) => {
+  if (typeof payload === 'object' && payload !== null) {
+    selectedVehicle.value = payload.type || 'Ojol'
+    isOjol.value = !!payload.isOjol
+  } else {
+    selectedVehicle.value = payload
+    isOjol.value = payload === 'Ojol'
+  }
   step.value = 2
 }
 

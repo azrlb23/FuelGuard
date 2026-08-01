@@ -9,6 +9,7 @@ RETURNS text
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
+
 AS $$
   SELECT role FROM public.user_roles WHERE user_id = auth.uid() LIMIT 1;
 $$;
