@@ -21,6 +21,10 @@ const props = defineProps({
   activeTab: {
     type: String,
     default: 'operators'
+  },
+  resetAccountPassword: {
+    type: Function,
+    default: null
   }
 })
 
@@ -91,12 +95,6 @@ onUnmounted(() => {
   document.removeEventListener('click', handleFilterSpbuClickOutside)
 })
 
-// Reset Password State
-const resetForm = ref({
-  temporaryPassword: '',
-  copied: false
-})
-
 const openCreateModal = () => {
   modalMode.value = 'create'
   formData.value = {
@@ -119,15 +117,6 @@ const openEditModal = (member) => {
   isModalOpen.value = true
 }
 
-const openResetModal = (account) => {
-  selectedAccount.value = account
-  resetForm.value = {
-    temporaryPassword: `Pertamina#${Math.floor(1000 + Math.random() * 9000)}`,
-    copied: false
-  }
-  isResetModalOpen.value = true
-}
-
 const isConfirmModalOpen = ref(false)
 
 const handleSubmit = () => {
@@ -146,8 +135,63 @@ const confirmUpdateOperator = () => {
   isModalOpen.value = false
 }
 
+const resetForm = ref({
+  password: '',
+  copied: false,
+  success: false
+})
+const resetSubmitting = ref(false)
+
+const openResetModal = (account) => {
+  selectedAccount.value = account
+  resetForm.value = {
+    password: `Pertamina#${Math.floor(1000 + Math.random() * 9000)}`,
+    copied: false,
+    success: false
+  }
+  isResetModalOpen.value = true
+}
+
+const generateRandomPassword = () => {
+  resetForm.value.password = `Pertamina#${Math.floor(1000 + Math.random() * 9000)}`
+  resetForm.value.success = false
+}
+
+const handleExecuteResetPassword = async () => {
+  if (!selectedAccount.value || !selectedAccount.value.user_id) {
+    alert("Akun SPBU ini belum memiliki User ID Auth (belum ditautkan di tabel user_roles).")
+    return
+  }
+  if (!resetForm.value.password || resetForm.value.password.length < 6) {
+    alert("Password minimal harus 6 karakter")
+    return
+  }
+
+  resetSubmitting.value = true
+  try {
+    let res = null
+    if (typeof props.resetAccountPassword === 'function') {
+      res = await props.resetAccountPassword(
+        selectedAccount.value.user_id,
+        resetForm.value.password
+      )
+    }
+
+    if (res && res.success) {
+      resetForm.value.success = true
+    } else {
+      alert(res?.message || 'Gagal mereset password. Pastikan RPC 08_master_reset_password_rpc.sql sudah dijalankan di Supabase.')
+    }
+  } catch (err) {
+    console.error(err)
+    alert(err.message || 'Terjadi kesalahan saat mereset password')
+  } finally {
+    resetSubmitting.value = false
+  }
+}
+
 const copyTempPassword = () => {
-  navigator.clipboard.writeText(resetForm.value.temporaryPassword)
+  navigator.clipboard.writeText(resetForm.value.password)
   resetForm.value.copied = true
   setTimeout(() => {
     resetForm.value.copied = false
@@ -182,7 +226,7 @@ const formatDate = (dateString) => {
               <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
           </span>
-          <input 
+          <input
             :value="searchQuery"
             @input="$emit('update:searchQuery', $event.target.value)"
             type="text"
@@ -255,24 +299,36 @@ const formatDate = (dateString) => {
       </div>
 
       <!-- Table/Cards Content (no gap, same card) -->
-      
+
       <!-- TAB 1: PROFIL OPERATOR (SHIFT WORKERS) -->
       <div v-if="activeTab === 'operators'" class="pt-4">
-        
+
         <!-- Mobile List View -->
         <div class="block md:hidden space-y-3">
-          <div v-if="loading" class="py-12 text-center text-green-200/60 animate-pulse">
-            Memuat profil operator...
-          </div>
+          <!-- Skeleton Loading State -->
+          <template v-if="loading">
+            <div v-for="n in 3" :key="n" class="bg-black/20 rounded-2xl p-4 border border-white/10 animate-pulse space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-white/20"></div>
+                  <div class="space-y-1.5">
+                    <div class="h-4 w-32 bg-white/25 rounded-md"></div>
+                    <div class="h-3 w-20 bg-white/15 rounded-md"></div>
+                  </div>
+                </div>
+                <div class="h-5 w-14 bg-white/20 rounded-full"></div>
+              </div>
+            </div>
+          </template>
 
           <div v-else-if="members.length === 0" class="py-12 text-center text-green-200/60 text-xs font-medium border border-dashed border-white/10 rounded-2xl">
             Belum ada profil operator ditemukan.
           </div>
 
-          <div 
+          <div
             v-else
-            v-for="member in members" 
-            :key="member.id" 
+            v-for="member in members"
+            :key="member.id"
             class="bg-black/20 rounded-2xl p-4 border border-white/10 flex flex-col gap-3"
           >
             <div class="flex items-center justify-between">
@@ -285,7 +341,7 @@ const formatDate = (dateString) => {
                   <p class="text-[11px] text-green-200/70 font-semibold">{{ member.spbu_name }}</p>
                 </div>
               </div>
-              <span 
+              <span
                 class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border"
                 :class="member.is_active ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'"
               >
@@ -297,7 +353,7 @@ const formatDate = (dateString) => {
 
             <div class="flex items-center justify-between text-xs pt-0.5">
               <span class="text-green-200/60 font-medium">Dibuat: {{ formatDate(member.created_at) }}</span>
-              <button 
+              <button
                 @click="openEditModal(member)"
                 class="px-3 py-1 bg-white/10 text-white hover:bg-white/20 rounded-lg text-xs font-bold border border-white/15 transition-colors cursor-pointer"
               >
@@ -313,19 +369,28 @@ const formatDate = (dateString) => {
             <thead>
               <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider border-b border-white/15 pb-4">
                 <th class="pb-4 pl-3">NAMA OPERATOR</th>
-                <th class="pb-4">UNIT SPBU PENUGASAN</th>
+                <th class="pb-4">SPBU</th>
                 <th class="pb-4">STATUS PETUGAS</th>
                 <th class="pb-4">TANGGAL DIBUAT</th>
                 <th class="pb-4 pr-3 text-right">AKSI</th>
               </tr>
             </thead>
-            
+
             <tbody class="text-sm">
-              <tr v-if="loading">
-                <td colspan="5" class="py-12 text-center text-green-200/60 animate-pulse">
-                  Memuat data operator...
-                </td>
-              </tr>
+              <template v-if="loading">
+                <tr v-for="n in 3" :key="n" class="border-b border-white/10 animate-pulse">
+                  <td class="py-4 pl-3">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-white/20"></div>
+                      <div class="h-4 w-32 bg-white/25 rounded-md"></div>
+                    </div>
+                  </td>
+                  <td class="py-4"><div class="h-4 w-36 bg-white/20 rounded-md"></div></td>
+                  <td class="py-4"><div class="h-5 w-16 bg-white/20 rounded-full"></div></td>
+                  <td class="py-4"><div class="h-4 w-28 bg-white/20 rounded-md"></div></td>
+                  <td class="py-4 pr-3 text-right"><div class="h-8 w-20 bg-white/20 rounded-xl ml-auto"></div></td>
+                </tr>
+              </template>
 
               <tr v-else-if="members.length === 0">
                 <td colspan="5" class="py-12 text-center text-green-200/60 text-xs font-medium">
@@ -333,10 +398,10 @@ const formatDate = (dateString) => {
                 </td>
               </tr>
 
-              <tr 
+              <tr
                 v-else
-                v-for="member in members" 
-                :key="member.id" 
+                v-for="member in members"
+                :key="member.id"
                 class="hover:bg-white/5 transition-colors duration-150 border-b border-white/10 last:border-0"
               >
                 <td class="py-4 pl-3">
@@ -358,7 +423,7 @@ const formatDate = (dateString) => {
                 </td>
 
                 <td class="py-4">
-                  <span 
+                  <span
                     class="px-3 py-1 rounded-full text-xs font-bold border"
                     :class="member.is_active ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'"
                   >
@@ -371,7 +436,7 @@ const formatDate = (dateString) => {
                 </td>
 
                 <td class="py-4 pr-3 text-right">
-                  <button 
+                  <button
                     @click="openEditModal(member)"
                     class="px-3 py-1.5 bg-white/15 text-white hover:bg-white/25 rounded-xl text-xs font-bold border border-white/15 transition-all cursor-pointer active:scale-95"
                   >
@@ -387,21 +452,29 @@ const formatDate = (dateString) => {
 
       <!-- TAB 2: AKUN SPBU (LOGIN & AUTHENTICATION CREDENTIALS) -->
       <div v-else-if="activeTab === 'accounts'">
-        
+
         <!-- Mobile List View -->
         <div class="block md:hidden space-y-3">
-          <div v-if="loading" class="py-12 text-center text-green-200/60 animate-pulse">
-            Memuat akun SPBU...
-          </div>
+          <template v-if="loading">
+            <div v-for="n in 3" :key="n" class="bg-black/20 rounded-2xl p-4 border border-white/10 animate-pulse space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="space-y-1.5">
+                  <div class="h-4 w-32 bg-white/25 rounded-md"></div>
+                  <div class="h-3 w-40 bg-white/15 rounded-md"></div>
+                </div>
+                <div class="h-5 w-16 bg-white/20 rounded-full"></div>
+              </div>
+            </div>
+          </template>
 
           <div v-else-if="accounts.length === 0" class="py-12 text-center text-green-200/60 text-xs font-medium border border-dashed border-white/10 rounded-2xl">
             Belum ada akun SPBU ditemukan.
           </div>
 
-          <div 
+          <div
             v-else
-            v-for="acc in accounts" 
-            :key="acc.user_id || acc.spbu_id" 
+            v-for="acc in accounts"
+            :key="acc.user_id || acc.spbu_id"
             class="bg-black/20 rounded-2xl p-4 border border-white/10 flex flex-col gap-3"
           >
             <div class="flex items-center justify-between">
@@ -417,7 +490,7 @@ const formatDate = (dateString) => {
             <div class="h-px bg-white/10 w-full"></div>
 
             <div class="flex justify-end pt-0.5">
-              <button 
+              <button
                 @click="openResetModal(acc)"
                 class="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded-xl text-xs font-bold border border-amber-500/30 transition-colors cursor-pointer"
               >
@@ -438,13 +511,16 @@ const formatDate = (dateString) => {
                 <th class="pb-4 pr-3 text-right">AKSI AUTHENTICATION</th>
               </tr>
             </thead>
-            
+
             <tbody class="text-sm">
-              <tr v-if="loading">
-                <td colspan="4" class="py-12 text-center text-green-200/60 animate-pulse">
-                  Memuat akun SPBU...
-                </td>
-              </tr>
+              <template v-if="loading">
+                <tr v-for="n in 3" :key="n" class="border-b border-white/10 animate-pulse">
+                  <td class="py-4 pl-3"><div class="h-4 w-32 bg-white/20 rounded-md"></div></td>
+                  <td class="py-4"><div class="h-4 w-48 bg-white/20 rounded-md"></div></td>
+                  <td class="py-4"><div class="h-5 w-16 bg-white/20 rounded-full"></div></td>
+                  <td class="py-4 pr-3 text-right"><div class="h-8 w-32 bg-white/20 rounded-xl ml-auto"></div></td>
+                </tr>
+              </template>
 
               <tr v-else-if="accounts.length === 0">
                 <td colspan="4" class="py-12 text-center text-green-200/60 text-xs font-medium">
@@ -452,10 +528,10 @@ const formatDate = (dateString) => {
                 </td>
               </tr>
 
-              <tr 
+              <tr
                 v-else
-                v-for="acc in accounts" 
-                :key="acc.user_id || acc.spbu_id" 
+                v-for="acc in accounts"
+                :key="acc.user_id || acc.spbu_id"
                 class="hover:bg-white/5 transition-colors duration-150 border-b border-white/10 last:border-0"
               >
                 <td class="py-4 pl-3">
@@ -481,7 +557,7 @@ const formatDate = (dateString) => {
                 </td>
 
                 <td class="py-4 pr-3 text-right">
-                  <button 
+                  <button
                     @click="openResetModal(acc)"
                     class="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded-xl text-xs font-bold border border-amber-500/30 transition-all cursor-pointer active:scale-95"
                   >
@@ -512,7 +588,7 @@ const formatDate = (dateString) => {
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1.5">Nama Operator</label>
-            <input 
+            <input
               v-model="formData.nama_operator"
               type="text"
               required
@@ -584,15 +660,15 @@ const formatDate = (dateString) => {
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button 
-              type="button" 
-              @click="isModalOpen = false" 
+            <button
+              type="button"
+              @click="isModalOpen = false"
               class="px-5 py-2.5 rounded-full text-xs font-bold text-gray-600 hover:bg-gray-100 transition-colors"
             >
               Batal
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               :disabled="isSubmitting"
               class="px-6 py-2.5 rounded-full text-xs font-bold bg-[#143d2e] text-white hover:bg-[#1a4a38] transition-colors shadow-md shadow-green-900/10 cursor-pointer"
             >
@@ -605,7 +681,7 @@ const formatDate = (dateString) => {
 
     <!-- Modal Reset Password Akun SPBU -->
     <div v-if="isResetModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6 border border-gray-100 animate-enter">
+      <div class="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-5 border border-gray-100 animate-enter">
         <div class="flex items-center justify-between border-b border-gray-100 pb-4">
           <div>
             <h3 class="text-lg font-black text-[#143d2e]">Reset Password Akun SPBU</h3>
@@ -616,39 +692,82 @@ const formatDate = (dateString) => {
           </button>
         </div>
 
-        <div class="space-y-4">
-          <!-- Temporary Password Generator -->
-          <div class="bg-amber-50 rounded-2xl p-4 border border-amber-200/70 space-y-2">
-            <div class="flex items-center gap-2">
-              <span class="text-amber-700 font-bold text-xs">⚡ Password Sementara Login Akun SPBU</span>
+        <div v-if="resetForm.success" class="space-y-4">
+          <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-200/80 space-y-3">
+            <div class="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+              <span>✅ Password Akun Berhasil Di-reset!</span>
             </div>
-            <p class="text-[11px] text-amber-900/80 leading-relaxed font-medium">
-              Gunakan password sementara ini untuk login ke akun autentikasi unit {{ selectedAccount?.spbu_name }}:
+            <p class="text-[11px] text-emerald-900/80 leading-relaxed font-medium">
+              Password baru untuk login akun autentikasi unit <strong>{{ selectedAccount?.spbu_name }}</strong> adalah:
             </p>
             <div class="flex items-center gap-2 pt-1">
-              <input 
-                readonly 
-                :value="resetForm.temporaryPassword" 
-                class="flex-1 bg-white font-mono font-bold text-sm px-3 py-2 rounded-xl border border-amber-300 text-gray-800 focus:outline-none"
+              <input
+                readonly
+                :value="resetForm.password"
+                class="flex-1 bg-white font-mono font-bold text-sm px-3 py-2 rounded-xl border border-emerald-300 text-gray-800 focus:outline-none"
               />
-              <button 
+              <button
                 @click="copyTempPassword"
-                class="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                class="px-3 py-2 bg-[#143d2e] hover:bg-[#1a4a38] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
               >
                 {{ resetForm.copied ? 'Tercopy!' : 'Copy' }}
               </button>
             </div>
           </div>
+          <div class="flex justify-end">
+            <button
+              @click="isResetModalOpen = false"
+              class="px-6 py-2.5 rounded-full text-xs font-bold bg-[#143d2e] text-white hover:bg-[#1a4a38] transition-colors shadow-md cursor-pointer"
+            >
+              Selesai
+            </button>
+          </div>
         </div>
 
-        <div class="flex justify-end pt-2">
-          <button 
-            @click="isResetModalOpen = false" 
-            class="px-6 py-2.5 rounded-full text-xs font-bold bg-gray-800 text-white hover:bg-gray-900 transition-colors shadow-md cursor-pointer"
-          >
-            Selesai
-          </button>
-        </div>
+        <form v-else @submit.prevent="handleExecuteResetPassword" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1.5">Password Baru Akun SPBU</label>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="resetForm.password"
+                type="text"
+                required
+                minlength="6"
+                placeholder="Masukkan password baru"
+                class="flex-1 px-4 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-mono font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e]"
+              />
+              <button
+                type="button"
+                @click="generateRandomPassword"
+                title="Generate Password Acak"
+                class="px-3 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0"
+              >
+                🎲 Acak
+              </button>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-1.5">
+              Dapat diketik manual atau menggunakan tombol acak di atas.
+            </p>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              @click="isResetModalOpen = false"
+              class="px-5 py-2.5 rounded-full text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              :disabled="resetSubmitting"
+              class="px-6 py-2.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition-colors shadow-md active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+            >
+              <span v-if="resetSubmitting" class="loading loading-spinner loading-xs"></span>
+              Reset Password Akun
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 

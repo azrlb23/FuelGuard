@@ -43,8 +43,8 @@ const fetchReport = async () => {
     return
   }
   loading.value = true
+  const minLoadingPromise = new Promise(resolve => setTimeout(resolve, 350))
   try {
-    // Aggregasi langsung dari transaksi_pertalite (menggantikan RPC get_report_summary yang belum ada)
     const { data: summaryData, error: summaryError } = await supabase
       .from('transaksi_pertalite')
       .select('liter, harga')
@@ -61,7 +61,8 @@ const fetchReport = async () => {
       vehicle: rows.length
     }
 
-    await fetchTableData()
+    await fetchTableDataInternal()
+    await minLoadingPromise
   } catch (err) {
     console.error(err)
     toast.error(err.message)
@@ -70,7 +71,7 @@ const fetchReport = async () => {
   }
 }
 
-const fetchTableData = async () => {
+const fetchTableDataInternal = async () => {
   const from = (currentPage.value - 1) * itemsPerPage
   const to = from + itemsPerPage - 1
   const { data, count, error } = await supabase.from('transaksi_pertalite')
@@ -82,9 +83,32 @@ const fetchTableData = async () => {
     .range(from, to)
   
   if (error) throw error
-  transactions.value = data
-  totalItems.value = count
+  transactions.value = data || []
+  totalItems.value = count || 0
 }
+
+const fetchTableData = async () => {
+  loading.value = true
+  const minLoadingPromise = new Promise(resolve => setTimeout(resolve, 300))
+  try {
+    await fetchTableDataInternal()
+    await minLoadingPromise
+  } catch (err) {
+    console.error(err)
+  } finally {
+    loading.value = false
+  }
+}
+
+let debounceTimer = null
+watch([startDate, endDate], () => {
+  if (startDate.value && endDate.value) {
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      handleFetch()
+    }, 400)
+  }
+})
 
 watch(currentPage, () => { if (startDate.value) fetchTableData() })
 onMounted(() => { setDefaultDates(); fetchReport(); })

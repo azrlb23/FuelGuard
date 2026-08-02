@@ -431,9 +431,11 @@ CREATE OR REPLACE FUNCTION public.get_master_team_overview(
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, auth
 AS $$
 DECLARE
+  v_caller_uid uuid;
+  v_caller_role text;
   v_total_operators integer := 0;
   v_active_operators integer := 0;
   v_total_spbu integer := 0;
@@ -442,8 +444,23 @@ DECLARE
   v_accounts_json json;
   v_result json;
 BEGIN
-  -- Security Authorization Guard: Only Master Role is Allowed
-  IF public.get_user_role() <> 'master' THEN
+  -- 1. Security Authorization Guard: Wajib Terautentikasi
+  v_caller_uid := auth.uid();
+  IF v_caller_uid IS NULL THEN
+    RAISE EXCEPTION 'Akses ditolak: Sesi pengguna tidak terautentikasi';
+  END IF;
+
+  -- 2. Resilient & Case-Insensitive Master Role Check
+  v_caller_role := public.get_user_role();
+
+  IF v_caller_role IS NULL THEN
+    SELECT role INTO v_caller_role
+    FROM public.user_roles
+    WHERE user_id::text = v_caller_uid::text
+    LIMIT 1;
+  END IF;
+
+  IF LOWER(COALESCE(v_caller_role, '')) != 'master' THEN
     RAISE EXCEPTION 'Akses ditolak: Hanya role Master yang diizinkan melihat data tim';
   END IF;
 
@@ -472,8 +489,8 @@ BEGIN
       op.created_at
     FROM public.operator_profiles op
     LEFT JOIN public.spbu s ON s.id = op.spbu_id
-    WHERE (p_spbu_id = '' OR op.spbu_id::text = p_spbu_id)
-      AND (p_search = '' OR op.nama_operator ILIKE '%' || p_search || '%')
+    WHERE (COALESCE(p_spbu_id, '') = '' OR op.spbu_id::text = p_spbu_id)
+      AND (COALESCE(p_search, '') = '' OR op.nama_operator ILIKE '%' || p_search || '%')
     ORDER BY op.created_at DESC, op.nama_operator ASC
   )
   SELECT json_agg(
@@ -487,19 +504,20 @@ BEGIN
     )
   ) INTO v_operators_json FROM operator_details;
 
-  -- Get SPBU authentication accounts list
+  -- Get SPBU authentication accounts list (Only actual registered operator auth accounts)
   WITH account_details AS (
     SELECT 
       ur.user_id,
       ur.spbu_id,
       COALESCE(s.nama, CONCAT('SPBU #', ur.spbu_id)) AS spbu_name,
       ur.role,
-      COALESCE(u.email, CONCAT('spbu_', ur.spbu_id, '@habijaya.com')) AS email
+      u.email
     FROM public.user_roles ur
+    INNER JOIN auth.users u ON u.id = ur.user_id
     LEFT JOIN public.spbu s ON s.id = ur.spbu_id
-    LEFT JOIN auth.users u ON u.id = ur.user_id
-    WHERE (p_spbu_id = '' OR ur.spbu_id::text = p_spbu_id)
-      AND (p_search = '' OR s.nama ILIKE '%' || p_search || '%' OR COALESCE(u.email, '') ILIKE '%' || p_search || '%')
+    WHERE ur.role = 'operator'
+      AND (COALESCE(p_spbu_id, '') = '' OR ur.spbu_id::text = p_spbu_id)
+      AND (COALESCE(p_search, '') = '' OR s.nama ILIKE '%' || p_search || '%' OR COALESCE(u.email, '') ILIKE '%' || p_search || '%')
     ORDER BY ur.spbu_id ASC
   )
   SELECT json_agg(

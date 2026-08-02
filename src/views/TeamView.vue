@@ -13,7 +13,8 @@ const {
   selectedSpbuId,
   createOperator,
   updateOperator,
-  toggleOperatorStatus
+  toggleOperatorStatus,
+  resetOperatorAccountPassword
 } = useTeam()
 
 const activeTab = ref('operators') // 'operators' | 'accounts'
@@ -67,6 +68,7 @@ const handleToggleStatus = async (id) => {
       :spbuList="spbuList"
       :loading="loading"
       :isSubmitting="isSubmitting"
+      :resetAccountPassword="resetOperatorAccountPassword"
       v-model:searchQuery="searchQuery"
       v-model:selectedSpbuId="selectedSpbuId"
       v-model:activeTab="activeTab"

@@ -64,6 +64,7 @@ export function useMasterAnalytics() {
    */
   const fetchAnalytics = async () => {
     loading.value = true
+    const minLoadingPromise = new Promise(resolve => setTimeout(resolve, 350))
 
     try {
       const { data, error } = await supabase.rpc('get_master_analytics_summary', {
@@ -91,6 +92,7 @@ export function useMasterAnalytics() {
         
         spbuShares.value = data.spbuShares || []
       }
+      await minLoadingPromise
     } catch (err) {
       console.error('[useMasterAnalytics] Error:', err)
     } finally {

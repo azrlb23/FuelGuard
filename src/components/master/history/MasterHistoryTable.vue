@@ -144,7 +144,7 @@ const setPage = (p) => {
 
 <template>
   <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[2rem] p-6 md:p-8 shadow-xl shadow-green-900/10 text-white relative border border-green-800/40">
-    
+
     <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
 
     <!-- Integrated Filter Bar -->
@@ -183,9 +183,9 @@ const setPage = (p) => {
       </template>
 
       <template v-else-if="transactions.length > 0">
-        <div 
-          v-for="trx in transactions" 
-          :key="trx.id" 
+        <div
+          v-for="trx in transactions"
+          :key="trx.id"
           class="bg-black/20 rounded-2xl p-4 border border-white/10 flex flex-col gap-3"
         >
           <!-- Top Bar: Date/Time -->
@@ -268,9 +268,9 @@ const setPage = (p) => {
           </template>
 
           <template v-else-if="transactions.length > 0">
-            <tr 
-              v-for="trx in transactions" 
-              :key="trx.id" 
+            <tr
+              v-for="trx in transactions"
+              :key="trx.id"
               class="hover:bg-white/5 transition-colors duration-150 border-b border-white/10 last:border-0"
             >
               <td class="py-4 pl-3 text-green-50 font-medium text-xs md:text-sm">{{ formatDateOnly(trx.waktu_pencatatan) }}</td>
@@ -310,11 +310,11 @@ const setPage = (p) => {
 
     <!-- Pagination Bar & Export Excel Button -->
     <div class="flex flex-col md:flex-row items-center justify-between mt-6 pt-5 border-t border-white/15 gap-4">
-      
+
       <!-- Total Items & Download XLSX Button -->
       <div class="flex flex-wrap items-center gap-3 order-2 md:order-1 text-center md:text-left justify-center md:justify-start">
         <span class="text-xs text-green-200/70 font-medium">
-          Menampilkan {{ transactions.length ? ((currentPage - 1) * itemsPerPage + 1).toLocaleString('id-ID') : 0 }} - 
+          Menampilkan {{ transactions.length ? ((currentPage - 1) * itemsPerPage + 1).toLocaleString('id-ID') : 0 }} -
           {{ Math.min(currentPage * itemsPerPage, totalItems).toLocaleString('id-ID') }} dari {{ totalItems.toLocaleString('id-ID') }} data
         </span>
 
@@ -336,8 +336,8 @@ const setPage = (p) => {
       <!-- Page Buttons -->
       <div class="flex items-center gap-1.5 order-1 md:order-2 flex-wrap justify-center">
         <!-- Previous Page Button -->
-        <button 
-          @click="setPage(currentPage - 1)" 
+        <button
+          @click="setPage(currentPage - 1)"
           :disabled="currentPage <= 1 || loading"
           class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer mr-1"
         >
@@ -362,8 +362,8 @@ const setPage = (p) => {
         </template>
 
         <!-- Next Page Button -->
-        <button 
-          @click="setPage(currentPage + 1)" 
+        <button
+          @click="setPage(currentPage + 1)"
           :disabled="currentPage >= totalPages || loading"
           class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer ml-1"
         >

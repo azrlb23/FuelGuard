@@ -115,14 +115,14 @@ const prevPage = () => {
         </thead>
         <tbody class="text-sm">
           <template v-if="loading">
-            <tr v-for="n in 5" :key="n" class="border-b border-white/5">
-              <td class="py-4 pl-2"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
-              <td class="py-4"><div class="skeleton h-4 w-16 bg-white/10 rounded"></div></td>
-              <td class="py-4"><div class="skeleton h-6 w-16 bg-white/10 rounded-full"></div></td>
-              <td class="py-4"><div class="skeleton h-4 w-20 bg-white/10 rounded"></div></td>
-              <td class="py-4"><div class="skeleton h-4 w-12 bg-white/10 rounded"></div></td>
-              <td class="py-4"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
-              <td class="py-4 pr-2 flex justify-end"><div class="skeleton h-6 w-16 bg-white/10 rounded-md"></div></td>
+            <tr v-for="n in 5" :key="n" class="border-b border-white/5 animate-pulse">
+              <td class="py-4 pl-2"><div class="h-4 w-24 bg-white/20 rounded"></div></td>
+              <td class="py-4"><div class="h-4 w-16 bg-white/20 rounded"></div></td>
+              <td class="py-4"><div class="h-6 w-16 bg-white/20 rounded-full"></div></td>
+              <td class="py-4"><div class="h-4 w-20 bg-white/20 rounded"></div></td>
+              <td class="py-4"><div class="h-4 w-12 bg-white/20 rounded"></div></td>
+              <td class="py-4"><div class="h-4 w-24 bg-white/20 rounded"></div></td>
+              <td class="py-4 pr-2 flex justify-end"><div class="h-6 w-16 bg-white/20 rounded-md"></div></td>
             </tr>
           </template>
 

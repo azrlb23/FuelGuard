@@ -3,8 +3,6 @@
 import ProfileCard from '@/components/settings/ProfileCard.vue'
 import SecurityForm from '@/components/settings/SecurityForm.vue'
 import FuelPriceForm from '@/components/settings/FuelPriceForm.vue'
-import ProfileForm from '@/components/settings/ProfileForm.vue'
-import ShiftForm from '@/components/settings/ShiftForm.vue'
 
 // const authStore = useAuthStore()
 </script>
@@ -14,8 +12,7 @@ import ShiftForm from '@/components/settings/ShiftForm.vue'
 
     <!-- Top Header -->
     <div class="px-1">
-      <h2 class="text-3xl md:text-4xl font-extrabold text-black tracking-tight mb-1">Pengaturan Master</h2>
-      <p class="text-gray-500 font-bold text-xs sm:text-sm">Kelola profil Super Admin, keamanan akun, dan konfigurasi sistem jaringan SPBU.</p>
+      <h2 class="text-3xl md:text-4xl font-extrabold text-black tracking-tight mb-1">Pengaturan</h2>
     </div>
 
     <!-- Profile Overview Card -->
@@ -26,12 +23,11 @@ import ShiftForm from '@/components/settings/ShiftForm.vue'
       <div class="px-1 mb-3 mt-8 flex items-center gap-2">
         <div class="w-2 h-2 rounded-full bg-[#34d399]"></div>
         <span class="text-xs font-extrabold text-[#143d2e] uppercase tracking-wider">
-          Konfigurasi Jaringan SPBU (Global System Zone)
+          Konfigurasi Jaringan SPBU
         </span>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <FuelPriceForm />
-        <ShiftForm />
       </div>
     </div>
 
@@ -42,8 +38,6 @@ import ShiftForm from '@/components/settings/ShiftForm.vue'
         Pengaturan Akun & Keamanan
       </span>
     </div>
-
-    <ProfileForm />
     <SecurityForm />
 
     <!-- Footer Note -->

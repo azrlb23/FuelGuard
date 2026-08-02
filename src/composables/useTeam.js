@@ -24,8 +24,8 @@ export function useTeam() {
     error.value = null
     try {
       const { data, error: err } = await supabase.rpc('get_master_team_overview', {
-        p_spbu_id: selectedSpbuId.value || '',
-        p_search: searchQuery.value || ''
+        p_spbu_id: selectedSpbuId.value ? String(selectedSpbuId.value) : '',
+        p_search: searchQuery.value ? String(searchQuery.value) : ''
       })
 
       if (err) throw err
@@ -126,6 +126,29 @@ export function useTeam() {
     fetchTeam()
   })
 
+  const resetOperatorAccountPassword = async (targetUserId, newPassword) => {
+    isSubmitting.value = true
+    try {
+      const { data, error: err } = await supabase.rpc('master_reset_operator_password', {
+        p_target_user_id: targetUserId,
+        p_new_password: newPassword
+      })
+
+      if (err) throw err
+
+      if (data && data.success === false) {
+        return { success: false, message: data.message || 'Gagal mereset password' }
+      }
+
+      return { success: true, message: data?.message || 'Password akun operator berhasil diperbarui!' }
+    } catch (err) {
+      console.error('[useTeam] Gagal reset password operator:', err.message || err)
+      return { success: false, message: err.message || 'Gagal mereset password akun' }
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
   return {
     teamMembers,
     spbuAccounts,
@@ -139,6 +162,7 @@ export function useTeam() {
     fetchTeam,
     createOperator,
     updateOperator,
-    toggleOperatorStatus
+    toggleOperatorStatus,
+    resetOperatorAccountPassword
   }
 }
