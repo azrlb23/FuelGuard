@@ -13,6 +13,12 @@ const router = createRouter({
       meta: { requiresAuth: false, layout: 'auth' }
     },
     {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('../views/ResetPasswordView.vue'),
+      meta: { requiresAuth: false, layout: 'auth' }
+    },
+    {
       path: '/master',
       redirect: '/master/dashboard'
     },
@@ -35,12 +41,20 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'master', layout: 'master' }
     },
     {
+      path: '/master/repeated',
+      name: 'master-repeated',
+      component: () => import('../views/MasterRepeatedView.vue'),
+      meta: { requiresAuth: true, role: 'master', layout: 'master' }
+    },
+    {
       path: '/master/network',
       redirect: '/master/history'
     },
     {
       path: '/master/team',
-      redirect: '/team'
+      name: 'master-team',
+      component: () => import('../views/TeamView.vue'),
+      meta: { requiresAuth: true, role: 'master', layout: 'master' }
     },
     {
       path: '/master/settings',
@@ -106,6 +120,8 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+  if (to.name === 'reset-password') return next()
+
   const authStore = useAuthStore()
 
   const { data: { session } } = await supabase.auth.getSession()

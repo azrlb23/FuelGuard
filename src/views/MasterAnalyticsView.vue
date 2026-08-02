@@ -119,8 +119,13 @@ const trendChartOptions = {
       ticks: { font: { size: 11, weight: '600' }, color: '#9ca3af' }
     },
     y: {
+      beginAtZero: true,
       grid: { color: '#f3f4f6' },
-      ticks: { font: { size: 11, weight: '600' }, color: '#9ca3af' }
+      ticks: {
+        font: { size: 11, weight: '600' },
+        color: '#9ca3af',
+        callback: (val) => `Rp ${val} Jt`
+      }
     }
   }
 }
@@ -155,10 +160,7 @@ const doughnutChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: {
-      position: 'bottom',
-      labels: { font: { size: 11, weight: 'bold' }, padding: 14, usePointStyle: true, pointStyle: 'circle' }
-    },
+    legend: { display: false },
     tooltip: {
       backgroundColor: '#0f2e23',
       padding: 10,
@@ -168,209 +170,265 @@ const doughnutChartOptions = {
       }
     }
   },
-  cutout: '70%'
+  cutout: '72%'
 }
 </script>
 
 <template>
   <div class="space-y-6 animate-enter">
 
-    <!-- Header Section: Title & Controls (LCP Target) -->
-    <div class="relative p-6 md:p-8 rounded-3xl overflow-hidden shadow-sm mb-4" style="background: linear-gradient(135deg, #143d2e 0%, #0f2e22 100%);">
-      <!-- LCP Background Pattern (Inline SVG) -->
-      <svg class="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-        <defs>
-          <pattern id="patternAnalytics" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M0 40L40 0H20L0 20M40 40V20L20 40" fill="#34d399"/>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#patternAnalytics)"/>
-      </svg>
-      <div class="relative z-10">
-        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-2" data-lcp="true">Analisis & Laporan</h2>
-        <p class="text-emerald-100/80 text-xs sm:text-sm font-bold">Benchmarking performa jaringan SPBU & rekapitulasi operasional eksekutif</p>
+    <!-- Header Section: Title & Popover Filter Button -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div>
+        <h2 class="text-3xl md:text-4xl font-extrabold text-[#143d2e] tracking-tight" data-lcp="true">Laporan</h2>
       </div>
-    </div>
 
-    <!-- Filter Bar: Date Range + SPBU Select -->
-    <div ref="analyticsContainerRef" class="bg-white rounded-2xl p-3.5 sm:p-4 border border-gray-200/90 shadow-xs flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
-      
-      <!-- Custom Date From -->
-      <CustomDatePicker
-        v-model="dateFrom"
-        label="Dari"
-        placeholder="Pilih Tanggal"
-        variant="light"
-      />
-
-      <!-- Custom Date To -->
-      <CustomDatePicker
-        v-model="dateTo"
-        label="Sampai"
-        placeholder="Pilih Tanggal"
-        variant="light"
-      />
-
-      <!-- Custom SPBU Select Dropdown -->
-      <div class="relative flex-1 min-w-[200px]">
+      <!-- Filter Controls (Popover Button + Panel) -->
+      <div ref="analyticsContainerRef" class="relative z-40 w-full sm:w-auto">
         <button
           type="button"
           @click="toggleSpbuDropdown"
-          class="w-full flex items-center justify-between gap-2.5 bg-gray-50/90 hover:bg-gray-100/90 border border-gray-200/90 focus-within:border-[#143d2e] focus-within:ring-2 focus-within:ring-[#143d2e]/15 rounded-full px-4 py-2 text-xs font-bold text-gray-700 transition-all cursor-pointer select-none shadow-2xs"
+          :class="[
+            'w-full sm:w-auto px-4 py-2.5 rounded-full text-xs font-extrabold transition-all cursor-pointer flex items-center justify-between sm:justify-start gap-2 border select-none shadow-sm',
+            isSpbuDropdownOpen || dateFrom || dateTo || selectedSpbuId
+              ? 'bg-[#143d2e] text-white border-[#143d2e]'
+              : 'bg-white hover:bg-gray-50 border-gray-200 text-gray-700'
+          ]"
         >
-          <div class="flex items-center gap-2 min-w-0">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-[#143d2e] shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.25a.75.75 0 0 1-.75-.75V4.5a.75.75 0 0 1 .75-.75h19.5a.75.75 0 0 1 .75.75v15.75a.75.75 0 0 1-.75.75H18m-4.5 0v-7.5" />
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" :class="['w-4 h-4 shrink-0', isSpbuDropdownOpen || dateFrom || dateTo || selectedSpbuId ? 'text-emerald-800' : 'text-emerald-600']">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0m-9.75 0h9.75" />
             </svg>
-            <span class="text-[#143d2e]/60 uppercase text-[10px] tracking-wider font-extrabold shrink-0">SPBU</span>
-            <span class="text-gray-800 font-bold truncate">{{ selectedSpbuName }}</span>
+            <span>Filter</span>
           </div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" :class="['w-3.5 h-3.5 text-gray-400 transition-transform duration-200 shrink-0', isSpbuDropdownOpen ? 'rotate-180 text-[#143d2e]' : '']">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
+
+          <div class="flex items-center gap-2">
+            <!-- Active Filter Badge Counter -->
+            <span
+              v-if="(dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (selectedSpbuId ? 1 : 0) > 0"
+              class="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center shrink-0 shadow-2xs"
+            >
+              {{ (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (selectedSpbuId ? 1 : 0) }}
+            </span>
+
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" :class="['w-3.5 h-3.5 transition-transform duration-200 shrink-0', isSpbuDropdownOpen || dateFrom || dateTo || selectedSpbuId ? 'rotate-180 text-emerald-800' : 'text-gray-400']">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
         </button>
 
-        <!-- Custom Floating Dropdown Menu Card -->
+        <!-- Collapsible Floating Filter Panel Card -->
         <div
           v-if="isSpbuDropdownOpen"
-          class="absolute right-0 mt-2 w-full sm:w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 p-1.5 z-50 animate-enter text-gray-800 text-xs font-bold space-y-0.5"
+          class="absolute left-0 right-0 sm:left-auto sm:right-0 mt-2 w-full sm:w-[380px] max-w-[calc(100vw-2rem)] bg-[#143d2e] border border-emerald-700/60 rounded-2xl p-4 sm:p-5 shadow-2xl z-[100] space-y-4 animate-enter text-white text-xs font-bold"
         >
-          <button
-            type="button"
-            @click="selectSpbu('')"
-            :class="[
-              'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-left cursor-pointer',
-              selectedSpbuId === '' ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
-            ]"
-          >
-            <span>Semua SPBU Jaringan</span>
-            <svg v-if="selectedSpbuId === ''" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5 text-[#143d2e]">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-          </button>
+          <!-- Panel Header -->
+          <div class="flex items-center justify-between pb-3 border-b border-emerald-800/60">
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-emerald-400 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0m-9.75 0h9.75" />
+              </svg>
+              <span class="text-sm font-black text-white truncate">Filter Laporan</span>
+            </div>
 
-          <button
-            v-for="s in spbuOptions"
-            :key="s.id"
-            type="button"
-            @click="selectSpbu(s.id)"
-            :class="[
-              'w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-left cursor-pointer',
-              String(selectedSpbuId) === String(s.id) ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
-            ]"
-          >
-            <span class="truncate">{{ s.name }}</span>
-            <svg v-if="String(selectedSpbuId) === String(s.id)" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5 text-[#143d2e] shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-          </button>
+            <button
+              type="button"
+              @click="isSpbuDropdownOpen = false"
+              class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 transition-colors shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Filter Option 1: SPBU Selection -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200/80">Lokasi SPBU</label>
+            <select
+              :value="selectedSpbuId"
+              @change="selectSpbu($event.target.value)"
+              class="w-full bg-white/10 hover:bg-white/20 border border-white/15 focus:border-white focus:ring-2 focus:ring-white/20 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white transition-all cursor-pointer outline-none shadow-sm appearance-none"
+            >
+              <option value="" class="text-gray-800 font-bold">Semua SPBU Jaringan</option>
+              <option v-for="s in spbuOptions" :key="s.id" :value="s.id" class="text-gray-800 font-bold">
+                {{ s.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Filter Option 2: Date Range (Baris Masing-Masing) -->
+          <div class="space-y-1.5">
+            <label class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200/80">Rentang Tanggal</label>
+            <div class="flex flex-col space-y-2">
+              <CustomDatePicker
+                v-model="dateFrom"
+                label="Dari"
+                placeholder="Pilih Tanggal"
+                variant="dark"
+              />
+              <CustomDatePicker
+                v-model="dateTo"
+                label="Sampai"
+                placeholder="Pilih Tanggal"
+                variant="dark"
+              />
+            </div>
+          </div>
+
+          <!-- Panel Footer Actions (Reset Filter on the right side) -->
+          <div class="flex items-center justify-between pt-3 border-t border-emerald-800/60">
+            <span v-if="loading" class="animate-pulse text-emerald-300 text-xs font-bold">Memuat...</span>
+            <span v-else class="text-emerald-200/70 text-[11px] font-bold">Filter diterapkan</span>
+
+            <button
+              type="button"
+              @click="dateFrom = ''; dateTo = ''; selectedSpbuId = ''"
+              class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30 text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 text-red-400 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+              <span>Reset Filter</span>
+            </button>
+          </div>
+
         </div>
-      </div>
-
-      <div class="sm:ml-auto text-xs font-bold self-end sm:self-center">
-        <span v-if="loading" class="animate-pulse text-emerald-600">Memuat data...</span>
-        <span v-else class="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 inline-block font-bold">Filter Aktif</span>
       </div>
     </div>
 
     <!-- Row 1: KPI Summary Cards (Rich Dark Green Palette) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      
-      <!-- Card 1: Total Revenue -->
-      <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-3xl p-6 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
-        <div class="flex justify-between items-start mb-4">
-          <span class="text-xs font-bold text-green-200/80 uppercase tracking-wider">TOTAL GROSS SALES</span>
-          <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-            <span class="text-lg">💰</span>
-          </div>
-        </div>
-        <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
-          {{ formatRupiah(kpi.totalSales) }}
-        </div>
-        <p class="text-[11px] text-green-200/70 font-semibold">Total omzet penjualan BBM</p>
-      </div>
 
-      <!-- Card 2: Total Volume -->
-      <div class="bg-gradient-to-br from-[#143d2e] to-[#1a4a38] rounded-3xl p-6 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
-        <div class="flex justify-between items-start mb-4">
-          <span class="text-xs font-bold text-green-200/80 uppercase tracking-wider">TOTAL VOLUME BBM</span>
-          <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-            <span class="text-lg">⛽</span>
+      <!-- Loading Skeleton Cards -->
+      <template v-if="loading">
+        <div v-for="n in 4" :key="n" class="relative overflow-hidden bg-gradient-to-br from-[#143d2e] to-[#258f62] rounded-[2rem] p-6 text-white shadow-xl shadow-green-900/10 animate-pulse space-y-4">
+          <div class="flex justify-between items-start">
+            <div class="h-3 w-24 bg-white/25 rounded-full"></div>
+            <div class="w-10 h-10 rounded-2xl bg-white/20"></div>
           </div>
+          <div class="h-8 w-36 bg-white/30 rounded-xl"></div>
+          <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
         </div>
-        <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
-          {{ formatVolume(kpi.totalVolume) }}
-        </div>
-        <p class="text-[11px] text-green-200/70 font-semibold">Total volume penyaluran</p>
-      </div>
+      </template>
 
-      <!-- Card 3: Total Transaksi -->
-      <div class="bg-gradient-to-br from-[#143d2e] to-[#164433] rounded-3xl p-6 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
-        <div class="flex justify-between items-start mb-4">
-          <span class="text-xs font-bold text-green-200/80 uppercase tracking-wider">TOTAL TRANSAKSI</span>
-          <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-            <span class="text-lg">🧾</span>
+      <template v-else>
+        <!-- Card 1: Total Gross Sales -->
+        <div class="relative overflow-hidden bg-gradient-to-br from-[#143d2e] to-[#258f62] rounded-[2rem] p-6 text-white shadow-xl shadow-green-900/10 hover:scale-[1.01] transition-transform">
+          <div class="flex justify-between items-start mb-4">
+            <p class="text-xs font-bold uppercase tracking-widest text-green-200">Total Revenue</p>
+            <div class="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-green-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </div>
           </div>
+          <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-white mb-1">{{ formatRupiah(kpi.totalSales) }}</h3>
+          <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
         </div>
-        <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
-          {{ kpi.totalTransactions?.toLocaleString('id-ID') || 0 }}
-        </div>
-        <p class="text-[11px] text-green-200/70 font-semibold">Jumlah struk tercatat</p>
-      </div>
 
-      <!-- Card 4: Avg Trx / Hari -->
-      <div class="bg-gradient-to-br from-[#143d2e] to-[#0f2e23] rounded-3xl p-6 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
-        <div class="flex justify-between items-start mb-4">
-          <span class="text-xs font-bold text-green-200/80 uppercase tracking-wider">RERATA TRX / HARI</span>
-          <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-            <span class="text-lg">📈</span>
+        <!-- Card 2: Total Volume -->
+        <div class="relative overflow-hidden bg-gradient-to-br from-[#143d2e] to-[#1e6b4a] rounded-[2rem] p-6 text-white shadow-xl shadow-green-900/10 hover:scale-[1.01] transition-transform">
+          <div class="flex justify-between items-start mb-4">
+            <p class="text-xs font-bold uppercase tracking-widest text-green-200">Total Volume BBM</p>
+            <div class="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-green-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 1 9 3.603e-7a8.287 8.287 0 0 1 6.362 5.214Z" />
+              </svg>
+            </div>
           </div>
+          <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-white mb-1">{{ formatVolume(kpi.totalVolume) }}</h3>
+          <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
         </div>
-        <div class="text-2xl lg:text-3xl font-black text-white tracking-tight mb-1">
-          {{ kpi.avgTrxPerDay }}
-        </div>
-        <p class="text-[11px] text-green-200/70 font-semibold">Rata-rata frekuensi harian</p>
-      </div>
 
+        <!-- Card 3: Total Transaksi -->
+        <div class="relative overflow-hidden bg-gradient-to-br from-[#143d2e] to-[#2aa672] rounded-[2rem] p-6 text-white shadow-xl shadow-green-900/10 hover:scale-[1.01] transition-transform">
+          <div class="flex justify-between items-start mb-4">
+            <p class="text-xs font-bold uppercase tracking-widest text-green-200">Total Transaksi</p>
+            <div class="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-green-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z" />
+              </svg>
+            </div>
+          </div>
+          <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-white mb-1">{{ kpi.totalTransactions?.toLocaleString('id-ID') || 0 }}</h3>
+          <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+        </div>
+
+        <!-- Card 4: Avg Trx / Hari -->
+        <div class="relative overflow-hidden bg-gradient-to-br from-[#143d2e] to-[#208358] rounded-[2rem] p-6 text-white shadow-xl shadow-green-900/10 hover:scale-[1.01] transition-transform">
+          <div class="flex justify-between items-start mb-4">
+            <p class="text-xs font-bold uppercase tracking-widest text-green-200">Rata - Rata Transaksi / Hari</p>
+            <div class="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-green-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 0 5.814-5.519l2.74-1.22m0 0-5.94-2.28m5.94 2.28-2.28 5.941" />
+              </svg>
+            </div>
+          </div>
+          <h3 class="text-3xl lg:text-4xl font-black tracking-tight text-white mb-1">{{ kpi.avgTrxPerDay }}</h3>
+          <div class="absolute -right-6 -bottom-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+        </div>
+
+      </template>
     </div>
 
     <!-- Row 2: Charts Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
       <!-- Chart 1: Line Combined Trend (2 Cols) -->
-      <div class="lg:col-span-2 bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
-        <div class="mb-4">
-          <h4 class="text-base font-extrabold text-[#143d2e]">Tren Omzet Penjualan</h4>
-          <p class="text-xs font-semibold text-gray-400">Grafik omzet harian pada periode terpilih</p>
+      <div class="lg:col-span-2 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col hover:shadow-md transition-all duration-300">
+        <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100 shrink-0">
+          <div>
+            <h4 class="text-base font-extrabold text-[#143d2e]">Grafik Penjualan</h4>
+          </div>
+          <!-- <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200/60 shadow-2xs">
+            Skala: Juta Rupiah
+          </span> -->
         </div>
 
-        <div class="h-64 relative w-full pt-4">
+        <div class="flex-1 min-h-[260px] relative w-full pt-2">
           <LazyLineChart v-if="trendChartData.labels.length" :data="trendChartData" :options="trendChartOptions" />
         </div>
       </div>
 
       <!-- Chart 2: Donut Contribution Share (1 Col) -->
-      <div class="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
-        <div class="mb-4">
+      <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col hover:shadow-md transition-all duration-300">
+        <div class="mb-3 pb-3 border-b border-gray-100 shrink-0">
           <h4 class="text-base font-extrabold text-[#143d2e]">Kontribusi Penjualan</h4>
-          <p class="text-xs font-semibold text-gray-400">Pangsa pasar omzet antar SPBU (%)</p>
         </div>
 
-        <div class="h-64 relative flex items-center justify-center">
-          <LazyDoughnutChart v-if="doughnutChartData.labels.length" :data="doughnutChartData" :options="doughnutChartOptions" />
+        <!-- Doughnut Chart Container with Center Badge -->
+        <div class="h-44 relative flex items-center justify-center my-1 shrink-0">
+          <!-- <LazyDoughnutChart v-if="doughnutChartData.labels.length" :data="doughnutChartData" :options="doughnutChartOptions" /> -->
+          <LazyDoughnutChart v-if="doughnutChartData.labels.length" :data="doughnutChartData" :options="doughnutChartOptions" class="relative z-10" />
+          <!-- Center Stat Badge -->
+          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+            <span class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">TOTAL</span>
+            <span class="text-base font-black text-[#143d2e]">{{ spbuShares.length }} SPBU</span>
+          </div>
         </div>
 
-        <div class="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar mt-6">
-          <div v-for="(item, idx) in spbuShares" :key="item.spbu_id" class="flex items-center justify-between group">
-            <div class="flex items-center gap-3">
-              <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: ['#143d2e', '#22c55e', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0'][idx % 6] }"></div>
-              <div>
-                <div class="text-xs font-bold text-gray-800">{{ item.name }}</div>
-                <div class="text-[10px] text-gray-500">{{ formatRupiah(item.sales) }}</div>
+        <!-- Modernized Legend List -->
+        <div class="space-y-1.5 max-h-[190px] overflow-y-auto pr-1 custom-scrollbar mt-2 pt-2 border-t border-gray-100">
+          <div
+            v-for="(item, idx) in spbuShares"
+            :key="item.spbu_id"
+            class="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50/80 transition-all duration-200 border border-transparent hover:border-gray-100 text-xs"
+          >
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div
+                class="w-3 h-3 rounded-full shrink-0 shadow-xs"
+                :style="{ backgroundColor: ['#143d2e', '#22c55e', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0'][idx % 6] }"
+              ></div>
+              <div class="min-w-0">
+                <div class="font-bold text-gray-800 truncate">{{ item.name }}</div>
+                <div class="text-[10px] text-gray-400 font-semibold">{{ formatRupiah(item.sales) }}</div>
               </div>
             </div>
-            <div class="text-right">
-              <div class="text-sm font-black text-[#143d2e]">{{ item.value }}%</div>
+            <div class="text-right shrink-0">
+              <span class="text-xs font-black text-[#143d2e]">
+                {{ item.value }}%
+              </span>
             </div>
           </div>
         </div>
@@ -383,7 +441,6 @@ const doughnutChartOptions = {
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-4">
         <div>
           <h3 class="text-lg sm:text-xl font-extrabold text-[#143d2e]">Leaderboard & Benchmarking SPBU</h3>
-          <p class="text-xs font-semibold text-gray-400">Perbandingan kinerja omzet, volume, dan transaksi seluruh unit SPBU</p>
         </div>
         <span class="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shrink-0">
           Total Unit: {{ leaderboard.length }} SPBU
@@ -415,10 +472,7 @@ const doughnutChartOptions = {
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2.5 min-w-0">
                 <span
-                  :class="[
-                    'w-7 h-7 rounded-full text-xs font-black inline-flex items-center justify-center shrink-0 shadow-xs',
-                    item.rank === 1 ? 'bg-amber-400 text-amber-950' : item.rank === 2 ? 'bg-slate-200 text-slate-800' : item.rank === 3 ? 'bg-amber-700/20 text-amber-800' : 'bg-gray-100 text-gray-600'
-                  ]"
+                  class="w-7 h-7 rounded-full text-xs font-black inline-flex items-center justify-center shrink-0 bg-gray-100 text-gray-600 shadow-2xs"
                 >
                   #{{ item.rank }}
                 </span>
@@ -497,10 +551,7 @@ const doughnutChartOptions = {
                 <!-- Rank Badge -->
                 <td class="py-4 px-3 text-center whitespace-nowrap">
                   <span
-                    :class="[
-                      'w-7 h-7 rounded-full text-xs font-black inline-flex items-center justify-center shadow-xs',
-                      index === 0 ? 'bg-amber-400 text-amber-950' : index === 1 ? 'bg-slate-200 text-slate-800' : index === 2 ? 'bg-amber-700/20 text-amber-800' : 'bg-gray-100 text-gray-600'
-                    ]"
+                    class="w-7 h-7 rounded-full text-xs font-black inline-flex items-center justify-center bg-gray-100 text-gray-600 shadow-2xs"
                   >
                     #{{ index + 1 }}
                   </span>
@@ -546,8 +597,7 @@ const doughnutChartOptions = {
     <!-- Export Action Buttons (Paling Bawah) -->
     <div class="bg-white rounded-3xl p-5 md:p-6 border border-gray-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
       <div>
-        <h4 class="text-base font-extrabold text-[#143d2e]">Unduh Laporan & Analytics</h4>
-        <p class="text-xs font-semibold text-gray-400">Ekspor rekapitulasi data ke format Excel (.csv) atau Dokumen PDF</p>
+        <h4 class="text-base font-extrabold text-[#143d2e]">Unduh Laporan</h4>
       </div>
 
       <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
@@ -558,7 +608,7 @@ const doughnutChartOptions = {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-emerald-600 shrink-0">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-8.625 1.125L12 10.5m0 0 4.5 4.5M12 10.5V3" />
           </svg>
-          <span>Export Excel (.csv)</span>
+          <span>Export Excel (.xlsx)</span>
         </button>
 
         <button

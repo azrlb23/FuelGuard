@@ -75,9 +75,20 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
     }
   }
 
-  watch([searchQuery, vehicleFilter, dateFrom, dateTo, sortField, sortDir], () => {
+  // Watch filter selain searchQuery secara instan
+  watch([vehicleFilter, dateFrom, dateTo, sortField, sortDir], () => {
     currentPage.value = 1
     fetchHistory()
+  })
+
+  // Watch searchQuery dengan Debounce (500ms)
+  let searchDebounceTimer = null
+  watch(searchQuery, () => {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = setTimeout(() => {
+      currentPage.value = 1
+      fetchHistory()
+    }, 500)
   })
 
   watch(currentPage, () => {
