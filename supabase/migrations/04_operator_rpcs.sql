@@ -169,7 +169,7 @@ BEGIN
     RETURN json_build_object('success', false, 'reason', 'no_spbu', 'message', 'Operator tidak terdaftar pada SPBU manapun.');
   END IF;
 
-  v_plat_clean := UPPER(TRIM(p_plat));
+  v_plat_clean := regexp_replace(UPPER(TRIM(p_plat)), '\s+', ' ', 'g');
   IF v_plat_clean = '' OR p_liter <= 0 THEN
     RETURN json_build_object('success', false, 'reason', 'invalid_input', 'message', 'Plat nomor dan liter harus valid.');
   END IF;
@@ -217,6 +217,12 @@ BEGIN
     AND waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day';
 
   IF (v_total_harga_today + v_total_harga) > v_max_quota THEN
+    INSERT INTO public.repeated_transaction_logs (
+      plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, attempted_liter, total_harga_today, reason, created_at
+    ) VALUES (
+      v_plat_clean, v_spbu_id, p_operator_id, p_is_ojol, p_liter, v_total_harga_today, 'quota_exceeded', NOW()
+    );
+
     RETURN json_build_object(
       'success', false,
       'reason', 'quota_exceeded',

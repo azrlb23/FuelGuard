@@ -205,28 +205,31 @@ BEGIN
   -- Total matching count
   SELECT COUNT(t.id) INTO v_total_count
   FROM public.transaksi_pertalite t
+  LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
   WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
-    AND (p_spbu_id = '' OR t.spbu_id::text = p_spbu_id)
-    AND (p_date_from = '' OR t.waktu_pencatatan >= (p_date_from || 'T00:00:00')::timestamp)
-    AND (p_date_to = '' OR t.waktu_pencatatan <= (p_date_to || 'T23:59:59')::timestamp);
+    AND (p_spbu_id = '' OR COALESCE(t.spbu_id, op.spbu_id)::text = p_spbu_id)
+    AND (p_date_from = '' OR t.waktu_pencatatan::date >= p_date_from::date)
+    AND (p_date_to = '' OR t.waktu_pencatatan::date <= p_date_to::date);
 
-  -- Query paginated records with joined SPBU name
+  -- Query paginated records with joined SPBU & Operator info
   WITH paginated_trx AS (
     SELECT 
       t.id,
       t.plat_nomor,
       t.liter,
       t.harga,
-      t.jenis_kendaraan,
+      t.is_ojol,
       t.waktu_pencatatan,
-      t.spbu_id,
-      COALESCE(s.nama, CONCAT('SPBU #', t.spbu_id)) AS spbu_name
+      COALESCE(t.spbu_id, op.spbu_id) AS spbu_id,
+      COALESCE(s.nama, CONCAT('SPBU #', COALESCE(t.spbu_id, op.spbu_id))) AS spbu_name,
+      COALESCE(op.nama_operator, 'Sistem') AS operator_name
     FROM public.transaksi_pertalite t
-    LEFT JOIN public.spbu s ON s.id = t.spbu_id
+    LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
+    LEFT JOIN public.spbu s ON s.id = COALESCE(t.spbu_id, op.spbu_id)
     WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
-      AND (p_spbu_id = '' OR t.spbu_id::text = p_spbu_id)
-      AND (p_date_from = '' OR t.waktu_pencatatan >= (p_date_from || 'T00:00:00')::timestamp)
-      AND (p_date_to = '' OR t.waktu_pencatatan <= (p_date_to || 'T23:59:59')::timestamp)
+      AND (p_spbu_id = '' OR COALESCE(t.spbu_id, op.spbu_id)::text = p_spbu_id)
+      AND (p_date_from = '' OR t.waktu_pencatatan::date >= p_date_from::date)
+      AND (p_date_to = '' OR t.waktu_pencatatan::date <= p_date_to::date)
     ORDER BY
       CASE WHEN p_sort_field = 'harga' AND p_sort_dir = 'asc' THEN t.harga END ASC,
       CASE WHEN p_sort_field = 'harga' AND p_sort_dir = 'desc' THEN t.harga END DESC,
@@ -242,10 +245,11 @@ BEGIN
       'plat_nomor', plat_nomor,
       'liter', liter,
       'harga', harga,
-      'jenis_kendaraan', jenis_kendaraan,
+      'is_ojol', is_ojol,
       'waktu_pencatatan', waktu_pencatatan,
       'spbu_id', spbu_id,
-      'spbu_name', spbu_name
+      'spbu_name', spbu_name,
+      'operator_name', operator_name
     )
   ) INTO v_trx_list FROM paginated_trx;
 
@@ -387,6 +391,156 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_master_dashboard_summary(text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_master_history_paginated(text, text, text, text, text, text, integer, integer) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_master_analytics_summary(text, text, text) TO authenticated, service_role;
+
+
+-- ─── 5. FUNCTION: get_master_team_overview ─────────────────────────────────────
+DROP FUNCTION IF EXISTS public.get_master_team_overview CASCADE;
+CREATE OR REPLACE FUNCTION public.get_master_team_overview(
+  p_spbu_id text DEFAULT '',
+  p_search text DEFAULT ''
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_total_operators integer := 0;
+  v_active_operators integer := 0;
+  v_total_spbu integer := 0;
+  v_spbu_list json;
+  v_operators_json json;
+  v_result json;
+BEGIN
+  -- Count total operators
+  SELECT COUNT(id) INTO v_total_operators FROM public.operator_profiles;
+  SELECT COUNT(id) INTO v_active_operators FROM public.operator_profiles WHERE is_active = true;
+  SELECT COUNT(id) INTO v_total_spbu FROM public.spbu;
+
+  -- Get SPBU list for filter dropdowns
+  SELECT json_agg(
+    json_build_object(
+      'id', id,
+      'name', COALESCE(nama, CONCAT('SPBU #', id)),
+      'alamat', COALESCE(alamat, '-')
+    ) ORDER BY id ASC
+  ) INTO v_spbu_list FROM public.spbu;
+
+  -- Get operator list with joined SPBU name
+  WITH operator_details AS (
+    SELECT 
+      op.id,
+      op.nama_operator,
+      op.spbu_id,
+      COALESCE(s.nama, CONCAT('SPBU #', op.spbu_id)) AS spbu_name,
+      op.is_active,
+      op.created_at
+    FROM public.operator_profiles op
+    LEFT JOIN public.spbu s ON s.id = op.spbu_id
+    WHERE (p_spbu_id = '' OR op.spbu_id::text = p_spbu_id)
+      AND (p_search = '' OR op.nama_operator ILIKE '%' || p_search || '%')
+    ORDER BY op.created_at DESC, op.nama_operator ASC
+  )
+  SELECT json_agg(
+    json_build_object(
+      'id', id,
+      'nama_operator', nama_operator,
+      'spbu_id', spbu_id,
+      'spbu_name', spbu_name,
+      'is_active', is_active,
+      'created_at', created_at
+    )
+  ) INTO v_operators_json FROM operator_details;
+
+  v_result := json_build_object(
+    'kpis', json_build_object(
+      'totalOperators', v_total_operators,
+      'activeOperators', v_active_operators,
+      'totalSpbu', v_total_spbu
+    ),
+    'spbuList', COALESCE(v_spbu_list, '[]'::json),
+    'operators', COALESCE(v_operators_json, '[]'::json)
+  );
+
+  RETURN v_result;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_master_team_overview(text, text) TO authenticated, service_role;
+
+
+-- ─── 6. FUNCTION: manage_operator ─────────────────────────────────────────────
+DROP FUNCTION IF EXISTS public.manage_operator CASCADE;
+CREATE OR REPLACE FUNCTION public.manage_operator(
+  p_action text,
+  p_id uuid DEFAULT NULL,
+  p_spbu_id text DEFAULT '',
+  p_nama_operator text DEFAULT '',
+  p_is_active boolean DEFAULT true
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_new_id uuid;
+  v_result json;
+BEGIN
+  IF p_action = 'create' THEN
+    IF p_nama_operator IS NULL OR TRIM(p_nama_operator) = '' THEN
+      RAISE EXCEPTION 'Nama operator tidak boleh kosong';
+    END IF;
+    IF p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' THEN
+      RAISE EXCEPTION 'Pilih unit SPBU terlebih dahulu';
+    END IF;
+
+    INSERT INTO public.operator_profiles (spbu_id, nama_operator, is_active)
+    VALUES (p_spbu_id, TRIM(p_nama_operator), COALESCE(p_is_active, true))
+    RETURNING id INTO v_new_id;
+
+    v_result := json_build_object(
+      'success', true,
+      'id', v_new_id,
+      'message', 'Operator berhasil ditambahkan'
+    );
+
+  ELSIF p_action = 'update' THEN
+    IF p_id IS NULL THEN
+      RAISE EXCEPTION 'ID operator tidak valid';
+    END IF;
+
+    UPDATE public.operator_profiles
+    SET 
+      nama_operator = TRIM(p_nama_operator),
+      spbu_id = p_spbu_id,
+      is_active = p_is_active
+    WHERE id = p_id;
+
+    v_result := json_build_object(
+      'success', true,
+      'message', 'Data operator berhasil diperbarui'
+    );
+
+  ELSIF p_action = 'toggle_status' THEN
+    IF p_id IS NULL THEN
+      RAISE EXCEPTION 'ID operator tidak valid';
+    END IF;
+
+    UPDATE public.operator_profiles
+    SET is_active = NOT is_active
+    WHERE id = p_id;
+
+    v_result := json_build_object(
+      'success', true,
+      'message', 'Status operator berhasil diperbarui'
+    );
+
+  ELSE
+    RAISE EXCEPTION 'Aksi manage_operator tidak dikenali: %', p_action;
+  END IF;
+
+  RETURN v_result;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.manage_operator(text, uuid, text, text, boolean) TO authenticated, service_role;
 
 -- Force PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';

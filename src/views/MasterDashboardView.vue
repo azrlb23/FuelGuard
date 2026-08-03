@@ -13,6 +13,7 @@ const timeFilters = ['Today', 'Weekly', 'Monthly', 'All-Time']
 const {
   filterTime,
   searchQuery,
+  isLoading,
   stats,
   spbuList,
   weeklyVolumeByDay,
@@ -68,6 +69,7 @@ const transactionCardTitle = computed(() => {
 
     <!-- Top KPI Stat Cards -->
     <MasterKpiCards
+      :loading="isLoading"
       :totalNetworkRevenue="totalNetworkRevenue"
       :totalNetworkVolume="totalNetworkVolume"
       :activeSpbuCountText="activeSpbuCountText"

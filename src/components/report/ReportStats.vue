@@ -16,33 +16,33 @@ const formatRupiah = (number) => {
     
     <div class="bg-white p-3 flex flex-col justify-center items-center">
       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Volume</p>
-      <p class="text-lg font-black text-[#143d2e]">
-        <span v-if="loading" class="loading loading-dots loading-xs"></span>
-        <span v-else>{{ stats.volume.toLocaleString('id-ID') }} <span class="text-xs text-gray-400 font-medium">L</span></span>
+      <div v-if="loading" class="h-6 w-20 bg-gray-200 animate-pulse rounded-md mt-1"></div>
+      <p v-else class="text-lg font-black text-[#143d2e]">
+        {{ stats.volume.toLocaleString('id-ID') }} <span class="text-xs text-gray-400 font-medium">L</span>
       </p>
     </div>
 
     <div class="bg-white p-3 flex flex-col justify-center items-center">
       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Revenue</p>
-      <p class="text-lg font-black text-[#143d2e]">
-        <span v-if="loading" class="loading loading-dots loading-xs"></span>
-        <span v-else>{{ formatRupiah(stats.revenue) }}</span>
+      <div v-if="loading" class="h-6 w-28 bg-gray-200 animate-pulse rounded-md mt-1"></div>
+      <p v-else class="text-lg font-black text-[#143d2e]">
+        {{ formatRupiah(stats.revenue) }}
       </p>
     </div>
 
     <div class="bg-white p-3 flex flex-col justify-center items-center">
       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transaksi</p>
-      <p class="text-lg font-black text-[#143d2e]">
-        <span v-if="loading" class="loading loading-dots loading-xs"></span>
-        <span v-else>{{ stats.vehicle }} <span class="text-xs text-gray-400 font-medium">Unit</span></span>
+      <div v-if="loading" class="h-6 w-16 bg-gray-200 animate-pulse rounded-md mt-1"></div>
+      <p v-else class="text-lg font-black text-[#143d2e]">
+        {{ stats.vehicle }} <span class="text-xs text-gray-400 font-medium">Unit</span>
       </p>
     </div>
 
     <div class="bg-white p-3 flex flex-col justify-center items-center">
       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Avg. Volume</p>
-      <p class="text-lg font-black text-[#143d2e]">
-        <span v-if="loading" class="loading loading-dots loading-xs"></span>
-        <span v-else>{{ stats.vehicle ? (stats.volume / stats.vehicle).toFixed(1) : 0 }} <span class="text-xs text-gray-400 font-medium">L/Trx</span></span>
+      <div v-if="loading" class="h-6 w-20 bg-gray-200 animate-pulse rounded-md mt-1"></div>
+      <p v-else class="text-lg font-black text-[#143d2e]">
+        {{ stats.vehicle ? (stats.volume / stats.vehicle).toFixed(1) : 0 }} <span class="text-xs text-gray-400 font-medium">L/Trx</span>
       </p>
     </div>
 

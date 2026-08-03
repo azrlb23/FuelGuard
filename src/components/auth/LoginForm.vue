@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'vue3-toastify'
 
 const router = useRouter()
@@ -10,6 +11,11 @@ const authStore = useAuthStore()
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
+
+// Lupa Password Modal State
+const isForgotModalOpen = ref(false)
+const resetEmail = ref('')
+const resetLoading = ref(false)
 
 const handleLogin = async () => {
   if (!email.value || !password.value) {
@@ -37,6 +43,32 @@ const handleLogin = async () => {
     toast.error(err.message || 'Login gagal.')
   } finally {
     loading.value = false
+  }
+}
+
+const handleSendResetEmail = async () => {
+  if (!resetEmail.value) {
+    toast.warn('Masukkan email akun Anda')
+    return
+  }
+
+  resetLoading.value = true
+  try {
+    const redirectUrl = `${window.location.origin}/reset-password`
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.value, {
+      redirectTo: redirectUrl
+    })
+
+    if (error) throw error
+
+    toast.success('Tautan pemulihan password telah dikirim ke email Anda!')
+    isForgotModalOpen.value = false
+    resetEmail.value = ''
+  } catch (err) {
+    console.error('[ResetPassword] Gagal:', err)
+    toast.error(err.message || 'Gagal mengirim email pemulihan')
+  } finally {
+    resetLoading.value = false
   }
 }
 </script>
@@ -73,6 +105,13 @@ const handleLogin = async () => {
         <label for="password" class="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
           Password
         </label>
+        <button
+          type="button"
+          @click="isForgotModalOpen = true"
+          class="text-[11px] font-semibold text-[#143d2e] hover:underline cursor-pointer transition-colors"
+        >
+          Lupa Password?
+        </button>
       </div>
       <div class="relative group">
         <input
@@ -126,4 +165,59 @@ const handleLogin = async () => {
     </div>
 
   </form>
+
+  <!-- Modal Lupa Password -->
+  <div v-if="isForgotModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-5 border border-gray-100 animate-enter text-left text-gray-800">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+            🔑
+          </div>
+          <div>
+            <h3 class="text-lg font-black text-[#143d2e]">Reset Password</h3>
+            <p class="text-xs text-gray-500 font-medium">Pemulihan kata sandi via Email</p>
+          </div>
+        </div>
+        <button @click="isForgotModalOpen = false" class="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <p class="text-xs text-gray-600 leading-relaxed">
+        Masukkan alamat email terdaftar milik Anda. Tautan pemulihan kata sandi akan dikirimkan secara otomatis ke kotak masuk email Anda.
+      </p>
+
+      <form @submit.prevent="handleSendResetEmail" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1.5">Alamat Email Terdaftar</label>
+          <input
+            v-model="resetEmail"
+            type="email"
+            required
+            placeholder="nama@fuelguard.com"
+            class="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] transition-all"
+          />
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            @click="isForgotModalOpen = false"
+            class="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-bold transition-all cursor-pointer"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            :disabled="resetLoading"
+            class="px-5 py-2.5 rounded-xl bg-[#143d2e] hover:bg-[#1a4a38] text-white text-xs font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+          >
+            <span v-if="resetLoading" class="loading loading-spinner loading-xs"></span>
+            Kirim Link Reset
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </template>

@@ -63,9 +63,12 @@ const getRecentTransactions = (spbuId) => {
 }
 
 const formatRupiah = (val) => {
-  if (!val || val === 0) return 'Rp 0'
-  if (val >= 1000000000) return `Rp ${(val / 1000000000).toFixed(2)} M`
-  return `Rp ${(val / 1000000).toFixed(1)} Jt`
+  const num = Number(val) || 0
+  if (num === 0) return 'Rp 0'
+  if (num >= 1000000000) return `Rp ${(num / 1000000000).toFixed(2)} M`
+  if (num >= 1000000) return `Rp ${(num / 1000000).toFixed(1)} Jt`
+  if (num >= 1000) return `Rp ${Math.round(num / 1000)} Rb`
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num)
 }
 
 const formatVolume = (val) => {
@@ -80,7 +83,6 @@ const formatVolume = (val) => {
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
       <div>
         <h4 class="text-[#143d2e] font-black text-lg">Performa SPBU Jaringan</h4>
-        <p class="text-gray-400 text-xs font-medium mt-0.5">Daftar SPBU terhubung (Filter: {{ periodLabel }})</p>
       </div>
 
       <!-- Search Bar SPBU -->

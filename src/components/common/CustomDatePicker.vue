@@ -144,7 +144,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="containerRef" class="relative flex-1 min-w-[150px]">
+  <div ref="containerRef" :class="['relative flex-1 min-w-[150px]', isOpen ? 'z-50' : 'z-10']">
     <!-- Trigger Pill -->
     <button
       type="button"
@@ -173,7 +173,7 @@ onUnmounted(() => {
     <!-- Custom Floating Popover Calendar Card -->
     <div
       v-if="isOpen"
-      class="absolute left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50 animate-enter text-gray-800 text-xs font-bold"
+      class="absolute left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-[100] animate-enter text-gray-800 text-xs font-bold"
     >
       <!-- Calendar Header: Month Navigation -->
       <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
