@@ -49,14 +49,14 @@ const handleToggleStatus = async (id) => {
           class="px-4 py-2 md:px-5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-200 cursor-pointer select-none"
           :class="activeTab === 'operators' ? 'bg-white/20 border border-white/30 text-white shadow-sm font-bold' : 'text-white/70 hover:text-white border border-transparent'"
         >
-          Profil Operator Shift ({{ teamMembers.length }})
+          Profil Operator ({{ teamMembers.length }})
         </button>
         <button
           @click="activeTab = 'accounts'"
           class="px-4 py-2 md:px-5 md:py-2 rounded-full text-xs md:text-sm font-medium transition-all duration-200 cursor-pointer select-none"
           :class="activeTab === 'accounts' ? 'bg-white/20 border border-white/30 text-white shadow-sm font-bold' : 'text-white/70 hover:text-white border border-transparent'"
         >
-          Akun Login SPBU ({{ spbuAccounts.length }})
+          Akun SPBU ({{ spbuAccounts.length }})
         </button>
       </div>
     </div>
