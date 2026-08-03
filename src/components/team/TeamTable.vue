@@ -212,13 +212,13 @@ const formatDate = (dateString) => {
   <div class="w-full">
 
     <!-- Single Unified Card: Tabs + Filters + Table -->
-    <div class="bg-gradient-to-br from-[#103427] via-[#143d2e] to-[#0d2b20] rounded-[2rem] p-5 md:p-6 border border-emerald-800/40 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
+    <div class="bg-gradient-to-br from-[#103427] via-[#143d2e] to-[#0d2b20] rounded-[2rem] p-5 md:p-6 border border-emerald-800/40 shadow-xl shadow-green-900/10 text-white relative">
 
       <!-- Background Glow Effect -->
       <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
       <!-- Filters Bar -->
-      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10 pb-4 border-b border-emerald-800/40">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-20 pb-4 border-b border-emerald-800/40">
         <!-- Search Input -->
         <div class="relative flex-1">
           <span class="absolute left-3 top-3 text-green-300 pointer-events-none">
@@ -277,7 +277,7 @@ const formatDate = (dateString) => {
                 String(selectedSpbuId) === String(spbu.id) ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
               ]"
             >
-              <span class="truncate">{{ spbu.name }} ({{ spbu.id }})</span>
+              <span class="truncate">{{ spbu.name }}</span>
               <svg v-if="String(selectedSpbuId) === String(spbu.id)" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4 h-4 text-[#143d2e] shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
               </svg>
@@ -301,7 +301,7 @@ const formatDate = (dateString) => {
       <!-- Table/Cards Content (no gap, same card) -->
 
       <!-- TAB 1: PROFIL OPERATOR (SHIFT WORKERS) -->
-      <div v-if="activeTab === 'operators'" class="pt-4">
+      <div v-if="activeTab === 'operators'" class="pt-1">
 
         <!-- Mobile List View -->
         <div class="block md:hidden space-y-3">
@@ -367,12 +367,12 @@ const formatDate = (dateString) => {
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider border-b border-white/15 pb-4">
-                <th class="pb-4 pl-3">NAMA OPERATOR</th>
-                <th class="pb-4">SPBU</th>
-                <th class="pb-4">STATUS PETUGAS</th>
-                <th class="pb-4">TANGGAL DIBUAT</th>
-                <th class="pb-4 pr-3 text-right">AKSI</th>
+              <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider">
+                <th class="pt-3 pb-4 pl-3 border-b border-white/15">NAMA OPERATOR</th>
+                <th class="pt-3 pb-4 border-b border-white/15">SPBU</th>
+                <th class="pt-3 pb-4 border-b border-white/15">STATUS PETUGAS</th>
+                <th class="pt-3 pb-4 border-b border-white/15">TANGGAL DIBUAT</th>
+                <th class="pt-3 pb-4 pr-3 text-right border-b border-white/15">AKSI</th>
               </tr>
             </thead>
 
@@ -411,7 +411,7 @@ const formatDate = (dateString) => {
                     </div>
                     <div>
                       <p class="font-bold text-white text-sm leading-tight">{{ member.nama_operator }}</p>
-                      <p class="text-[11px] text-green-200/60 font-semibold">Petugas Shift SPBU</p>
+                      <!-- <p class="text-[11px] text-green-200/60 font-semibold">SPBU</p> -->
                     </div>
                   </div>
                 </td>
@@ -451,7 +451,7 @@ const formatDate = (dateString) => {
       </div>
 
       <!-- TAB 2: AKUN SPBU (LOGIN & AUTHENTICATION CREDENTIALS) -->
-      <div v-else-if="activeTab === 'accounts'">
+      <div v-else-if="activeTab === 'accounts'" class="pt-1">
 
         <!-- Mobile List View -->
         <div class="block md:hidden space-y-3">
@@ -504,11 +504,11 @@ const formatDate = (dateString) => {
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider border-b border-white/15 pb-4">
-                <th class="pb-4 pl-3">UNIT SPBU</th>
-                <th class="pb-4">EMAIL AKUN LOGIN</th>
-                <th class="pb-4">HAK AKSES (ROLE)</th>
-                <th class="pb-4 pr-3 text-right">AKSI AUTHENTICATION</th>
+              <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider pt-4">
+                <th class="pt-3 pb-4 pl-3 border-b border-white/15">UNIT SPBU</th>
+                <th class="pt-3 pb-4 border-b border-white/15">EMAIL AKUN LOGIN</th>
+                <th class="pt-3 pb-4 border-b border-white/15">HAK AKSES (ROLE)</th>
+                <th class="pt-3 pb-4 pr-3 text-right border-b border-white/15">AKSI AUTHENTICATION</th>
               </tr>
             </thead>
 
@@ -537,7 +537,7 @@ const formatDate = (dateString) => {
                 <td class="py-4 pl-3">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center font-black text-white text-sm shadow-xs border border-white/10">
-                      ⛽
+                      {{ acc.spbu_name.indexOf(0) }}
                     </div>
                     <div>
                       <p class="font-bold text-white text-sm leading-tight">{{ acc.spbu_name }}</p>

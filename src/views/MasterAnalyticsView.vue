@@ -7,20 +7,29 @@ import LazyLineChart from '@/components/common/LazyLineChart.vue'
 import LazyDoughnutChart from '@/components/common/LazyDoughnutChart.vue'
 
 const analyticsContainerRef = ref(null)
+const spbuSelectContainerRef = ref(null)
 const isSpbuDropdownOpen = ref(false)
+const isSpbuSelectOpen = ref(false)
 
 const toggleSpbuDropdown = () => {
   isSpbuDropdownOpen.value = !isSpbuDropdownOpen.value
 }
 
+const toggleSpbuSelect = () => {
+  isSpbuSelectOpen.value = !isSpbuSelectOpen.value
+}
+
 const selectSpbu = (id) => {
   selectedSpbuId.value = id
-  isSpbuDropdownOpen.value = false
+  isSpbuSelectOpen.value = false
 }
 
 const handleClickOutside = (e) => {
   if (analyticsContainerRef.value && !analyticsContainerRef.value.contains(e.target)) {
     isSpbuDropdownOpen.value = false
+    isSpbuSelectOpen.value = false
+  } else if (spbuSelectContainerRef.value && !spbuSelectContainerRef.value.contains(e.target)) {
+    isSpbuSelectOpen.value = false
   }
 }
 
@@ -242,19 +251,57 @@ const doughnutChartOptions = {
             </button>
           </div>
 
-          <!-- Filter Option 1: SPBU Selection -->
+          <!-- Filter Option 1: SPBU Selection (Custom Floating Card Dropdown) -->
           <div class="space-y-1.5">
             <label class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-200/80">Lokasi SPBU</label>
-            <select
-              :value="selectedSpbuId"
-              @change="selectSpbu($event.target.value)"
-              class="w-full bg-white/10 hover:bg-white/20 border border-white/15 focus:border-white focus:ring-2 focus:ring-white/20 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white transition-all cursor-pointer outline-none shadow-sm appearance-none"
-            >
-              <option value="" class="text-gray-800 font-bold">Semua SPBU Jaringan</option>
-              <option v-for="s in spbuOptions" :key="s.id" :value="s.id" class="text-gray-800 font-bold">
-                {{ s.name }}
-              </option>
-            </select>
+            <div ref="spbuSelectContainerRef" class="relative">
+              <button
+                type="button"
+                @click="toggleSpbuSelect"
+                class="w-full flex items-center justify-between gap-2 bg-white/10 hover:bg-white/20 border border-white/15 focus:border-white focus:ring-2 focus:ring-white/20 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white transition-all cursor-pointer select-none"
+              >
+                <span class="truncate">{{ selectedSpbuName }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" :class="['w-3.5 h-3.5 text-green-200/70 transition-transform duration-200 shrink-0', isSpbuSelectOpen ? 'rotate-180 text-white' : '']">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+
+              <!-- SPBU Menu Card -->
+              <div
+                v-if="isSpbuSelectOpen"
+                class="absolute left-0 mt-1 w-full bg-white rounded-xl shadow-2xl border border-gray-100 p-1 z-[110] text-gray-800 text-xs font-bold space-y-0.5 max-h-48 overflow-y-auto"
+              >
+                <button
+                  type="button"
+                  @click="selectSpbu('')"
+                  :class="[
+                    'w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-left cursor-pointer',
+                    !selectedSpbuId ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
+                  ]"
+                >
+                  <span>Semua SPBU Jaringan</span>
+                  <svg v-if="!selectedSpbuId" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5 text-[#143d2e] shrink-0">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                </button>
+
+                <button
+                  v-for="s in spbuOptions"
+                  :key="s.id"
+                  type="button"
+                  @click="selectSpbu(s.id)"
+                  :class="[
+                    'w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-left cursor-pointer',
+                    String(selectedSpbuId) === String(s.id) ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
+                  ]"
+                >
+                  <span class="truncate">{{ s.name }}</span>
+                  <svg v-if="String(selectedSpbuId) === String(s.id)" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5 text-[#143d2e] shrink-0">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Filter Option 2: Date Range (Baris Masing-Masing) -->
@@ -279,7 +326,7 @@ const doughnutChartOptions = {
           <!-- Panel Footer Actions (Reset Filter on the right side) -->
           <div class="flex items-center justify-between pt-3 border-t border-emerald-800/60">
             <span v-if="loading" class="animate-pulse text-emerald-300 text-xs font-bold">Memuat...</span>
-            <span v-else class="text-emerald-200/70 text-[11px] font-bold">Filter diterapkan</span>
+            <span v-else class="text-emerald-200/70 text-[11px] font-bold"></span>
 
             <button
               type="button"
@@ -440,11 +487,8 @@ const doughnutChartOptions = {
     <div class="bg-white rounded-3xl p-5 md:p-8 border border-gray-200 shadow-sm space-y-4">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-4">
         <div>
-          <h3 class="text-lg sm:text-xl font-extrabold text-[#143d2e]">Leaderboard & Benchmarking SPBU</h3>
+          <h3 class="text-lg sm:text-xl font-extrabold text-[#143d2e]">Peringkat SPBU Bedasarkan Penjualan</h3>
         </div>
-        <span class="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full shrink-0">
-          Total Unit: {{ leaderboard.length }} SPBU
-        </span>
       </div>
 
       <!-- Mobile Card View -->
@@ -608,7 +652,7 @@ const doughnutChartOptions = {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-emerald-600 shrink-0">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-8.625 1.125L12 10.5m0 0 4.5 4.5M12 10.5V3" />
           </svg>
-          <span>Export Excel (.xlsx)</span>
+          <span>Ekspor (.xlsx)</span>
         </button>
 
         <button

@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import CustomDatePicker from '@/components/common/CustomDatePicker.vue'
+import * as XLSX from 'xlsx'
+import { toast } from 'vue3-toastify'
 
 const props = defineProps({
   repeatedLogs: {
@@ -78,7 +80,7 @@ const activeFilterCount = computed(() => {
 const selectedSpbuName = computed(() => {
   if (!props.selectedSpbu) return 'Semua SPBU'
   const spbu = props.spbuList.find(s => String(s.id) === String(props.selectedSpbu))
-  return spbu ? `${spbu.nama} (${spbu.id})` : 'Semua SPBU'
+  return spbu ? spbu.nama : 'Semua SPBU'
 })
 
 const normalizePlate = (plat) => {
@@ -141,6 +143,49 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
+
+const exportToExcel = () => {
+  if (!props.repeatedLogs || props.repeatedLogs.length === 0) {
+    toast.warn('Tidak ada data transaksi berulang untuk diekspor.')
+    return
+  }
+  const rows = []
+  props.repeatedLogs.forEach((item) => {
+    const attempts = item.attempts && item.attempts.length > 0 ? item.attempts : [item]
+    attempts.forEach((attempt, index) => {
+      const attemptNum = attempt.attempt_number || index + 1
+      const totalNum = item.total_attempts || attempts.length
+      rows.push({
+        'Tanggal': formatDateOnly(attempt.created_at),
+        'Waktu': formatTimeOnly(attempt.created_at),
+        'Nomor Plat': normalizePlate(item.plat_nomor || attempt.plat_nomor),
+        'Lokasi SPBU': attempt.spbu_nama || 'N/A',
+        'Nama Operator': (attempt.operator_nama || 'N/A').toUpperCase(),
+        'Kategori': attempt.is_ojol ? 'Ojol' : 'Non Ojol',
+        'Deskripsi': attempt.deskripsi || attempt.catatan || `Percobaan ke-${attemptNum} (${totalNum}x Transaksi)`
+      })
+    })
+  })
+  if (rows.length === 0) {
+    toast.warn('Tidak ada baris data transaksi berulang untuk diekspor.')
+    return
+  }
+  const worksheet = XLSX.utils.json_to_sheet(rows)
+  worksheet['!cols'] = [
+    { wch: 15 }, // Tanggal
+    { wch: 15 }, // Waktu
+    { wch: 16 }, // Nomor Plat
+    { wch: 22 }, // Lokasi SPBU
+    { wch: 20 }, // Nama Operator
+    { wch: 14 }, // Kategori
+    { wch: 38 }  // Deskripsi
+  ]
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi Berulang')
+  const dateRangeStr = props.dateFrom ? `${props.dateFrom}_sd_${props.dateTo || props.dateFrom}` : new Date().toISOString().slice(0, 10)
+  XLSX.writeFile(workbook, `Ekspor_Transaksi_Berulang_${dateRangeStr}.xlsx`)
+  toast.success(`Berhasil mengunduh ${rows.length} data transaksi berulang!`)
+}
 </script>
 
 <template>
@@ -271,7 +316,7 @@ onUnmounted(() => {
                       String(selectedSpbu) === String(spbu.id) ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
                     ]"
                   >
-                    <span class="truncate">{{ spbu.nama }} ({{ spbu.id }})</span>
+                    <span class="truncate">{{ spbu.nama }}</span>
                     <svg v-if="String(selectedSpbu) === String(spbu.id)" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5 text-[#143d2e] shrink-0">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                     </svg>
@@ -337,8 +382,8 @@ onUnmounted(() => {
             </svg>
           </div>
           <div>
-            <p class="text-base font-extrabold text-white">Sistem Aman & Terkendali</p>
-            <p class="text-xs font-semibold text-emerald-200/70 mt-1">Tidak ada percobaan transaksi berulang / over-quota yang terdeteksi saat ini.</p>
+            <p class="text-base font-extrabold text-white">Transaksi Aman</p>
+            <p class="text-xs font-semibold text-emerald-200/70 mt-1">Tidak ada percobaan transaksi berulang yang terdeteksi saat ini.</p>
           </div>
         </div>
       </template>
@@ -513,7 +558,7 @@ onUnmounted(() => {
     <!-- Card Footer -->
     <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-emerald-800/40 text-xs font-semibold text-emerald-200/70 relative z-10">
       <p>
-        Menampilkan {{ repeatedLogs.length }} plat unik dari {{ totalCount }} total percobaan
+        Menampilkan {{ repeatedLogs.length }} plat dari {{ totalCount }} total percobaan
       </p>
 
       <div class="flex items-center gap-2">
@@ -532,6 +577,19 @@ onUnmounted(() => {
           Next
         </button>
       </div>
+      <!-- 3. Downloadable Ekspor XLSX Button -->
+        <button
+          type="button"
+          @click="exportToExcel"
+          :disabled="repeatedLogs.length === 0"
+          title="Ekspor Data Transaksi Berulang ke File Excel (.xlsx)"
+          class="w-full sm:w-auto px-4 py-2.5 rounded-full text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 border select-none shadow-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-400/40 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-emerald-300 shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          <span>Ekspor (.xlsx)</span>
+        </button>
     </div>
   </div>
 </template>
