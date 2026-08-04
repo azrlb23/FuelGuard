@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter, useRoute } from 'vue-router'
 import KasirSelectorModal from '@/components/operator/KasirSelectorModal.vue'
-import { useIdleTimeout } from '@/composables/useIdleTimeout'
+import { useIdleTimeout } from '@/composables/common/useIdleTimeout'
 
 const authStore = useAuthStore()
 const router = useRouter()

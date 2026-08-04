@@ -2,8 +2,8 @@
 import { ref, watch } from 'vue'
 import HistoryHeader from '@/components/history/HistoryHeader.vue'
 import HistoryTable from '@/components/history/HistoryTable.vue'
-import { useTransactionHistory } from '@/composables/useTransactionHistory'
-import { useRepeatedLogs } from '@/composables/useRepeatedLogs'
+import { useTransactionHistory } from '@/composables/operator/useTransactionHistory'
+import { useRepeatedLogs } from '@/composables/operator/useRepeatedLogs'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()

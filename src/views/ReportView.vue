@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'vue3-toastify'
-import { useExcelExport } from '@/composables/useExcelExport'
+import { useExcelExport } from '@/composables/common/useExcelExport'
 import { useAuthStore } from '@/stores/auth'
 import ReportHeader from '@/components/report/ReportHeader.vue'
 import ReportStats from '@/components/report/ReportStats.vue'

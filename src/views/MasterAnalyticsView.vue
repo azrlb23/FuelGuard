@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useMasterAnalytics } from '@/composables/useMasterAnalytics'
+import { useMasterAnalytics } from '@/composables/master/useMasterAnalytics'
 import MasterAnalyticsFilterPanel from '@/components/master/report/MasterAnalyticsFilterPanel.vue'
 import MasterAnalyticsKpiCards from '@/components/master/report/MasterAnalyticsKpiCards.vue'
 import MasterAnalyticsChartsSection from '@/components/master/report/MasterAnalyticsChartsSection.vue'

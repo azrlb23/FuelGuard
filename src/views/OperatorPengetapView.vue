@@ -1,5 +1,5 @@
 <script setup>
-import { useRepeatedLogs } from '@/composables/useRepeatedLogs'
+import { useRepeatedLogs } from '@/composables/operator/useRepeatedLogs'
 
 const itemsPerPage = 10
 const {

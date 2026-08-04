@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useFormatters } from '@/composables/useFormatters' 
+import { useFormatters } from '@/composables/common/useFormatters' 
 
 const props = defineProps({
   stats: Object,

@@ -2,8 +2,8 @@
 import { ref } from 'vue'
 import * as XLSX from 'xlsx'
 import { toast } from 'vue3-toastify'
-import MasterRepeatedFilterBar from './repeated/MasterRepeatedFilterBar.vue'
-import MasterRepeatedAccordionItem from './repeated/MasterRepeatedAccordionItem.vue'
+import MasterRepeatedFilterBar from './MasterRepeatedFilterBar.vue'
+import MasterRepeatedAccordionItem from './MasterRepeatedAccordionItem.vue'
 
 const props = defineProps({
   repeatedLogs: {

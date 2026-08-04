@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useTeam } from '@/composables/useTeam'
+import { useTeam } from '@/composables/master/useTeam'
 import TeamTable from '@/components/team/TeamTable.vue'
 
 const {

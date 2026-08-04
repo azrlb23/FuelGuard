@@ -2,9 +2,9 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { toast } from 'vue3-toastify'
 import { useAuthStore } from '@/stores/auth'
-import { useCameraScanner } from '@/composables/useCameraScanner'
-import { useTransactionAction } from '@/composables/useTransactionAction'
-import { useAudioAlert } from '@/composables/useAudioAlert'
+import { useCameraScanner } from '@/composables/operator/useCameraScanner'
+import { useTransactionAction } from '@/composables/operator/useTransactionAction'
+import { useAudioAlert } from '@/composables/common/useAudioAlert'
 
 const props = defineProps({
   vehicleType: { type: String, required: true },

@@ -1,6 +1,6 @@
 <script setup>
-import { useMasterRepeated } from '@/composables/useMasterRepeated'
-import MasterRepeatedTrxCard from '@/components/master/dashboard/MasterRepeatedTrxCard.vue'
+import { useMasterRepeated } from '@/composables/master/useMasterRepeated'
+import MasterRepeatedTrxCard from '@/components/master/repeatedTransactions/MasterRepeatedTrxCard.vue'
 
 const {
   repeatedLogs,
