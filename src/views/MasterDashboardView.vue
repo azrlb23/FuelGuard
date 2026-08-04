@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useMasterDashboard } from '@/composables/useMasterDashboard'
+import { useMasterDashboard } from '@/composables/master/useMasterDashboard'
 
 import MasterDashboardHeader from '@/components/master/dashboard/MasterDashboardHeader.vue'
 import MasterKpiCards from '@/components/master/dashboard/MasterKpiCards.vue'

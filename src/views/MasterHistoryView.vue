@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useMasterHistory } from '@/composables/useMasterHistory'
+import { useMasterHistory } from '@/composables/master/useMasterHistory'
 
 import MasterHistoryHeader from '@/components/master/history/MasterHistoryHeader.vue'
 import MasterHistoryTable from '@/components/master/history/MasterHistoryTable.vue'

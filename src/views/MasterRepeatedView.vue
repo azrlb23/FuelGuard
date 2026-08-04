@@ -1,11 +1,14 @@
 <script setup>
-import { useMasterRepeated } from '@/composables/useMasterRepeated'
-import MasterRepeatedTrxCard from '@/components/master/dashboard/MasterRepeatedTrxCard.vue'
+import { useMasterRepeated } from '@/composables/master/useMasterRepeated'
+import MasterRepeatedTrxCard from '@/components/master/repeatedTransactions/MasterRepeatedTrxCard.vue'
+
+const itemsPerPage = 10
 
 const {
   repeatedLogs,
   totalAttempts,
   totalPlates,
+  currentPage,
   isLoading,
   searchQuery,
   selectedSpbu,
@@ -13,7 +16,7 @@ const {
   dateTo,
   spbuList,
   resetFilters
-} = useMasterRepeated()
+} = useMasterRepeated(itemsPerPage)
 </script>
 
 <template>
@@ -22,7 +25,7 @@ const {
     <!-- Page Header -->
     <div>
       <h1 class="text-3xl md:text-4xl font-extrabold text-[#143d2e] tracking-tight">
-        Transaksi Berulang
+        Transaksi Ditolak
       </h1>
     </div>
 
@@ -33,6 +36,8 @@ const {
         v-model:selectedSpbu="selectedSpbu"
         v-model:dateFrom="dateFrom"
         v-model:dateTo="dateTo"
+        v-model:currentPage="currentPage"
+        :itemsPerPage="itemsPerPage"
         :spbuList="spbuList"
         :repeatedLogs="repeatedLogs"
         :totalCount="totalAttempts"

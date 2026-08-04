@@ -9,7 +9,7 @@ import DashboardLoyalty from '@/components/dashboard/DashboardLoyalty.vue'
 import DashboardTrend from '@/components/dashboard/DashboardTrend.vue'
 import DashboardRevenueShare from '@/components/dashboard/DashboardRevenueShare.vue'
 
-import { useDashboard } from '@/composables/useDashboard'
+import { useDashboard } from '@/composables/operator/useDashboard'
 
 const { 
   filter, setFilter, stats, feed, 

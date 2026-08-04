@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useMasterAnalytics } from '@/composables/useMasterAnalytics'
+import { useMasterAnalytics } from '@/composables/master/useMasterAnalytics'
 import MasterAnalyticsFilterPanel from '@/components/master/report/MasterAnalyticsFilterPanel.vue'
 import MasterAnalyticsKpiCards from '@/components/master/report/MasterAnalyticsKpiCards.vue'
 import MasterAnalyticsChartsSection from '@/components/master/report/MasterAnalyticsChartsSection.vue'
@@ -12,11 +12,13 @@ const {
   dateFrom,
   dateTo,
   selectedSpbuId,
+  selectedSpbuName,
   spbuOptions,
   kpi,
   trendData,
   leaderboard,
   spbuShares,
+  topPlates,
   exportToExcel,
   exportToPDF
 } = useMasterAnalytics()
@@ -163,14 +165,18 @@ const doughnutChartOptions = {
       :formatVolume="formatVolume"
     />
 
-    <!-- Row 2: Charts Grid -->
+    <!-- Row 2: Charts Grid / Ranking Plat per SPBU -->
     <MasterAnalyticsChartsSection
       :trendChartData="trendChartData"
       :trendChartOptions="trendChartOptions"
       :doughnutChartData="doughnutChartData"
       :doughnutChartOptions="doughnutChartOptions"
       :spbuShares="spbuShares"
+      :topPlates="topPlates"
+      :selectedSpbuId="selectedSpbuId"
+      :selectedSpbuName="selectedSpbuName"
       :formatRupiah="formatRupiah"
+      :formatVolume="formatVolume"
     />
 
     <!-- Row 3: Leaderboard SPBU Benchmark Table & Mobile Cards -->

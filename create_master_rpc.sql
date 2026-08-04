@@ -206,7 +206,13 @@ BEGIN
   SELECT COUNT(t.id) INTO v_total_count
   FROM public.transaksi_pertalite t
   LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
-  WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
+  LEFT JOIN public.spbu s ON s.id = COALESCE(t.spbu_id, op.spbu_id)
+  WHERE (p_search = '' OR 
+         t.plat_nomor ILIKE '%' || p_search || '%' OR
+         COALESCE(op.nama_operator, '') ILIKE '%' || p_search || '%' OR
+         COALESCE(s.nama, op.spbu_id, t.spbu_id) ILIKE '%' || p_search || '%' OR
+         to_char(t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar', 'HH24:MI') ILIKE '%' || p_search || '%' OR
+         to_char(t.waktu_pencatatan, 'HH24:MI') ILIKE '%' || p_search || '%')
     AND (p_spbu_id = '' OR COALESCE(t.spbu_id, op.spbu_id)::text = p_spbu_id)
     AND (p_date_from = '' OR t.waktu_pencatatan::date >= p_date_from::date)
     AND (p_date_to = '' OR t.waktu_pencatatan::date <= p_date_to::date);
@@ -226,7 +232,12 @@ BEGIN
     FROM public.transaksi_pertalite t
     LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
     LEFT JOIN public.spbu s ON s.id = COALESCE(t.spbu_id, op.spbu_id)
-    WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
+    WHERE (p_search = '' OR 
+           t.plat_nomor ILIKE '%' || p_search || '%' OR
+           COALESCE(op.nama_operator, '') ILIKE '%' || p_search || '%' OR
+           COALESCE(s.nama, op.spbu_id, t.spbu_id) ILIKE '%' || p_search || '%' OR
+           to_char(t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar', 'HH24:MI') ILIKE '%' || p_search || '%' OR
+           to_char(t.waktu_pencatatan, 'HH24:MI') ILIKE '%' || p_search || '%')
       AND (p_spbu_id = '' OR COALESCE(t.spbu_id, op.spbu_id)::text = p_spbu_id)
       AND (p_date_from = '' OR t.waktu_pencatatan::date >= p_date_from::date)
       AND (p_date_to = '' OR t.waktu_pencatatan::date <= p_date_to::date)
