@@ -8,8 +8,15 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      alias: '/login',
       name: 'login',
       component: LoginView,
+      meta: { requiresAuth: false, layout: 'auth' }
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('../views/ResetPasswordView.vue'),
       meta: { requiresAuth: false, layout: 'auth' }
     },
     {
@@ -35,12 +42,20 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'master', layout: 'master' }
     },
     {
+      path: '/master/repeated',
+      name: 'master-repeated',
+      component: () => import('../views/MasterRepeatedView.vue'),
+      meta: { requiresAuth: true, role: 'master', layout: 'master' }
+    },
+    {
       path: '/master/network',
       redirect: '/master/history'
     },
     {
       path: '/master/team',
-      redirect: '/team'
+      name: 'master-team',
+      component: () => import('../views/TeamView.vue'),
+      meta: { requiresAuth: true, role: 'master', layout: 'master' }
     },
     {
       path: '/master/settings',
@@ -70,6 +85,12 @@ const router = createRouter({
       path: '/operator/history',
       name: 'operator-history',
       component: () => import('../views/OperatorHistoryView.vue'),
+      meta: { requiresAuth: true, role: 'operator', layout: 'operator' }
+    },
+    {
+      path: '/operator/pengetap',
+      name: 'operator-pengetap',
+      component: () => import('../views/OperatorPengetapView.vue'),
       meta: { requiresAuth: true, role: 'operator', layout: 'operator' }
     },
     {
@@ -106,6 +127,8 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+  if (to.name === 'reset-password') return next()
+
   const authStore = useAuthStore()
 
   const { data: { session } } = await supabase.auth.getSession()

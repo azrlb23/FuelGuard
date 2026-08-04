@@ -129,7 +129,12 @@ export const useAuthStore = defineStore('auth', () => {
       isLoading.value = false
       localStorage.clear()
       sessionStorage.clear()
-      window.location.href = '/'
+      try {
+        const routerModule = await import('@/router')
+        routerModule.default.push({ name: 'login' })
+      } catch (e) {
+        window.location.href = '/'
+      }
     }
   }
 

@@ -5,31 +5,48 @@ import { toast } from 'vue3-toastify'
 
 const loading = ref(false)
 const form = ref({
+  currentPassword: '',
   newPassword: '',
   confirmPassword: ''
 })
 
 const updatePassword = async () => {
   if (form.value.newPassword !== form.value.confirmPassword) {
-    toast.error("Konfirmasi password tidak cocok!")
+    toast.error("Konfirmasi password baru tidak cocok!")
     return
   }
   if (form.value.newPassword.length < 6) {
-    toast.warn("Password minimal 6 karakter")
+    toast.warn("Password baru minimal 6 karakter")
     return
   }
 
   loading.value = true
   try {
+    // 1. Verifikasi Password Saat Ini dengan Re-Authenticating
+    const { data: { user }, error: userErr } = await supabase.auth.getUser()
+    if (userErr || !user || !user.email) {
+      throw new Error("Sesi pengguna tidak valid, silakan login kembali.")
+    }
+
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: form.value.currentPassword
+    })
+
+    if (signInErr) {
+      throw new Error("Password saat ini salah. Mohon periksa kembali.")
+    }
+
+    // 2. Update Password Baru di auth.users
     const { error } = await supabase.auth.updateUser({
       password: form.value.newPassword
     })
     if (error) throw error
 
     toast.success("Password berhasil diperbarui!")
-    form.value = { newPassword: '', confirmPassword: '' } // Reset form
+    form.value = { currentPassword: '', newPassword: '', confirmPassword: '' } // Reset form
   } catch (err) {
-    toast.error(err.message)
+    toast.error(err.message || 'Gagal memperbarui password')
   } finally {
     loading.value = false
   }
@@ -45,15 +62,26 @@ const updatePassword = async () => {
         </svg>
         Keamanan Akun
       </h3>
-      <p class="text-gray-400 text-sm">Update password Anda secara berkala untuk keamanan.</p>
+      <p class="text-gray-400 text-sm">Update password Anda secara berkala untuk menjaga keamanan akun.</p>
     </div>
 
     <form @submit.prevent="updatePassword" class="space-y-4 max-w-lg">
       <div>
+        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Password Saat Ini</label>
+        <input
+          v-model="form.currentPassword"
+          type="password"
+          required
+          placeholder="••••••••"
+          class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] transition-all"
+        />
+      </div>
+
+      <div>
         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Password Baru</label>
-        <input 
+        <input
           v-model="form.newPassword"
-          type="password" 
+          type="password"
           required
           minlength="6"
           placeholder="••••••••"
@@ -62,10 +90,10 @@ const updatePassword = async () => {
       </div>
 
       <div>
-        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Konfirmasi Password</label>
-        <input 
+        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Konfirmasi Password Baru</label>
+        <input
           v-model="form.confirmPassword"
-          type="password" 
+          type="password"
           required
           minlength="6"
           placeholder="••••••••"
@@ -74,13 +102,13 @@ const updatePassword = async () => {
       </div>
 
       <div class="pt-2">
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           :disabled="loading"
           class="bg-[#143d2e] hover:bg-[#1e5c45] text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-green-900/10 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <span v-if="loading" class="loading loading-spinner loading-xs"></span>
-          Update Password
+          Perbarui Password
         </button>
       </div>
     </form>

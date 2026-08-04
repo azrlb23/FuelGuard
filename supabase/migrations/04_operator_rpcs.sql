@@ -17,6 +17,7 @@ CREATE OR REPLACE FUNCTION public.fn_check_plate_status(
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_spbu_id text;
@@ -26,10 +27,13 @@ DECLARE
   v_has_refueled boolean := false;
   v_remaining_quota numeric := 0;
   v_max_quota numeric := 50000;
+  v_first_is_ojol boolean := NULL;
   v_last_trx json := NULL;
   v_last_time text := '';
+  v_today_start timestamptz;
 BEGIN
   v_spbu_id := COALESCE(p_spbu_id, public.get_user_spbu_id());
+  v_today_start := date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar';
 
   -- Validasi Kode Wilayah Plat Indonesia
   IF NOT EXISTS (
@@ -43,13 +47,30 @@ BEGIN
     );
   END IF;
 
-  IF p_is_ojol THEN
-    v_max_quota := 100000; -- Motor Ojol Rp 100.000/hari
-  ELSE
-    v_max_quota := 50000;  -- Motor Non-Ojol Rp 50.000/hari
+  -- Cari transaksi pertama plat ini hari ini untuk mengunci status is_ojol harian
+  SELECT is_ojol INTO v_first_is_ojol
+  FROM public.transaksi_pertalite
+  WHERE plat_nomor = UPPER(TRIM(p_plat))
+    AND waktu_pencatatan >= v_today_start
+  ORDER BY waktu_pencatatan ASC
+  LIMIT 1;
+
+  -- KUNCI ATURAN KATEGORI HARIAN:
+  -- Jika plat sudah pernah transaksi hari ini dan kategori yang dimasukkan berbeda dengan kategori pertama,
+  -- LANGSUNG TOLAK (Cross-Category Violation).
+  IF v_first_is_ojol IS NOT NULL AND v_first_is_ojol != p_is_ojol THEN
+    RETURN json_build_object(
+      'success', false,
+      'reason', 'category_mismatch',
+      'message', format('Kendaraan %s hari ini sudah terdaftar sebagai %s! Tidak dapat bertransaksi sebagai %s.',
+        UPPER(TRIM(p_plat)),
+        CASE WHEN v_first_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END,
+        CASE WHEN p_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END
+      )
+    );
   END IF;
 
-  -- Count today's transactions for this plate (cross-branch)
+  -- Hitung akumulasi transaksi plat hari ini (waktu WITA)
   SELECT 
     COALESCE(SUM(liter), 0),
     COALESCE(SUM(harga), 0),
@@ -57,14 +78,19 @@ BEGIN
   INTO v_total_liter_today, v_total_harga_today, v_count_today
   FROM public.transaksi_pertalite
   WHERE plat_nomor = UPPER(TRIM(p_plat))
-    AND waktu_pencatatan >= date_trunc('day', NOW())
-    AND waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day';
+    AND waktu_pencatatan >= v_today_start;
+
+  -- Tentukan Max Quota berdasarkan status terkunci / input
+  IF COALESCE(v_first_is_ojol, p_is_ojol) THEN
+    v_max_quota := 100000; -- Motor Ojol Rp 100.000/hari
+  ELSE
+    v_max_quota := 50000;  -- Motor Biasa Rp 50.000/hari
+  END IF;
 
   v_has_refueled := v_total_harga_today >= v_max_quota;
   v_remaining_quota := GREATEST(0, v_max_quota - v_total_harga_today);
 
   IF v_count_today > 0 THEN
-    -- Join via operator_profiles to get spbu_id
     SELECT json_build_object(
       'id', t.id,
       'liter', t.liter,
@@ -79,8 +105,7 @@ BEGIN
     LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
     LEFT JOIN public.spbu s ON s.id = op.spbu_id
     WHERE t.plat_nomor = UPPER(TRIM(p_plat))
-      AND t.waktu_pencatatan >= date_trunc('day', NOW())
-      AND t.waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day'
+      AND t.waktu_pencatatan >= v_today_start
     ORDER BY t.waktu_pencatatan DESC
     LIMIT 1;
 
@@ -88,7 +113,7 @@ BEGIN
     INTO v_last_time
     FROM public.transaksi_pertalite
     WHERE plat_nomor = UPPER(TRIM(p_plat))
-      AND waktu_pencatatan >= date_trunc('day', NOW())
+      AND waktu_pencatatan >= v_today_start
     ORDER BY waktu_pencatatan DESC
     LIMIT 1;
   END IF;
@@ -99,6 +124,7 @@ BEGIN
     'totalLiterToday', v_total_liter_today,
     'totalHargaToday', v_total_harga_today,
     'remainingQuota', v_remaining_quota,
+    'maxQuota', v_max_quota,
     'countToday', v_count_today,
     'lastTransaction', v_last_trx,
     'timeFormatted', v_last_time,
@@ -143,7 +169,7 @@ BEGIN
     RETURN json_build_object('success', false, 'reason', 'no_spbu', 'message', 'Operator tidak terdaftar pada SPBU manapun.');
   END IF;
 
-  v_plat_clean := UPPER(TRIM(p_plat));
+  v_plat_clean := regexp_replace(UPPER(TRIM(p_plat)), '\s+', ' ', 'g');
   IF v_plat_clean = '' OR p_liter <= 0 THEN
     RETURN json_build_object('success', false, 'reason', 'invalid_input', 'message', 'Plat nomor dan liter harus valid.');
   END IF;
@@ -191,6 +217,12 @@ BEGIN
     AND waktu_pencatatan < date_trunc('day', NOW()) + INTERVAL '1 day';
 
   IF (v_total_harga_today + v_total_harga) > v_max_quota THEN
+    INSERT INTO public.repeated_transaction_logs (
+      plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, attempted_liter, total_harga_today, reason, created_at
+    ) VALUES (
+      v_plat_clean, v_spbu_id, p_operator_id, p_is_ojol, p_liter, v_total_harga_today, 'quota_exceeded', NOW()
+    );
+
     RETURN json_build_object(
       'success', false,
       'reason', 'quota_exceeded',

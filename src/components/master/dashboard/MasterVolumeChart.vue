@@ -60,8 +60,7 @@ const barChartOptions = {
 <template>
   <div class="bg-white rounded-[2rem] p-6 shadow-xl shadow-green-900/5 border border-gray-100 flex flex-col justify-between">
     <div>
-      <h4 class="text-[#143d2e] font-black text-lg mb-0.5">Volume Mingguan Jaringan</h4>
-      <p class="text-gray-400 text-xs font-medium mb-4">Total volume BBM terjual per hari dalam 7 hari terakhir</p>
+      <h4 class="text-[#143d2e] font-black text-lg mb-4">Volume Transaksi Mingguan</h4>
     </div>
     <div class="h-44 w-full">
       <Bar :data="barChartData" :options="barChartOptions" />

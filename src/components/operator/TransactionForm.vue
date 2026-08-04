@@ -4,16 +4,19 @@ import { toast } from 'vue3-toastify'
 import { useAuthStore } from '@/stores/auth'
 import { useCameraScanner } from '@/composables/useCameraScanner'
 import { useTransactionAction } from '@/composables/useTransactionAction'
+import { useAudioAlert } from '@/composables/useAudioAlert'
 
 const props = defineProps({
-  vehicleType: String,
+  vehicleType: { type: String, required: true },
+  isOjol: { type: Boolean, default: false },
   loading: Boolean
 })
 
 const emit = defineEmits(['submit', 'back'])
 
+const { playSuccessSound, playWarningSound } = useAudioAlert()
 const { isScanning, isProcessing, startCamera, stopCamera, scanPlateNumber } = useCameraScanner()
-const { checkPlateStatus, checkingPlate, submitTransaction } = useTransactionAction()
+const { checkPlateStatus, recordRepeatedLog, checkingPlate, submitTransaction } = useTransactionAction()
 const authStore = useAuthStore()
 
 const videoRef = ref(null)
@@ -45,6 +48,11 @@ const platMessage = ref('')
 const platStatus = ref('idle') // 'idle' | 'invalid' | 'validating' | 'valid'
 const platTouched = ref(false)
 let debounceTimeout = null
+
+const formatAngka = (val) => {
+  if (!val && val !== 0) return '0'
+  return new Intl.NumberFormat('id-ID').format(val)
+}
 
 // Auto-format plat nomor sekuensial:
 // Bagian 1: WAJIB 1-2 Huruf Kode Wilayah di awal (angka di awal ditolak)
@@ -108,7 +116,7 @@ const formatPlatNomor = (val) => {
   return result
 }
 
-// Auto-check live ke database (hanya update status visual, tidak auto-lanjut)
+// Auto-check live ke database (HANYA UPDATE VISUAL TEKS INDIKATOR — TANPA BISA INSERT LOG)
 const checkPlateLive = async (cleaned) => {
   const res = await checkPlateStatus(cleaned, props.vehicleType === 'Ojol')
   
@@ -116,7 +124,7 @@ const checkPlateLive = async (cleaned) => {
   if (form.value.plat_nomor.trim() !== cleaned) return 
 
   if (res && res.success) {
-    if (res.hasRefueledToday) {
+    if (res.hasRefueledToday || res.remainingQuota <= 0) {
       platStatus.value = 'invalid'
       platMessage.value = 'Kendaraan ini sudah mencapai limit harian!'
     } else {
@@ -182,6 +190,10 @@ onMounted(() => {
   })
 })
 
+/**
+ * HANDLER UTAMA SAAT OPERATOR MENEKAN TOMBOL "CEK PLAT" ATAU ENTER
+ * (Di sini data alert HANYA TERCATAT 1x ke database jika terdeteksi limit/mismatch)
+ */
 const handleCheckPlate = async () => {
   if (checkingPlate.value) return
   if (debounceTimeout) clearTimeout(debounceTimeout)
@@ -206,12 +218,21 @@ const handleCheckPlate = async () => {
   form.value.plat_nomor = cleaned
   platMessage.value = 'Memproses...'
 
-  const res = await checkPlateStatus(cleaned, props.vehicleType === 'Ojol')
+  const res = await checkPlateStatus(cleaned, props.isOjol)
+
   if (res && res.success) {
     form.value.plat_nomor = res.plat
-    if (res.hasRefueledToday) {
-      refueledInfo.value = res
+
+    if (res.hasRefueledToday || res.remainingQuota <= 0) {
+      // 🚨 PENCATATAN EKSPLISIT: Catat log perulangan HANYA saat tombol Enter/Cek Plat ditekan!
+      await recordRepeatedLog(cleaned, props.isOjol, 'quota_exceeded', res.totalHargaToday)
+
+      refueledInfo.value = {
+        ...res,
+        isQuotaExceededTransaction: res.remainingQuota <= 0 || res.hasRefueledToday
+      }
       showRefueledModal.value = true
+      playWarningSound()
     } else {
       subStep.value = 'input_liter'
       form.value.liter = ''
@@ -223,9 +244,21 @@ const handleCheckPlate = async () => {
       }
     }
   } else if (res && !res.success) {
-    platStatus.value = 'invalid'
-    platMessage.value = res.message || 'Plat nomor tidak terdaftar.'
-    toast.error(res.message || 'Plat nomor ditolak oleh sistem.')
+    if (res.reason === 'category_mismatch') {
+      // 🚨 PENCATATAN EKSPLISIT: Catat log mismatch HANYA saat tombol Enter/Cek Plat ditekan!
+      await recordRepeatedLog(cleaned, props.isOjol, 'category_mismatch', 0)
+
+      refueledInfo.value = {
+        plat: cleaned,
+        isCategoryMismatch: true,
+        message: res.message || 'Kendaraan ini sudah terdaftar di kategori lain hari ini!'
+      }
+      showRefueledModal.value = true
+    } else {
+      platStatus.value = 'invalid'
+      platMessage.value = res.message || 'Plat nomor tidak terdaftar.'
+      toast.error(res.message || 'Plat nomor ditolak oleh sistem.')
+    }
   }
 }
 
@@ -290,9 +323,23 @@ const formatRupiah = (val) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 }
 
-const formatAngka = (val) => {
-  if (!val && val !== 0) return ''
-  return new Intl.NumberFormat('id-ID').format(val)
+const formatWitaTime = (timeStr, fullDateStr) => {
+  if (fullDateStr) {
+    const d = new Date(fullDateStr)
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':')
+    }
+  }
+  if (timeStr && typeof timeStr === 'string' && timeStr.includes(':')) {
+    const parts = timeStr.split(':')
+    const h = parseInt(parts[0], 10)
+    const m = parts[1]
+    if (!isNaN(h)) {
+      const witaHour = (h + 8) % 24
+      return `${String(witaHour).padStart(2, '0')}:${m}`
+    }
+  }
+  return timeStr || ''
 }
 
 const parseRupiah = (str) => {
@@ -353,26 +400,49 @@ const handleSubmit = async () => {
     return
   }
 
+  // Pre-check status plat & sisa kuota sebelum kirim transaksi
+  const statusRes = await checkPlateStatus(form.value.plat_nomor, props.isOjol)
+  if (statusRes && statusRes.success) {
+    const remaining = statusRes.remainingQuota ?? 999
+    // Cek batas kuota (baik dalam liter atau Rupiah)
+    if (remaining > 0 && remaining < 100 && liter > remaining) {
+      playWarningSound()
+      refueledInfo.value = {
+        ...statusRes,
+        isQuotaExceededTransaction: true,
+        attemptedLiter: liter,
+        attemptedHarga: parseRupiah(form.value.totalHarga),
+        message: `Jumlah transaksi (${liter} Liter) melebihi sisa kuota hari ini (${remaining} Liter)!`
+      }
+      showRefueledModal.value = true
+      return
+    }
+  }
+
   const res = await submitTransaction({
-    plat_nomor: form.value.plat_nomor,
-    liter: form.value.liter
-  }, props.vehicleType)
+    platNomor: form.value.plat_nomor,
+    liter: liter,
+    isOjol: props.isOjol
+  })
 
   if (res && res.success) {
+    playSuccessSound()
     emit('submit', { success: true })
-  } else if (res && (res.reason === 'quota_exceeded' || res.reason === 'already_refueled')) {
-    // Ambil info status pengisian plat terbaru dari DB untuk ditampilkan di Popup Modal
-    const statusRes = await checkPlateStatus(form.value.plat_nomor, props.vehicleType === 'Ojol')
+  } else if (res && (res.reason === 'quota_exceeded' || res.reason === 'already_refueled' || res.reason === 'category_mismatch')) {
+    playWarningSound()
     if (statusRes && statusRes.success) {
       refueledInfo.value = statusRes
     } else {
       refueledInfo.value = {
         plat: form.value.plat_nomor,
+        isCategoryMismatch: res.reason === 'category_mismatch',
         countToday: 1,
-        message: res.message || 'Kendaraan sudah mencapai kuota/limit pengisian!'
+        message: res.message || 'Transaksi ditolak oleh sistem!'
       }
     }
     showRefueledModal.value = true
+  } else if (res && !res.success) {
+    toast.error(res.message || 'Gagal memproses transaksi.')
   }
 }
 </script>
@@ -391,8 +461,8 @@ const handleSubmit = async () => {
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>
       </button>
-      <span class="px-4 py-1.5 rounded-full text-xs md:text-sm font-bold bg-white/10 border border-white/20 text-white capitalize tracking-wide shadow-sm">
-        {{ vehicleType }}
+      <span class="px-4 py-1.5 rounded-full text-xs md:text-sm font-bold bg-white/10 border border-white/20 text-white tracking-wide shadow-sm">
+        {{ vehicleType === 'Ojol' ? 'Ojol' : 'Biasa' }}
       </span>
     </div>
 
@@ -566,86 +636,134 @@ const handleSubmit = async () => {
       </button>
     </form>
 
-    <!-- MODAL POPUP KENDARAAN SUDAH MENGISI -->
+    <!-- MODAL POPUP KENDARAAN SUDAH MENGISI (STRICT GREEN & WHITE UI) -->
     <Teleport to="body">
-      <div v-if="showRefueledModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 bg-black/80 backdrop-blur-xl animate-enter">
-        <div class="bg-gradient-to-br from-[#143d2e] via-[#1e5c45] to-[#143d2e] border-2 border-white/30 rounded-[2rem] md:rounded-[2.5rem] max-w-md w-full p-6 md:p-8 text-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col items-center text-center relative overflow-hidden">
+      <div v-if="showRefueledModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-enter">
+        <div class="bg-white rounded-3xl max-w-sm md:max-w-md w-full p-6 text-slate-800 shadow-xl border border-gray-100 flex flex-col relative overflow-hidden">
 
-          <div class="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-          <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
-
-          <div class="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-white/10 border-2 border-white/30 flex items-center justify-center text-white mb-4 shadow-xl">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-10 h-10 md:w-12 md:h-12 text-white">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-            </svg>
+          <!-- Header Section -->
+          <div class="flex items-start gap-3.5 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <div>
+              <span class="inline-block text-[10px] font-bold text-red-600 uppercase tracking-wide mb-0.5">
+                {{ refueledInfo?.isQuotaExceededTransaction ? 'Melebihi Batas Kuota' : (refueledInfo?.isCategoryMismatch ? 'Pelanggaran Kategori' : 'Peringatan Transaksi') }}
+              </span>
+              <h3 class="text-base md:text-lg font-extrabold text-[#143d2e] tracking-tight leading-tight">
+                {{ refueledInfo?.isQuotaExceededTransaction ? 'Transaksi Melebihi Limit' : (refueledInfo?.isCategoryMismatch ? 'Kategori Tidak Sesuai' : 'Kendaraan Sudah Mengisi') }}
+              </h3>
+            </div>
           </div>
 
-          <span class="px-3.5 py-1 rounded-full text-[11px] font-extrabold bg-white/10 border border-white/20 text-white uppercase tracking-widest mb-2">
-            Peringatan Pengisian Ganda
-          </span>
-          <h3 class="text-2xl md:text-3xl font-black text-white tracking-tight">
-            KENDARAAN SUDAH MENGISI!
-          </h3>
-          <p class="text-xs md:text-sm text-white/80 mt-1 mb-5 leading-relaxed">
-            Sistem mendeteksi transaksi pengisian BBM untuk kendaraan ini pada hari yang sama. Transaksi ditolak.
-          </p>
-
-          <div class="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl md:rounded-3xl p-4 md:p-5 text-left space-y-3 shadow-inner mb-6">
-            <div class="flex justify-between items-center border-b border-white/15 pb-2.5">
-              <span class="text-xs font-medium text-white/70">Nomor Polisi</span>
-              <span class="text-xl font-black text-white tracking-wider">{{ refueledInfo?.plat }}</span>
-            </div>
-            <div class="flex justify-between items-center border-b border-white/15 pb-2.5">
-              <span class="text-xs font-medium text-white/70">Pengisian Hari Ini</span>
-              <span class="text-sm font-bold text-white">{{ refueledInfo?.countToday ?? 1 }} Kali</span>
-            </div>
-            <!-- Total Terisi Hari Ini (Support Rupiah / Liter) -->
-            <div v-if="refueledInfo?.totalHargaToday !== undefined || refueledInfo?.totalLiterToday !== undefined" class="flex justify-between items-center border-b border-white/15 pb-2.5">
-              <span class="text-xs font-medium text-white/70">Total Terisi Hari Ini</span>
-              <span class="text-sm font-bold text-emerald-300">
-                <template v-if="refueledInfo?.totalHargaToday !== undefined">
-                  {{ formatRupiah(refueledInfo.totalHargaToday) }}
-                </template>
-                <template v-else-if="refueledInfo?.totalLiterToday !== undefined">
-                  {{ refueledInfo.totalLiterToday }} Liter
-                </template>
+          <!-- Details Card (Clean Minimalist List) -->
+          <div class="bg-gray-50/70 rounded-2xl p-4 text-xs space-y-2.5 mb-5 border border-gray-100">
+            <!-- Plat -->
+            <div class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+              <span class="text-gray-400 font-medium uppercase text-[10px] tracking-wider">Nomor Polisi</span>
+              <span class="font-mono font-black text-gray-900 text-sm tracking-wider">
+                {{ refueledInfo?.plat }}
               </span>
             </div>
-            <!-- Sisa Kuota Hari Ini -->
-            <div v-if="refueledInfo?.remainingQuota !== undefined" class="flex justify-between items-center border-b border-white/15 pb-2.5">
-              <span class="text-xs font-medium text-white/70">Sisa Kuota Hari Ini</span>
-              <span class="text-sm font-bold text-amber-300">
-                <template v-if="typeof refueledInfo?.remainingQuota === 'number'">
-                  <template v-if="refueledInfo.remainingQuota > 100">
-                    {{ formatRupiah(refueledInfo.remainingQuota) }}
+
+            <!-- Detail Pelanggaran Kategori (Sangat Minimalis & Elegan) -->
+            <template v-if="refueledInfo?.isCategoryMismatch">
+              <div class="flex justify-between items-center py-1">
+                <span class="text-gray-500 font-medium">Kategori Sesi Ini</span>
+                <span class="font-bold text-gray-800 uppercase">
+                  {{ isOjol ? 'Ojek Online (Ojol)' : vehicleType }}
+                </span>
+              </div>
+
+              <div class="flex justify-between items-center py-1 border-t border-gray-200/40">
+                <span class="text-gray-500 font-medium">Kategori Terdaftar Hari Ini</span>
+                <span class="font-bold text-red-600 uppercase">
+                  {{ isOjol ? (vehicleType === 'Motor' ? 'Motor Non-Ojol' : 'Mobil Non-Ojol') : 'Ojek Online (Ojol)' }}
+                </span>
+              </div>
+              
+              <div class="pt-2 border-t border-gray-200/40">
+                <p class="text-[11px] text-gray-500 font-medium leading-normal">
+                  Kendaraan sudah terdaftar di kategori lain hari ini. Transaksi lintas kategori ditolak.
+                </p>
+              </div>
+            </template>
+
+            <!-- Percobaan Pengisian (Jika Melebihi Kuota) -->
+            <div v-else-if="refueledInfo?.attemptedLiter" class="flex justify-between items-center py-1 border-b border-gray-200/50">
+              <span class="text-gray-500 font-medium">Input Transaksi</span>
+              <span class="font-bold text-red-600">
+                {{ refueledInfo.attemptedLiter }} Liter ({{ formatRupiah(refueledInfo.attemptedHarga) }})
+              </span>
+            </div>
+
+            <template v-if="!refueledInfo?.isCategoryMismatch">
+              <!-- Total Terisi -->
+              <div v-if="refueledInfo?.totalHargaToday !== undefined || refueledInfo?.totalLiterToday !== undefined" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+                <span class="text-gray-500 font-medium">Total Terisi Hari Ini</span>
+                <span class="font-bold text-[#143d2e]">
+                  <template v-if="refueledInfo?.totalHargaToday !== undefined">
+                    {{ formatRupiah(refueledInfo.totalHargaToday) }}
                   </template>
-                  <template v-else-if="refueledInfo.remainingQuota === 0">
-                    Rp 0 (Habis)
+                  <template v-else-if="refueledInfo?.totalLiterToday !== undefined">
+                    {{ refueledInfo.totalLiterToday }} Liter
+                  </template>
+                </span>
+              </div>
+
+              <!-- Sisa Kuota -->
+              <div v-if="refueledInfo?.remainingQuota !== undefined" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+                <span class="text-gray-500 font-medium">Sisa Kuota Hari Ini</span>
+                <span class="font-black text-red-600">
+                  <template v-if="typeof refueledInfo?.remainingQuota === 'number'">
+                    <template v-if="refueledInfo.remainingQuota > 100">
+                      {{ formatRupiah(refueledInfo.remainingQuota) }}
+                    </template>
+                    <template v-else-if="refueledInfo.remainingQuota === 0">
+                      Rp 0 (Habis)
+                    </template>
+                    <template v-else>
+                      {{ refueledInfo.remainingQuota }} Liter
+                    </template>
                   </template>
                   <template v-else>
-                    {{ refueledInfo.remainingQuota }} Liter
+                    {{ refueledInfo.remainingQuota }}
                   </template>
-                </template>
-                <template v-else>
-                  {{ refueledInfo.remainingQuota }}
-                </template>
-              </span>
-            </div>
-            <div v-if="refueledInfo?.lastTransaction" class="flex justify-between items-center border-b border-white/15 pb-2.5">
-              <span class="text-xs font-medium text-white/70">Pengisian Terakhir</span>
-              <span class="text-sm font-bold text-white">{{ refueledInfo?.lastTransaction?.liter }} Liter ({{ formatRupiah(refueledInfo?.lastTransaction?.harga) }})</span>
-            </div>
-            <div v-if="refueledInfo?.timeFormatted" class="flex justify-between items-center">
-              <span class="text-xs font-medium text-white/70">Waktu Terakhir</span>
-              <span class="text-sm font-bold text-white">{{ refueledInfo?.timeFormatted }} WITA</span>
-            </div>
+                </span>
+              </div>
+
+              <!-- Pengisian Terakhir -->
+              <div v-if="refueledInfo?.lastTransaction" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+                <span class="text-gray-500 font-medium">Pengisian Terakhir</span>
+                <span class="font-semibold text-gray-800">{{ refueledInfo?.lastTransaction?.liter }} Liter ({{ formatRupiah(refueledInfo?.lastTransaction?.harga) }})</span>
+              </div>
+
+              <!-- Waktu Terakhir -->
+              <div v-if="refueledInfo?.lastTransaction?.waktu_pencatatan || refueledInfo?.timeFormatted" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+                <span class="text-gray-500 font-medium">Waktu Terakhir</span>
+                <span class="font-semibold text-gray-800">
+                  {{ formatWitaTime(refueledInfo?.timeFormatted, refueledInfo?.lastTransaction?.waktu_pencatatan) }} WITA
+                </span>
+              </div>
+
+              <!-- SPBU Pengisian -->
+              <div v-if="refueledInfo?.lastTransaction?.spbu_nama || refueledInfo?.lastTransaction?.spbu_id" class="flex justify-between items-center">
+                <span class="text-gray-500 font-medium">SPBU Pengisian</span>
+                <span class="font-bold text-[#143d2e]">
+                  {{ refueledInfo?.lastTransaction?.spbu_nama || ('SPBU ' + refueledInfo?.lastTransaction?.spbu_id) }}
+                </span>
+              </div>
+            </template>
           </div>
 
+          <!-- Action Button (Signature Green Gradient & Glassmorphism) -->
           <button
             @click="handleResetPlateCheck"
-            class="w-full bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-base md:text-lg py-4 rounded-2xl shadow-xl hover:shadow-white/20 transform active:scale-95 transition-all flex items-center justify-center gap-2"
+            class="w-full bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] hover:from-[#1b4d3a] hover:to-[#258f62] text-white font-extrabold text-xs md:text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/10"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 text-[#143d2e]">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
               <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
             <span>PILIH KENDARAAN LAIN</span>

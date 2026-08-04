@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import MasterSpbuRecentTrxList from './MasterSpbuRecentTrxList.vue'
 
 const props = defineProps({
   spbuList: {
@@ -16,7 +17,7 @@ const props = defineProps({
   }
 })
 
-// const emit = defineEmits(['update:searchQuery'])
+defineEmits(['update:searchQuery'])
 
 const activeSpbuId = ref(null)
 
@@ -63,9 +64,12 @@ const getRecentTransactions = (spbuId) => {
 }
 
 const formatRupiah = (val) => {
-  if (!val || val === 0) return 'Rp 0'
-  if (val >= 1000000000) return `Rp ${(val / 1000000000).toFixed(2)} M`
-  return `Rp ${(val / 1000000).toFixed(1)} Jt`
+  const num = Number(val) || 0
+  if (num === 0) return 'Rp 0'
+  if (num >= 1000000000) return `Rp ${(num / 1000000000).toFixed(2)} M`
+  if (num >= 1000000) return `Rp ${(num / 1000000).toFixed(1)} Jt`
+  if (num >= 1000) return `Rp ${Math.round(num / 1000)} Rb`
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num)
 }
 
 const formatVolume = (val) => {
@@ -80,7 +84,6 @@ const formatVolume = (val) => {
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
       <div>
         <h4 class="text-[#143d2e] font-black text-lg">Performa SPBU Jaringan</h4>
-        <p class="text-gray-400 text-xs font-medium mt-0.5">Daftar SPBU terhubung (Filter: {{ periodLabel }})</p>
       </div>
 
       <!-- Search Bar SPBU -->
@@ -176,45 +179,10 @@ const formatVolume = (val) => {
           class="px-4 pb-5 pt-3 border-t border-gray-100/80 space-y-4 animate-enter"
         >
           <!-- 10 Transaksi Terakhir SPBU Ini -->
-          <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
-              <div class="flex items-center gap-2">
-                <h5 class="text-xs font-black text-[#143d2e] uppercase tracking-wider">10 Transaksi Terakhir ({{ periodLabel }})</h5>
-              </div>
-            </div>
-
-            <div class="space-y-2 max-h-64 overflow-y-auto pr-1 hide-scrollbar">
-              <div v-if="getRecentTransactions(spbu.id).length === 0" class="py-6 text-center text-gray-400 text-xs font-medium">
-                Belum ada transaksi tercatat pada periode ({{ periodLabel }}) untuk SPBU ini.
-              </div>
-              <div
-                v-for="tx in getRecentTransactions(spbu.id)"
-                :key="tx.id"
-                class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 hover:bg-green-50/40 border border-gray-100 transition-colors gap-2"
-              >
-                <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                  <div class="px-2.5 py-1 bg-[#143d2e] text-white rounded-lg text-xs font-mono font-black tracking-wider shadow-xs shrink-0">
-                    {{ tx.plat }}
-                  </div>
-                  <div class="min-w-0">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:gap-1.5 leading-tight">
-                      <span class="text-xs font-bold text-gray-800 truncate">{{ tx.date }}</span>
-                      <span class="text-[10px] sm:text-xs font-semibold text-gray-400 sm:text-gray-500 flex items-center gap-1">
-                        <span class="hidden sm:inline text-gray-300">•</span>
-                        {{ tx.time }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="text-right shrink-0">
-                  <p class="text-xs font-black text-[#143d2e]">{{ tx.liter }}</p>
-                  <p class="text-[10px] text-gray-500 font-semibold">{{ tx.amount }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
+          <MasterSpbuRecentTrxList
+            :recentTransactions="getRecentTransactions(spbu.id)"
+            :periodLabel="periodLabel"
+          />
         </div>
 
       </div>

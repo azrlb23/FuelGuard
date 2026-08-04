@@ -225,8 +225,7 @@ const setPage = (p) => {
             <th class="pb-4">SPBU</th>
             <th class="pb-4">PLAT NOMOR</th>
             <th class="pb-4">VOLUME</th>
-            <th class="pb-4">REVENUE</th>
-            <th class="pb-4 pr-3 text-right">STATUS</th>
+            <th class="pb-4 pr-3">REVENUE</th>
           </tr>
         </thead>
         <tbody class="text-sm">
@@ -237,8 +236,7 @@ const setPage = (p) => {
               <td class="py-4"><div class="skeleton h-6 w-24 bg-white/10 rounded-full"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-20 bg-white/10 rounded"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-16 bg-white/10 rounded"></div></td>
-              <td class="py-4"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
-              <td class="py-4 pr-3 flex justify-end"><div class="skeleton h-6 w-16 bg-white/10 rounded-md"></div></td>
+              <td class="py-4 pr-3"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
             </tr>
           </template>
 
@@ -257,15 +255,12 @@ const setPage = (p) => {
               </td>
               <td class="py-4 font-mono font-bold text-white tracking-wider">{{ trx.plat_nomor }}</td>
               <td class="py-4 text-white/90 font-semibold">{{ trx.liter }} L</td>
-              <td class="py-4 font-black text-emerald-300">{{ formatRupiah(trx.harga) }}</td>
-              <td class="py-4 pr-3 text-right">
-                <span class="text-xs text-emerald-300 font-bold bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30">Success</span>
-              </td>
+              <td class="py-4 pr-3 font-black text-emerald-300">{{ formatRupiah(trx.harga) }}</td>
             </tr>
           </template>
 
           <tr v-else>
-            <td colspan="7" class="py-16 text-center text-green-100/60">
+            <td colspan="6" class="py-16 text-center text-green-100/60">
               <span class="text-3xl block mb-2">🍃</span>
               <span class="text-sm font-medium">Tidak ada transaksi ditemukan.</span>
             </td>
@@ -295,7 +290,7 @@ const setPage = (p) => {
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
           <span v-else class="loading loading-spinner loading-xs text-emerald-300"></span>
-          <span>{{ isExporting ? 'Mengeksport...' : 'Unduh XLSX' }}</span>
+          <span>{{ isExporting ? 'Mengeksport...' : 'Ekspor (XLSX)' }}</span>
         </button>
       </div>
 

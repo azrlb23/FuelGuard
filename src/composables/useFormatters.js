@@ -10,10 +10,11 @@ export function useFormatters() {
   const formatDate = (dateString, withTime = false) => {
     if (!dateString) return '-'
     const options = { 
+      timeZone: 'Asia/Makassar',
       day: 'numeric', 
       month: 'short', 
       year: 'numeric',
-      ...(withTime && { hour: '2-digit', minute: '2-digit' })
+      ...(withTime && { hour: '2-digit', minute: '2-digit', hour12: false })
     }
     return new Date(dateString).toLocaleDateString('id-ID', options)
   }

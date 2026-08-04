@@ -12,6 +12,7 @@ CREATE OR REPLACE FUNCTION public.get_master_dashboard_summary(p_filter text DEF
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_start_time timestamp;
@@ -27,9 +28,9 @@ BEGIN
   IF p_filter = 'today' THEN
     v_start_time := date_trunc('day', NOW());
   ELSIF p_filter = 'weekly' THEN
-    v_start_time := NOW() - INTERVAL '7 days';
+    v_start_time := date_trunc('day', NOW() - INTERVAL '6 days');
   ELSIF p_filter = 'monthly' THEN
-    v_start_time := NOW() - INTERVAL '30 days';
+    v_start_time := date_trunc('day', NOW() - INTERVAL '29 days');
   ELSE
     v_start_time := '1970-01-01 00:00:00'::timestamp; -- 'all-time'
   END IF;
@@ -178,6 +179,7 @@ CREATE OR REPLACE FUNCTION public.get_master_analytics_summary(
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_total_sales numeric := 0;
@@ -364,10 +366,10 @@ BEGIN
   LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
   WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
     AND (v_effective_spbu_id = '' OR op.spbu_id::text = v_effective_spbu_id)
-    AND (p_date_from = '' OR t.waktu_pencatatan >= (p_date_from || 'T00:00:00')::timestamp)
-    AND (p_date_to = '' OR t.waktu_pencatatan <= (p_date_to || 'T23:59:59')::timestamp);
+    AND (p_date_from = '' OR t.waktu_pencatatan::date >= p_date_from::date)
+    AND (p_date_to = '' OR t.waktu_pencatatan::date <= p_date_to::date);
 
-  -- Paginated records
+  -- Paginated records with operator_name
   WITH paginated_trx AS (
     SELECT 
       t.id,
@@ -376,16 +378,16 @@ BEGIN
       t.harga,
       t.is_ojol,
       t.waktu_pencatatan,
-      op.spbu_id,
+      op.spbu_id AS spbu_id,
       COALESCE(s.nama, CONCAT('SPBU #', op.spbu_id)) AS spbu_name,
-      COALESCE(op.nama_operator, 'Sistem') AS operator_name
+      COALESCE(op.nama_operator, '-') AS operator_name
     FROM public.transaksi_pertalite t
     LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
     LEFT JOIN public.spbu s ON s.id = op.spbu_id
     WHERE (p_search = '' OR t.plat_nomor ILIKE '%' || p_search || '%')
       AND (v_effective_spbu_id = '' OR op.spbu_id::text = v_effective_spbu_id)
-      AND (p_date_from = '' OR t.waktu_pencatatan >= (p_date_from || 'T00:00:00')::timestamp)
-      AND (p_date_to = '' OR t.waktu_pencatatan <= (p_date_to || 'T23:59:59')::timestamp)
+      AND (p_date_from = '' OR t.waktu_pencatatan::date >= p_date_from::date)
+      AND (p_date_to = '' OR t.waktu_pencatatan::date <= p_date_to::date)
     ORDER BY
       CASE WHEN p_sort_field = 'harga' AND p_sort_dir = 'asc' THEN t.harga END ASC,
       CASE WHEN p_sort_field = 'harga' AND p_sort_dir = 'desc' THEN t.harga END DESC,
@@ -418,5 +420,374 @@ BEGIN
 END;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_master_history_paginated(text, text, text, text, text, text, integer, integer) TO authenticated;
+
+
+-- ─── 4. FUNCTION: get_master_team_overview ─────────────────────────────────────
+DROP FUNCTION IF EXISTS public.get_master_team_overview CASCADE;
+CREATE OR REPLACE FUNCTION public.get_master_team_overview(
+  p_spbu_id text DEFAULT '',
+  p_search text DEFAULT ''
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_caller_uid uuid;
+  v_caller_role text;
+  v_total_operators integer := 0;
+  v_active_operators integer := 0;
+  v_total_spbu integer := 0;
+  v_spbu_list json;
+  v_operators_json json;
+  v_accounts_json json;
+  v_result json;
+BEGIN
+  -- 1. Security Authorization Guard: Wajib Terautentikasi
+  v_caller_uid := auth.uid();
+  IF v_caller_uid IS NULL THEN
+    RAISE EXCEPTION 'Akses ditolak: Sesi pengguna tidak terautentikasi';
+  END IF;
+
+  -- 2. Resilient & Case-Insensitive Master Role Check
+  v_caller_role := public.get_user_role();
+
+  IF v_caller_role IS NULL THEN
+    SELECT role INTO v_caller_role
+    FROM public.user_roles
+    WHERE user_id::text = v_caller_uid::text
+    LIMIT 1;
+  END IF;
+
+  IF LOWER(COALESCE(v_caller_role, '')) != 'master' THEN
+    RAISE EXCEPTION 'Akses ditolak: Hanya role Master yang diizinkan melihat data tim';
+  END IF;
+
+  -- Count total operators
+  SELECT COUNT(id) INTO v_total_operators FROM public.operator_profiles;
+  SELECT COUNT(id) INTO v_active_operators FROM public.operator_profiles WHERE is_active = true;
+  SELECT COUNT(id) INTO v_total_spbu FROM public.spbu;
+
+  -- Get SPBU list for filter dropdowns
+  SELECT json_agg(
+    json_build_object(
+      'id', id,
+      'name', COALESCE(nama, CONCAT('SPBU #', id)),
+      'alamat', COALESCE(alamat, '-')
+    ) ORDER BY id ASC
+  ) INTO v_spbu_list FROM public.spbu;
+
+  -- Get operator list with joined SPBU name
+  WITH operator_details AS (
+    SELECT 
+      op.id,
+      op.nama_operator,
+      op.spbu_id,
+      COALESCE(s.nama, CONCAT('SPBU #', op.spbu_id)) AS spbu_name,
+      op.is_active,
+      op.created_at
+    FROM public.operator_profiles op
+    LEFT JOIN public.spbu s ON s.id = op.spbu_id
+    WHERE (COALESCE(p_spbu_id, '') = '' OR op.spbu_id::text = p_spbu_id)
+      AND (COALESCE(p_search, '') = '' OR op.nama_operator ILIKE '%' || p_search || '%')
+    ORDER BY op.created_at DESC, op.nama_operator ASC
+  )
+  SELECT json_agg(
+    json_build_object(
+      'id', id,
+      'nama_operator', nama_operator,
+      'spbu_id', spbu_id,
+      'spbu_name', spbu_name,
+      'is_active', is_active,
+      'created_at', created_at
+    )
+  ) INTO v_operators_json FROM operator_details;
+
+  -- Get SPBU authentication accounts list (Only actual registered operator auth accounts)
+  WITH account_details AS (
+    SELECT 
+      ur.user_id,
+      ur.spbu_id,
+      COALESCE(s.nama, CONCAT('SPBU #', ur.spbu_id)) AS spbu_name,
+      ur.role,
+      u.email
+    FROM public.user_roles ur
+    INNER JOIN auth.users u ON u.id = ur.user_id
+    LEFT JOIN public.spbu s ON s.id = ur.spbu_id
+    WHERE ur.role = 'operator'
+      AND (COALESCE(p_spbu_id, '') = '' OR ur.spbu_id::text = p_spbu_id)
+      AND (COALESCE(p_search, '') = '' OR s.nama ILIKE '%' || p_search || '%' OR COALESCE(u.email, '') ILIKE '%' || p_search || '%')
+    ORDER BY ur.spbu_id ASC
+  )
+  SELECT json_agg(
+    json_build_object(
+      'user_id', user_id,
+      'spbu_id', spbu_id,
+      'spbu_name', spbu_name,
+      'role', role,
+      'email', email
+    )
+  ) INTO v_accounts_json FROM account_details;
+
+  v_result := json_build_object(
+    'kpis', json_build_object(
+      'totalOperators', v_total_operators,
+      'activeOperators', v_active_operators,
+      'totalSpbu', v_total_spbu
+    ),
+    'spbuList', COALESCE(v_spbu_list, '[]'::json),
+    'operators', COALESCE(v_operators_json, '[]'::json),
+    'accounts', COALESCE(v_accounts_json, '[]'::json)
+  );
+
+  RETURN v_result;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_master_team_overview(text, text) TO authenticated;
+
+
+-- ─── 5. FUNCTION: manage_operator ─────────────────────────────────────────────
+DROP FUNCTION IF EXISTS public.manage_operator CASCADE;
+CREATE OR REPLACE FUNCTION public.manage_operator(
+  p_action text,
+  p_id uuid DEFAULT NULL,
+  p_spbu_id text DEFAULT '',
+  p_nama_operator text DEFAULT '',
+  p_is_active boolean DEFAULT true
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_new_id uuid;
+  v_result json;
+BEGIN
+  -- Security Authorization Guard: Only Master Role is Allowed to Manage Operators
+  IF public.get_user_role() <> 'master' THEN
+    RAISE EXCEPTION 'Akses ditolak: Hanya role Master yang diizinkan mengelola data operator';
+  END IF;
+
+  IF p_action = 'create' THEN
+    IF p_nama_operator IS NULL OR TRIM(p_nama_operator) = '' THEN
+      RAISE EXCEPTION 'Nama operator tidak boleh kosong';
+    END IF;
+    IF p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' THEN
+      RAISE EXCEPTION 'Pilih unit SPBU terlebih dahulu';
+    END IF;
+
+    INSERT INTO public.operator_profiles (spbu_id, nama_operator, is_active)
+    VALUES (p_spbu_id, TRIM(p_nama_operator), COALESCE(p_is_active, true))
+    RETURNING id INTO v_new_id;
+
+    v_result := json_build_object(
+      'success', true,
+      'id', v_new_id,
+      'message', 'Operator berhasil ditambahkan'
+    );
+
+  ELSIF p_action = 'update' THEN
+    IF p_id IS NULL THEN
+      RAISE EXCEPTION 'ID operator tidak valid';
+    END IF;
+    IF p_nama_operator IS NULL OR TRIM(p_nama_operator) = '' THEN
+      RAISE EXCEPTION 'Nama operator tidak boleh kosong saat update';
+    END IF;
+    IF p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' THEN
+      RAISE EXCEPTION 'ID SPBU tidak boleh kosong saat update';
+    END IF;
+
+    UPDATE public.operator_profiles
+    SET 
+      nama_operator = TRIM(p_nama_operator),
+      spbu_id = p_spbu_id,
+      is_active = p_is_active
+    WHERE id = p_id;
+
+    v_result := json_build_object(
+      'success', true,
+      'message', 'Data operator berhasil diperbarui'
+    );
+
+  ELSIF p_action = 'toggle_status' THEN
+    IF p_id IS NULL THEN
+      RAISE EXCEPTION 'ID operator tidak valid';
+    END IF;
+
+    UPDATE public.operator_profiles
+    SET is_active = NOT is_active
+    WHERE id = p_id;
+
+    v_result := json_build_object(
+      'success', true,
+      'message', 'Status operator berhasil diperbarui'
+    );
+
+  ELSE
+    RAISE EXCEPTION 'Aksi manage_operator tidak dikenali: %', p_action;
+  END IF;
+
+  RETURN v_result;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.manage_operator(text, uuid, text, text, boolean) TO authenticated;
+
+-- ─── 8. RPC: get_master_repeated_transactions ────────────────────────────────
+DROP FUNCTION IF EXISTS public.get_master_repeated_transactions CASCADE;
+CREATE OR REPLACE FUNCTION public.get_master_repeated_transactions(
+  p_spbu_id text DEFAULT NULL,
+  p_date_from text DEFAULT NULL,
+  p_date_to text DEFAULT NULL,
+  p_limit integer DEFAULT 20,
+  p_offset integer DEFAULT 0
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role text;
+  v_total_attempts integer := 0;
+  v_total_plates integer := 0;
+  v_logs json := '[]'::json;
+  v_result json;
+BEGIN
+  -- 1. Security Check: Authenticated user & Role Verification
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: Sesi tidak terautentikasi';
+  END IF;
+
+  v_role := public.get_user_role();
+  IF v_role IS NULL OR LOWER(v_role) != 'master' THEN
+    RAISE EXCEPTION 'Forbidden: Akses ditolak. Membutuhkan hak akses Master Admin.';
+  END IF;
+
+  -- 2. Total Raw Attempt Count
+  SELECT COUNT(r.id) INTO v_total_attempts
+  FROM public.repeated_transaction_logs r
+  WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR r.attempt_spbu_id = p_spbu_id)
+    AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00')::timestamp with time zone)
+    AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999')::timestamp with time zone);
+
+  -- 3. Group by Plat Nomor (Normalized Whitespace)
+  WITH raw_logs AS (
+    SELECT 
+      r.id,
+      regexp_replace(UPPER(TRIM(r.plat_nomor)), '\s+', ' ', 'g') AS plat_nomor,
+      r.attempt_spbu_id,
+      COALESCE(s.nama, 'SPBU ' || r.attempt_spbu_id) AS spbu_nama,
+      r.attempt_operator_id,
+      COALESCE(op.nama_operator, 'Sistem') AS operator_nama,
+      COALESCE(r.is_ojol, false) AS is_ojol,
+      r.attempted_liter,
+      r.total_harga_today,
+      r.reason,
+      r.created_at
+    FROM public.repeated_transaction_logs r
+    LEFT JOIN public.spbu s ON s.id = r.attempt_spbu_id
+    LEFT JOIN public.operator_profiles op ON op.id = r.attempt_operator_id
+    WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR r.attempt_spbu_id = p_spbu_id)
+      AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00')::timestamp with time zone)
+      AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999')::timestamp with time zone)
+  ),
+  grouped_plates AS (
+    SELECT 
+      plat_nomor,
+      bool_or(is_ojol) AS is_ojol,
+      COUNT(id) AS attempt_count,
+      MAX(created_at) AS latest_attempt_at,
+      json_agg(
+        json_build_object(
+          'id', id,
+          'created_at', created_at,
+          'spbu_id', attempt_spbu_id,
+          'spbu_nama', spbu_nama,
+          'operator_id', attempt_operator_id,
+          'operator_nama', operator_nama,
+          'is_ojol', is_ojol,
+          'attempted_liter', attempted_liter,
+          'total_harga_today', total_harga_today,
+          'reason', reason
+        ) ORDER BY created_at DESC
+      ) AS attempts
+    FROM raw_logs
+    GROUP BY plat_nomor
+  )
+  SELECT COUNT(*) INTO v_total_plates FROM grouped_plates;
+
+  WITH raw_logs AS (
+    SELECT 
+      r.id,
+      regexp_replace(UPPER(TRIM(r.plat_nomor)), '\s+', ' ', 'g') AS plat_nomor,
+      r.attempt_spbu_id,
+      COALESCE(s.nama, 'SPBU ' || r.attempt_spbu_id) AS spbu_nama,
+      r.attempt_operator_id,
+      COALESCE(op.nama_operator, 'Sistem') AS operator_nama,
+      COALESCE(r.is_ojol, false) AS is_ojol,
+      r.attempted_liter,
+      r.total_harga_today,
+      r.reason,
+      r.created_at
+    FROM public.repeated_transaction_logs r
+    LEFT JOIN public.spbu s ON s.id = r.attempt_spbu_id
+    LEFT JOIN public.operator_profiles op ON op.id = r.attempt_operator_id
+    WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR r.attempt_spbu_id = p_spbu_id)
+      AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00')::timestamp with time zone)
+      AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999')::timestamp with time zone)
+  ),
+  grouped_plates AS (
+    SELECT 
+      plat_nomor,
+      bool_or(is_ojol) AS is_ojol,
+      COUNT(id) AS attempt_count,
+      MAX(created_at) AS latest_attempt_at,
+      json_agg(
+        json_build_object(
+          'id', id,
+          'created_at', created_at,
+          'spbu_id', attempt_spbu_id,
+          'spbu_nama', spbu_nama,
+          'operator_id', attempt_operator_id,
+          'operator_nama', operator_nama,
+          'is_ojol', is_ojol,
+          'attempted_liter', attempted_liter,
+          'total_harga_today', total_harga_today,
+          'reason', reason
+        ) ORDER BY created_at DESC
+      ) AS attempts
+    FROM raw_logs
+    GROUP BY plat_nomor
+  )
+  SELECT json_agg(
+    json_build_object(
+      'plat_nomor', plat_nomor,
+      'is_ojol', is_ojol,
+      'attempt_count', attempt_count,
+      'latest_attempt_at', latest_attempt_at,
+      'attempts', attempts
+    ) ORDER BY latest_attempt_at DESC
+  ) INTO v_logs
+  FROM (
+    SELECT * FROM grouped_plates
+    ORDER BY latest_attempt_at DESC
+    LIMIT LEAST(GREATEST(p_limit, 1), 100)
+    OFFSET GREATEST(p_offset, 0)
+  ) g;
+
+  v_result := json_build_object(
+    'success', true,
+    'total_attempts', v_total_attempts,
+    'total_plates', v_total_plates,
+    'data', COALESCE(v_logs, '[]'::json)
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_master_repeated_transactions(text, text, text, integer, integer) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

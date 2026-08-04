@@ -80,13 +80,12 @@ const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage) || 
 <template>
   <div class="space-y-6 animate-enter">
 
-    <!-- Header Section: Title & Search -->
-    <MasterHistoryHeader
-      v-model:searchQuery="searchQuery"
-    />
+    <!-- Header Section: Title -->
+    <MasterHistoryHeader />
 
     <!-- Single Unified History Table Container (Integrated Filters & Table) -->
     <MasterHistoryTable
+      v-model:searchQuery="searchQuery"
       :loading="loading"
       :isExporting="isExporting"
       :transactions="transactions"

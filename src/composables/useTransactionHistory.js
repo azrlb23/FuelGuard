@@ -1,4 +1,4 @@
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -75,7 +75,18 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
     }
   }
 
-  watch([searchQuery, vehicleFilter, dateFrom, dateTo, sortField, sortDir], () => {
+  // Debounce for search text (300ms) — prevents RPC flood while typing
+  let searchDebounceTimer = null
+  watch(searchQuery, () => {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = setTimeout(() => {
+      currentPage.value = 1
+      fetchHistory()
+    }, 300)
+  })
+
+  // Other filters (vehicle, date, sort) reset immediately
+  watch([vehicleFilter, dateFrom, dateTo, sortField, sortDir], () => {
     currentPage.value = 1
     fetchHistory()
   })
@@ -83,6 +94,8 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
   watch(currentPage, () => {
     fetchHistory()
   })
+
+  onUnmounted(() => clearTimeout(searchDebounceTimer))
 
   watch(() => route.query.q, (newQuery) => {
     if (newQuery !== undefined) {
