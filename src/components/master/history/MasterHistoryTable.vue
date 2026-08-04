@@ -35,6 +35,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  searchQuery: {
+    type: String,
+    default: ''
+  },
   selectedSpbu: {
     type: [String, Number],
     default: ''
@@ -75,6 +79,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'update:currentPage',
+  'update:searchQuery',
   'update:selectedSpbu',
   'update:dateFrom',
   'update:dateTo',
@@ -135,12 +140,17 @@ const setPage = (p) => {
 </script>
 
 <template>
-  <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[2rem] p-6 md:p-8 shadow-xl shadow-green-900/10 text-white relative overflow-hidden border border-green-800/40">
+  <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[2rem] p-6 md:p-8 shadow-xl shadow-green-900/10 text-white relative border border-green-800/40">
     
-    <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
+    <!-- Background Glow Effect (Clipped to Card Corners) -->
+    <div class="absolute inset-0 rounded-[2rem] overflow-hidden pointer-events-none">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+    </div>
 
     <!-- Integrated Filter Bar -->
     <MasterHistoryFilterBar
+      :searchQuery="searchQuery"
+      @update:searchQuery="$emit('update:searchQuery', $event)"
       :spbuList="spbuList"
       :selectedSpbu="selectedSpbu"
       @update:selectedSpbu="$emit('update:selectedSpbu', $event)"
