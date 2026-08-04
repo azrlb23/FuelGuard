@@ -38,6 +38,14 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  currentPage: {
+    type: Number,
+    default: 1
+  },
+  itemsPerPage: {
+    type: Number,
+    default: 10
+  },
   spbuList: {
     type: Array,
     default: () => []
@@ -49,6 +57,7 @@ const emit = defineEmits([
   'update:selectedSpbu',
   'update:dateFrom',
   'update:dateTo',
+  'update:currentPage',
   'resetFilters'
 ])
 
@@ -91,7 +100,7 @@ const formatDateOnly = (dateString) => {
 
 const exportToExcel = () => {
   if (!props.repeatedLogs || props.repeatedLogs.length === 0) {
-    toast.warn('Tidak ada data transaksi berulang untuk diekspor.')
+    toast.warn('Tidak ada data transaksi ditolak untuk diekspor.')
     return
   }
   const rows = []
@@ -107,12 +116,12 @@ const exportToExcel = () => {
         'Lokasi SPBU': attempt.spbu_nama || 'N/A',
         'Nama Operator': (attempt.operator_nama || 'N/A').toUpperCase(),
         'Kategori': attempt.is_ojol ? 'Ojol' : 'Non Ojol',
-        'Deskripsi': attempt.deskripsi || attempt.catatan || `Percobaan ke-${attemptNum} (${totalNum}x Transaksi)`
+        'Alasan Ditolak': attempt.reason || attempt.deskripsi || attempt.catatan || `Percobaan ke-${attemptNum} (${totalNum}x Transaksi)`
       })
     })
   })
   if (rows.length === 0) {
-    toast.warn('Tidak ada baris data transaksi berulang untuk diekspor.')
+    toast.warn('Tidak ada baris data transaksi ditolak untuk diekspor.')
     return
   }
   const worksheet = XLSX.utils.json_to_sheet(rows)
@@ -123,13 +132,13 @@ const exportToExcel = () => {
     { wch: 22 }, // Lokasi SPBU
     { wch: 20 }, // Nama Operator
     { wch: 14 }, // Kategori
-    { wch: 38 }  // Deskripsi
+    { wch: 38 }  // Alasan Ditolak
   ]
   const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi Berulang')
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi Ditolak')
   const dateRangeStr = props.dateFrom ? `${props.dateFrom}_sd_${props.dateTo || props.dateFrom}` : new Date().toISOString().slice(0, 10)
-  XLSX.writeFile(workbook, `Ekspor_Transaksi_Berulang_${dateRangeStr}.xlsx`)
-  toast.success(`Berhasil mengunduh ${rows.length} data transaksi berulang!`)
+  XLSX.writeFile(workbook, `Ekspor_Transaksi_Ditolak_${dateRangeStr}.xlsx`)
+  toast.success(`Berhasil mengunduh ${rows.length} data transaksi ditolak!`)
 }
 </script>
 
@@ -170,8 +179,8 @@ const exportToExcel = () => {
             </svg>
           </div>
           <div>
-            <p class="text-base font-extrabold text-white">Transaksi Aman</p>
-            <p class="text-xs font-semibold text-emerald-200/70 mt-1">Tidak ada percobaan transaksi berulang yang terdeteksi saat ini.</p>
+            <p class="text-base font-extrabold text-white">Tidak Ada Transaksi Ditolak</p>
+            <p class="text-xs font-semibold text-emerald-200/70 mt-1">Tidak ada percobaan transaksi ditolak yang terdeteksi saat ini.</p>
           </div>
         </div>
       </template>
@@ -193,21 +202,23 @@ const exportToExcel = () => {
     <!-- Card Footer -->
     <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-emerald-800/40 text-xs font-semibold text-emerald-200/70 relative z-10">
       <p>
-        Menampilkan {{ repeatedLogs.length }} plat dari {{ totalCount }} total percobaan
+        Menampilkan {{ repeatedLogs.length ? ((currentPage - 1) * itemsPerPage + 1) : 0 }} - {{ Math.min(currentPage * itemsPerPage, totalPlates) }} dari {{ totalPlates }} plat ({{ totalCount }} total percobaan)
       </p>
 
       <div class="flex items-center gap-2">
         <button
           type="button"
-          disabled
-          class="px-4 py-1.5 rounded-full bg-white/10 text-white/50 text-xs font-bold cursor-not-allowed select-none"
+          @click="$emit('update:currentPage', currentPage - 1)"
+          :disabled="currentPage <= 1 || loading"
+          class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer select-none text-white"
         >
           Prev
         </button>
         <button
           type="button"
-          disabled
-          class="px-4 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold cursor-not-allowed select-none"
+          @click="$emit('update:currentPage', currentPage + 1)"
+          :disabled="(currentPage * itemsPerPage) >= totalPlates || loading"
+          class="px-4 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer select-none"
         >
           Next
         </button>

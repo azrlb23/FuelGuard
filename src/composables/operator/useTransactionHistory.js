@@ -43,10 +43,14 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
         rpcDateTo = todayStr
       }
 
+      const isSearching = !!searchQuery.value.trim()
+      const rpcPageSize = isSearching ? 500 : itemsPerPage
+      const rpcPage = isSearching ? 1 : currentPage.value
+
       const { data, error } = await supabase.rpc('get_master_history_paginated', {
-        p_page: currentPage.value,
-        p_page_size: itemsPerPage,
-        p_search: searchQuery.value || '',
+        p_page: rpcPage,
+        p_page_size: rpcPageSize,
+        p_search: '',
         p_spbu_id: spbuId,
         p_date_from: rpcDateFrom,
         p_date_to: rpcDateTo,
@@ -59,14 +63,40 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
       if (data) {
         let filteredTransactions = data.transactions || []
         
-        // Filter is_ojol in JS as the current RPC signature doesn't take p_is_ojol yet
+        // Filter is_ojol in JS
         if (vehicleFilter.value) {
            const isOjolTarget = vehicleFilter.value === 'ojol'
            filteredTransactions = filteredTransactions.filter(t => t.is_ojol === isOjolTarget)
         }
 
-        transactions.value = filteredTransactions
-        totalItems.value = data.total_count || 0
+        // Multi-field search filtering for plat, operator, spbu, and time (17:54 / 14:30)
+        if (isSearching) {
+          const q = searchQuery.value.trim().toLowerCase()
+          filteredTransactions = filteredTransactions.filter(t => {
+            const platMatch = t.plat_nomor && t.plat_nomor.toLowerCase().includes(q)
+            const opMatch = (t.operator_name && t.operator_name.toLowerCase().includes(q)) || 
+                            (t.nama_operator && t.nama_operator.toLowerCase().includes(q))
+            const spbuMatch = (t.spbu_name && t.spbu_name.toLowerCase().includes(q)) ||
+                              (t.spbu_id && String(t.spbu_id).toLowerCase().includes(q))
+            let timeMatch = false
+            if (t.waktu_pencatatan) {
+              const d = new Date(t.waktu_pencatatan)
+              const timeStr = d.toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              }).replace('.', ':')
+              timeMatch = timeStr.includes(q) || timeStr.replace(':', '.').includes(q)
+            }
+            return platMatch || opMatch || spbuMatch || timeMatch
+          })
+          totalItems.value = filteredTransactions.length
+          const startIdx = (currentPage.value - 1) * itemsPerPage
+          transactions.value = filteredTransactions.slice(startIdx, startIdx + itemsPerPage)
+        } else {
+          transactions.value = filteredTransactions
+          totalItems.value = vehicleFilter.value ? filteredTransactions.length : (data.total_count || 0)
+        }
       }
     } catch (err) {
       console.error('Error fetching history:', err.message)

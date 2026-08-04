@@ -61,22 +61,61 @@ export function useMasterHistory(itemsPerPage = 10) {
   const fetchHistory = async () => {
     loading.value = true
     try {
+      const isSearching = !!searchQuery.value.trim()
+      const rpcPageSize = isSearching ? 500 : itemsPerPage
+      const rpcPage = isSearching ? 1 : currentPage.value
+
       const { data, error } = await supabase.rpc('get_master_history_paginated', {
-        p_search: searchQuery.value.trim(),
-        p_spbu_id: selectedSpbu.value,
-        p_date_from: dateFrom.value,
-        p_date_to: dateTo.value,
-        p_sort_field: sortField.value,
-        p_sort_dir: sortDir.value,
-        p_page: currentPage.value,
-        p_page_size: itemsPerPage
+        p_search: '',
+        p_spbu_id: selectedSpbu.value || '',
+        p_date_from: dateFrom.value || '',
+        p_date_to: dateTo.value || '',
+        p_sort_field: sortField.value || 'waktu_pencatatan',
+        p_sort_dir: sortDir.value || 'desc',
+        p_page: rpcPage,
+        p_page_size: rpcPageSize
       })
 
       if (error) throw error
 
       if (data) {
-        transactions.value = data.transactions || []
-        totalItems.value = data.total_count || 0
+        let list = data.transactions || []
+        if (isSearching) {
+          const q = searchQuery.value.trim().toLowerCase()
+          list = list.filter(trx => {
+            const platMatch = trx.plat_nomor && trx.plat_nomor.toLowerCase().includes(q)
+            const opMatch = (trx.operator_name && trx.operator_name.toLowerCase().includes(q)) || 
+                            (trx.nama_operator && trx.nama_operator.toLowerCase().includes(q))
+            const spbuMatch = (trx.spbu_name && trx.spbu_name.toLowerCase().includes(q)) ||
+                              (trx.spbu_id && String(trx.spbu_id).toLowerCase().includes(q))
+            let timeMatch = false
+            if (trx.waktu_pencatatan) {
+              const d = new Date(trx.waktu_pencatatan)
+              const timeStr = d.toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              }).replace('.', ':')
+              
+              const dateStr = d.toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+              }).toLowerCase()
+
+              timeMatch = timeStr.includes(q) || 
+                          timeStr.replace(':', '.').includes(q) || 
+                          dateStr.includes(q)
+            }
+            return platMatch || opMatch || spbuMatch || timeMatch
+          })
+          totalItems.value = list.length
+          const startIdx = (currentPage.value - 1) * itemsPerPage
+          transactions.value = list.slice(startIdx, startIdx + itemsPerPage)
+        } else {
+          transactions.value = list
+          totalItems.value = data.total_count || 0
+        }
       } else {
         transactions.value = []
         totalItems.value = 0

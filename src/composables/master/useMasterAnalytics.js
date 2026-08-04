@@ -1,4 +1,4 @@
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import * as XLSX from 'xlsx'
 
@@ -57,7 +57,40 @@ export function useMasterAnalytics() {
       console.warn('[useMasterAnalytics] Failed to fetch SPBU options:', err)
     }
   }
+  const selectedSpbuName = computed(() => {
+    if (!selectedSpbuId.value) return 'Semua SPBU'
+    const found = spbuOptions.value.find(s => String(s.id) === String(selectedSpbuId.value))
+    return found ? found.name : `SPBU #${selectedSpbuId.value}`
+  })
+  const topPlates = ref([])
+  const fetchTopPlates = async () => {
+    if (!selectedSpbuId.value) {
+      topPlates.value = []
+      return
+    }
+    try {
+      const { data, error } = await supabase.rpc('get_spbu_top_plates', {
+        p_spbu_id: selectedSpbuId.value,
+        p_date_from: dateFrom.value || '',
+        p_date_to: dateTo.value || '',
+        // p_limit: 10
+      })
 
+      if (error) {
+        console.error('[useMasterAnalytics] fetchTopPlates RPC error:', error)
+        return
+      }
+
+      if (data && data.success) {
+        topPlates.value = data.top_plates || []
+      } else {
+        topPlates.value = []
+      }
+    } catch (err) {
+      console.error('[useMasterAnalytics] fetchTopPlates error:', err)
+      topPlates.value = []
+    }
+  }
   /**
    * Fetch analytics data via RPC get_master_analytics_summary.
    * KPI, trend harian, dan leaderboard SPBU dihitung di PostgreSQL.
@@ -67,6 +100,7 @@ export function useMasterAnalytics() {
     const minLoadingPromise = new Promise(resolve => setTimeout(resolve, 350))
 
     try {
+      fetchTopPlates()
       const { data, error } = await supabase.rpc('get_master_analytics_summary', {
         p_date_from: dateFrom.value,
         p_date_to: dateTo.value,
@@ -81,7 +115,7 @@ export function useMasterAnalytics() {
       if (data) {
         kpi.value = data.kpis || kpi.value
         trendData.value = data.trend || []
-        
+
         const rawLeaderboard = data.leaderboard || []
         const totalLeaderboardSales = rawLeaderboard.reduce((sum, item) => sum + (item.revenue || 0), 0)
         leaderboard.value = rawLeaderboard.map((item, index) => ({
@@ -89,7 +123,7 @@ export function useMasterAnalytics() {
           rank: index + 1,
           sharePct: totalLeaderboardSales > 0 ? ((item.revenue / totalLeaderboardSales) * 100).toFixed(1) : 0
         }))
-        
+
         spbuShares.value = data.spbuShares || []
       }
       await minLoadingPromise
@@ -148,7 +182,7 @@ export function useMasterAnalytics() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Laporan Analisis Eksekutif SPBU - Habi Jaya FuelGuard</title>
+          <title>Laporan Analisis SPBU - FuelGuard</title>
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1a1a1a; }
             .header { display: flex; justify-content: space-between; align-items: center; border-b: 3px solid #143d2e; padding-bottom: 15px; margin-bottom: 30px; }
@@ -166,8 +200,8 @@ export function useMasterAnalytics() {
         <body>
           <div class="header">
             <div>
-              <h1 class="title">HABI JAYA FUELGUARD</h1>
-              <div class="sub">Laporan Analisis Eksekutif Penjualan BBM Jaringan SPBU</div>
+              <h1 class="title">FUELGUARD</h1>
+              <div class="sub">Laporan Analisis Penjualan BBM SPBU</div>
             </div>
             <div style="text-align:right;">
               <div style="font-size:12px; font-weight:bold;">Tanggal Cetak:</div>
@@ -212,7 +246,7 @@ export function useMasterAnalytics() {
           </table>
 
           <div class="footer">
-            Dokumen ini dihasilkan secara otomatis oleh Sistem Eksekutif Habi Jaya FuelGuard. Confidential.
+            Dokumen ini dihasilkan secara otomatis oleh Sistem Eksekutif FuelGuard. Confidential.
           </div>
 
           <script>
@@ -247,6 +281,8 @@ export function useMasterAnalytics() {
     trendData,
     leaderboard,
     spbuShares,
+    topPlates,
+    selectedSpbuName,
     fetchAnalytics,
     exportToExcel,
     exportToPDF

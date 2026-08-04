@@ -125,7 +125,7 @@ onUnmounted(() => {
           :value="searchQuery"
           @input="$emit('update:searchQuery', $event.target.value)"
           type="text"
-          placeholder="Cari Plat Nomor..."
+          placeholder="Cari berdasrkan Plat, Operator, atau Waktu"
           class="w-full pl-9 pr-9 py-2.5 bg-white/10 hover:bg-white/20 border border-white/15 focus:border-white focus:ring-2 focus:ring-white/20 focus:outline-none rounded-full text-xs font-bold text-white placeholder-green-200/60 transition-all shadow-sm"
         />
         <span class="absolute left-3 top-3 text-green-300 pointer-events-none">
