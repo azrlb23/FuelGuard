@@ -367,13 +367,13 @@ const formatDate = (dateString) => {
         <!-- Desktop Table View -->
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left border-collapse">
-            <thead class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white">
-              <tr class="text-xs font-black uppercase tracking-wider border-b border-white/20">
-                <th class="py-3.5 pl-4 rounded-l-2xl">NAMA OPERATOR</th>
+            <thead class="border-b border-white/15 text-emerald-200/90">
+              <tr class="text-xs font-extrabold uppercase tracking-wider">
+                <th class="py-3.5 pl-3">NAMA OPERATOR</th>
                 <th class="py-3.5">SPBU</th>
                 <th class="py-3.5">STATUS PETUGAS</th>
                 <th class="py-3.5">TANGGAL DIBUAT</th>
-                <th class="py-3.5 pr-4 text-right rounded-r-2xl">AKSI</th>
+                <th class="py-3.5 pr-3 text-right">AKSI</th>
               </tr>
             </thead>
 
@@ -481,9 +481,9 @@ const formatDate = (dateString) => {
             <div class="flex items-center justify-between">
               <div>
                 <h4 class="font-bold text-white text-sm leading-tight">{{ acc.spbu_name }}</h4>
-                <p class="text-xs text-amber-300 font-mono mt-0.5">{{ acc.email }}</p>
+                <p class="text-xs text-green-200/80 font-medium mt-0.5">{{ acc.email }}</p>
               </div>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-200 border border-purple-500/30 uppercase">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
                 {{ acc.role || 'Operator' }}
               </span>
             </div>
@@ -493,7 +493,7 @@ const formatDate = (dateString) => {
             <div class="flex justify-end pt-0.5">
               <button
                 @click="openResetModal(acc)"
-                class="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded-xl text-xs font-bold border border-amber-500/30 transition-colors cursor-pointer"
+                class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 Reset Password Akun
               </button>
@@ -504,12 +504,12 @@ const formatDate = (dateString) => {
         <!-- Desktop Table View -->
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider pt-4">
-                <th class="pt-3 pb-4 pl-3 border-b border-white/15">UNIT SPBU</th>
-                <th class="pt-3 pb-4 border-b border-white/15">EMAIL AKUN LOGIN</th>
-                <th class="pt-3 pb-4 border-b border-white/15">HAK AKSES (ROLE)</th>
-                <th class="pt-3 pb-4 pr-3 text-right border-b border-white/15">AKSI AUTHENTICATION</th>
+            <thead class="border-b border-white/15 text-emerald-200/90">
+              <tr class="text-xs font-extrabold uppercase tracking-wider">
+                <th class="py-3.5 pl-3">UNIT SPBU</th>
+                <th class="py-3.5">EMAIL AKUN LOGIN</th>
+                <th class="py-3.5">HAK AKSES (ROLE)</th>
+                <th class="py-3.5 pr-3 text-right">AKSI AUTHENTICATION</th>
               </tr>
             </thead>
 
@@ -538,7 +538,7 @@ const formatDate = (dateString) => {
                 <td class="py-4 pl-3">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center font-black text-white text-sm shadow-xs border border-white/10">
-                      {{ acc.spbu_name.indexOf(0) }}
+                      {{ acc.spbu_name?.charAt(0).toUpperCase() || 'S' }}
                     </div>
                     <div>
                       <p class="font-bold text-white text-sm leading-tight">{{ acc.spbu_name }}</p>
@@ -547,12 +547,12 @@ const formatDate = (dateString) => {
                   </div>
                 </td>
 
-                <td class="py-4 font-mono text-xs font-bold text-amber-200">
+                <td class="py-4 text-emerald-100 font-bold text-xs md:text-sm">
                   {{ acc.email }}
                 </td>
 
                 <td class="py-4">
-                  <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-200 border border-purple-500/30 uppercase tracking-wider">
+                  <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
                     {{ acc.role || 'Operator' }}
                   </span>
                 </td>
@@ -560,7 +560,7 @@ const formatDate = (dateString) => {
                 <td class="py-4 pr-3 text-right">
                   <button
                     @click="openResetModal(acc)"
-                    class="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded-xl text-xs font-bold border border-amber-500/30 transition-all cursor-pointer active:scale-95"
+                    class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs shadow-sm transition-all cursor-pointer active:scale-95"
                   >
                     Reset Password Akun
                   </button>

@@ -80,11 +80,11 @@ const transactionCardTitle = computed(() => {
     />
 
     <!-- Row 2: Volume Mingguan Bar Chart -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2">
         <MasterVolumeChart :weeklyVolumeByDay="weeklyVolumeByDay" />
       </div>
-    </div>
+    </div> -->
 
     <!-- Row 3: SPBU Interactive Expandable Accordion List -->
     <MasterSpbuAccordion

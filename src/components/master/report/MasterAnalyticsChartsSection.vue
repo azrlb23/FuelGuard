@@ -111,10 +111,10 @@ defineProps({
         <div>
           <h4 class="text-base font-extrabold text-[#143d2e]">Ranking Plat Pengisi</h4>
           <p class="text-[11px] font-semibold text-emerald-700/80 mt-0.5 truncate max-w-[190px]" :title="selectedSpbuName">
-            SPBU: {{ selectedSpbuName }}
+            {{ selectedSpbuName }}
           </p>
         </div>
-        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold  shrink-0">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-extrabold  shrink-0">
           {{ topPlates.length }} Plat
         </span>
       </div>
@@ -128,15 +128,7 @@ defineProps({
         >
           <div class="flex items-center gap-2.5 min-w-0">
             <!-- Rank Badge -->
-            <div
-              :class="[
-                'w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 shadow-2xs',
-                idx === 0 ? 'bg-amber-400 text-amber-950' :
-                idx === 1 ? 'bg-slate-300 text-slate-900' :
-                idx === 2 ? 'bg-amber-700/30 text-amber-900' :
-                'bg-emerald-900/10 text-emerald-900'
-              ]"
-            >
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 bg-gray-100 text-gray-600 shadow-2xs">
               #{{ idx + 1 }}
             </div>
 

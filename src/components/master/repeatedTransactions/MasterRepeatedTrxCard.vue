@@ -137,16 +137,18 @@ const exportToExcel = () => {
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi Ditolak')
   const dateRangeStr = props.dateFrom ? `${props.dateFrom}_sd_${props.dateTo || props.dateFrom}` : new Date().toISOString().slice(0, 10)
-  XLSX.writeFile(workbook, `Ekspor_Transaksi_Ditolak_${dateRangeStr}.xlsx`)
-  toast.success(`Berhasil mengunduh ${rows.length} data transaksi ditolak!`)
+  XLSX.writeFile(workbook, `Transaksi_Ditolak_${dateRangeStr}.xlsx`)
+  // toast.success(`Berhasil mengunduh ${rows.length} data transaksi ditolak!`)
 }
 </script>
 
 <template>
-  <div class="bg-gradient-to-br from-[#143d2e] via-[#1b4d3a] to-[#256a50] rounded-3xl md:rounded-[2rem] p-5 md:p-8 text-white shadow-xl shadow-green-900/15 border border-white/20 relative flex flex-col space-y-4 overflow-hidden backdrop-blur-xl">
+  <div class="bg-gradient-to-br from-[#143d2e] via-[#1b4d3a] to-[#256a50] rounded-3xl md:rounded-[2rem] p-5 md:p-8 text-white shadow-xl shadow-green-900/15 border border-white/20 relative flex flex-col space-y-4 backdrop-blur-xl">
 
-    <!-- Background Glow Effect -->
-    <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
+    <!-- Background Glow Effect (Clipped to Card Corners) -->
+    <div class="absolute inset-0 rounded-3xl md:rounded-[2rem] overflow-hidden pointer-events-none">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-20 translate-x-20"></div>
+    </div>
 
     <!-- Filter Bar Header -->
     <MasterRepeatedFilterBar
