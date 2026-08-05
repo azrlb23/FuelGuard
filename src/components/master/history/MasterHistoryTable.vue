@@ -289,10 +289,10 @@ const setPage = (p) => {
     </div>
 
     <!-- Pagination Bar & Export Excel Button -->
-    <div class="flex flex-col md:flex-row items-center justify-between mt-6 pt-5 border-t border-white/15 gap-4">
+    <div class="flex flex-col md:flex-row items-center justify-between mt-6 pt-5 border-t border-white/15 gap-4 pb-2">
 
       <!-- Total Items & Download XLSX Button -->
-      <div class="flex flex-wrap items-center gap-3 order-2 md:order-1 text-center md:text-left justify-center md:justify-start">
+      <div class="flex flex-col sm:flex-row items-center gap-2.5 order-2 md:order-1 text-center md:text-left justify-center md:justify-start">
         <span class="text-xs text-green-200/70 font-medium">
           Menampilkan {{ transactions.length ? ((currentPage - 1) * itemsPerPage + 1).toLocaleString('id-ID') : 0 }} -
           {{ Math.min(currentPage * itemsPerPage, totalItems).toLocaleString('id-ID') }} dari {{ totalItems.toLocaleString('id-ID') }} data
@@ -302,7 +302,7 @@ const setPage = (p) => {
         <button
           @click="$emit('exportExcel')"
           :disabled="isExporting || totalItems === 0"
-          class="inline-flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 text-emerald-200 hover:text-white px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+          class="inline-flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 text-emerald-200 hover:text-white px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xs shrink-0"
           title="Unduh laporan transaksi dalam format Excel (.xlsx)"
         >
           <svg v-if="!isExporting" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-emerald-300 shrink-0">
