@@ -35,6 +35,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  searchQuery: {
+    type: String,
+    default: ''
+  },
   selectedSpbu: {
     type: [String, Number],
     default: ''
@@ -75,6 +79,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'update:currentPage',
+  'update:searchQuery',
   'update:selectedSpbu',
   'update:dateFrom',
   'update:dateTo',
@@ -135,12 +140,17 @@ const setPage = (p) => {
 </script>
 
 <template>
-  <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[2rem] p-6 md:p-8 shadow-xl shadow-green-900/10 text-white relative overflow-hidden border border-green-800/40">
-    
-    <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[2rem] p-6 md:p-8 shadow-xl shadow-green-900/10 text-white relative border border-green-800/40">
+
+    <!-- Background Glow Effect (Clipped to Card Corners) -->
+    <div class="absolute inset-0 rounded-[2rem] overflow-hidden pointer-events-none">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+    </div>
 
     <!-- Integrated Filter Bar -->
     <MasterHistoryFilterBar
+      :searchQuery="searchQuery"
+      @update:searchQuery="$emit('update:searchQuery', $event)"
       :spbuList="spbuList"
       :selectedSpbu="selectedSpbu"
       @update:selectedSpbu="$emit('update:selectedSpbu', $event)"
@@ -173,18 +183,22 @@ const setPage = (p) => {
       </template>
 
       <template v-else-if="transactions.length > 0">
-        <div 
-          v-for="trx in transactions" 
-          :key="trx.id" 
+        <div
+          v-for="trx in transactions"
+          :key="trx.id"
           class="bg-black/20 rounded-2xl p-4 border border-white/10 flex flex-col gap-3"
         >
           <div class="flex justify-between items-start">
             <div class="flex items-center gap-2 text-xs text-green-200/70 font-medium">
               <span>{{ formatDateOnly(trx.waktu_pencatatan) }}</span>
-              <span class="text-white/40">•</span>
               <span class="font-mono text-green-300">{{ formatTimeOnly(trx.waktu_pencatatan) }}</span>
             </div>
-            <span class="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/20">Success</span>
+            <span v-if="trx.operator_name || trx.nama_operator" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-900/60 text-emerald-200 border border-emerald-700/50 uppercase">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-emerald-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+              </svg>
+              <span>{{ trx.operator_name || trx.nama_operator }}</span>
+            </span>
           </div>
 
           <div class="flex justify-between items-center">
@@ -218,14 +232,15 @@ const setPage = (p) => {
     <!-- Desktop Table View -->
     <div class="hidden md:block overflow-x-auto">
       <table class="w-full text-left border-collapse">
-        <thead>
-          <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider border-b border-white/15 pb-4">
-            <th class="pb-4 pl-3">TANGGAL</th>
-            <th class="pb-4">WAKTU</th>
-            <th class="pb-4">SPBU</th>
-            <th class="pb-4">PLAT NOMOR</th>
-            <th class="pb-4">VOLUME</th>
-            <th class="pb-4 pr-3">REVENUE</th>
+        <thead class="border-b border-white/15 text-emerald-200/90">
+          <tr class="text-xs font-extrabold uppercase tracking-wider">
+            <th class="py-3.5 pl-3">TANGGAL</th>
+            <th class="py-3.5">WAKTU</th>
+            <th class="py-3.5">SPBU</th>
+            <th class="py-3.5">OPERATOR</th>
+            <th class="py-3.5">PLAT NOMOR</th>
+            <th class="py-3.5">VOLUME</th>
+            <th class="py-3.5 pr-3">REVENUE</th>
           </tr>
         </thead>
         <tbody class="text-sm">
@@ -234,6 +249,7 @@ const setPage = (p) => {
               <td class="py-4 pl-3"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-16 bg-white/10 rounded"></div></td>
               <td class="py-4"><div class="skeleton h-6 w-24 bg-white/10 rounded-full"></div></td>
+              <td class="py-4"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-20 bg-white/10 rounded"></div></td>
               <td class="py-4"><div class="skeleton h-4 w-16 bg-white/10 rounded"></div></td>
               <td class="py-4 pr-3"><div class="skeleton h-4 w-24 bg-white/10 rounded"></div></td>
@@ -241,9 +257,9 @@ const setPage = (p) => {
           </template>
 
           <template v-else-if="transactions.length > 0">
-            <tr 
-              v-for="trx in transactions" 
-              :key="trx.id" 
+            <tr
+              v-for="trx in transactions"
+              :key="trx.id"
               class="hover:bg-white/5 transition-colors duration-150 border-b border-white/10 last:border-0"
             >
               <td class="py-4 pl-3 text-green-50 font-medium text-xs md:text-sm">{{ formatDateOnly(trx.waktu_pencatatan) }}</td>
@@ -253,6 +269,9 @@ const setPage = (p) => {
                   {{ getSpbuName(trx) }}
                 </span>
               </td>
+              <td class="py-4 text-emerald-200 font-bold text-xs md:text-sm uppercase">
+                {{ trx.operator_name || trx.nama_operator || '-' }}
+              </td>
               <td class="py-4 font-mono font-bold text-white tracking-wider">{{ trx.plat_nomor }}</td>
               <td class="py-4 text-white/90 font-semibold">{{ trx.liter }} L</td>
               <td class="py-4 pr-3 font-black text-emerald-300">{{ formatRupiah(trx.harga) }}</td>
@@ -260,7 +279,7 @@ const setPage = (p) => {
           </template>
 
           <tr v-else>
-            <td colspan="6" class="py-16 text-center text-green-100/60">
+            <td colspan="7" class="py-16 text-center text-green-100/60">
               <span class="text-3xl block mb-2">🍃</span>
               <span class="text-sm font-medium">Tidak ada transaksi ditemukan.</span>
             </td>
@@ -271,11 +290,11 @@ const setPage = (p) => {
 
     <!-- Pagination Bar & Export Excel Button -->
     <div class="flex flex-col md:flex-row items-center justify-between mt-6 pt-5 border-t border-white/15 gap-4">
-      
+
       <!-- Total Items & Download XLSX Button -->
       <div class="flex flex-wrap items-center gap-3 order-2 md:order-1 text-center md:text-left justify-center md:justify-start">
         <span class="text-xs text-green-200/70 font-medium">
-          Menampilkan {{ transactions.length ? ((currentPage - 1) * itemsPerPage + 1).toLocaleString('id-ID') : 0 }} - 
+          Menampilkan {{ transactions.length ? ((currentPage - 1) * itemsPerPage + 1).toLocaleString('id-ID') : 0 }} -
           {{ Math.min(currentPage * itemsPerPage, totalItems).toLocaleString('id-ID') }} dari {{ totalItems.toLocaleString('id-ID') }} data
         </span>
 
@@ -290,15 +309,15 @@ const setPage = (p) => {
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
           <span v-else class="loading loading-spinner loading-xs text-emerald-300"></span>
-          <span>{{ isExporting ? 'Mengeksport...' : 'Ekspor (XLSX)' }}</span>
+          <span>{{ isExporting ? 'Mengeksport...' : 'Ekspor (.xlsx)' }}</span>
         </button>
       </div>
 
       <!-- Page Buttons -->
       <div class="flex items-center gap-1.5 order-1 md:order-2 flex-wrap justify-center">
         <!-- Previous Page Button -->
-        <button 
-          @click="setPage(currentPage - 1)" 
+        <button
+          @click="setPage(currentPage - 1)"
           :disabled="currentPage <= 1 || loading"
           class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer mr-1"
         >
@@ -323,8 +342,8 @@ const setPage = (p) => {
         </template>
 
         <!-- Next Page Button -->
-        <button 
-          @click="setPage(currentPage + 1)" 
+        <button
+          @click="setPage(currentPage + 1)"
           :disabled="currentPage >= totalPages || loading"
           class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer ml-1"
         >

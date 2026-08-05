@@ -49,7 +49,7 @@ const getInitials = (name) => {
 </script>
 
 <template>
-  <div class="bg-[#184635]/90 border border-emerald-800/60 rounded-2xl overflow-hidden shadow-md transition-all duration-200">
+  <div class="bg-[#143d2e]/90 border border-white/15 rounded-2xl overflow-hidden shadow-md transition-all duration-200 backdrop-blur-md">
     <!-- Accordion Header Bar -->
     <div
       @click="$emit('toggle')"
@@ -86,7 +86,7 @@ const getInitials = (name) => {
     <!-- Expanded Accordion Content -->
     <div
       v-if="isExpanded"
-      class="px-4 pb-4 pt-1 border-t border-emerald-800/40 bg-[#0e2e23]/90"
+      class="px-4 pb-4 pt-1 border-t border-white/10 bg-[#0d2b20]/90"
     >
       <!-- Mobile View: Compact Responsive Cards -->
       <div class="block md:hidden space-y-2.5 pt-2">
@@ -134,19 +134,28 @@ const getInitials = (name) => {
               <span class="uppercase truncate">{{ attempt.operator_nama }}</span>
             </div>
           </div>
+
+          <!-- Alasan Ditolak Row (Mobile) -->
+          <div class="flex items-center justify-between text-[11px] pt-2 border-t border-emerald-900/50">
+            <span class="text-emerald-200/60 font-medium">Alasan Ditolak</span>
+            <span class="font-extrabold text-red-300 bg-red-950/70 px-2 py-0.5 rounded-md border border-red-700/50 text-[10px]">
+              {{ attempt.reason || attempt.deskripsi || attempt.catatan || 'Kuota Harian Terlampaui' }}
+            </span>
+          </div>
         </div>
       </div>
 
       <!-- Desktop View: Clean Table -->
       <div class="hidden md:block overflow-x-auto">
-        <table class="w-full text-left border-collapse min-w-[600px]">
-          <thead>
-            <tr class="text-[10px] font-black uppercase tracking-wider text-emerald-300/60 border-b border-emerald-800/30">
-              <th class="py-2.5 px-3">JAM (WITA)</th>
+        <table class="w-full text-left border-collapse min-w-[700px]">
+          <thead class="bg-emerald-950/70 text-emerald-200/90 border-b border-emerald-800/50">
+            <tr class="text-[10px] font-extrabold uppercase tracking-wider">
+              <th class="py-2.5 px-3 rounded-l-xl">TANGGAL</th>
+              <th class="py-2.5 px-3">JAM</th>
               <th class="py-2.5 px-3">KATEGORI</th>
               <th class="py-2.5 px-3">LOKASI SPBU</th>
               <th class="py-2.5 px-3">OPERATOR BERTUGAS</th>
-              <th class="py-2.5 px-3 text-right">TANGGAL</th>
+              <th class="py-2.5 px-3 text-right rounded-r-xl">ALASAN DITOLAK</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-emerald-800/20 text-xs font-semibold">
@@ -155,7 +164,12 @@ const getInitials = (name) => {
               :key="attempt.id"
               class="hover:bg-white/5 transition-colors"
             >
-              <!-- JAM (WITA) -->
+              <!-- TANGGAL -->
+              <td class="py-3 px-3 whitespace-nowrap text-emerald-200/90 font-bold">
+                {{ formatDateOnly(attempt.created_at) }}
+              </td>
+
+              <!-- JAM -->
               <td class="py-3 px-3 whitespace-nowrap text-emerald-200/90 font-bold text-xs font-mono">
                 {{ formatTimeOnly(attempt.created_at) }}
               </td>
@@ -195,9 +209,11 @@ const getInitials = (name) => {
                 </div>
               </td>
 
-              <!-- TANGGAL -->
-              <td class="py-3 px-3 text-right whitespace-nowrap text-emerald-200/90 font-bold">
-                {{ formatDateOnly(attempt.created_at) }}
+              <!-- ALASAN DITOLAK -->
+              <td class="py-3 px-3 text-right whitespace-nowrap">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-extrabold bg-red-500/20 text-red-300 border border-red-500/30">
+                  {{ attempt.reason || attempt.deskripsi || attempt.catatan || 'Kuota Harian Terlampaui' }}
+                </span>
               </td>
             </tr>
           </tbody>

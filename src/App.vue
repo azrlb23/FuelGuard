@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, onUnmounted, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { usePresence } from '@/composables/usePresence'
+import { usePresence } from '@/composables/common/usePresence'
 import { useRoute } from 'vue-router'
 import MasterLayout from '@/layouts/MasterLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'

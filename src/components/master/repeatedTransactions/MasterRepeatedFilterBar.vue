@@ -93,7 +93,7 @@ onUnmounted(() => {
           :value="searchQuery"
           @input="$emit('update:searchQuery', $event.target.value)"
           type="text"
-          placeholder="Cari Plat Nomor..."
+          placeholder="Cari berdasarkan Plat, Operator, atau Waktu"
           class="w-full pl-9 pr-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/15 focus:border-white focus:ring-2 focus:ring-white/20 focus:outline-none rounded-full text-xs font-bold text-white placeholder-green-200/60 transition-all shadow-sm"
         />
         <span class="absolute left-3 top-3 text-green-300 pointer-events-none">
@@ -147,7 +147,7 @@ onUnmounted(() => {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-emerald-400">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0m-9.75 0h9.75" />
               </svg>
-              <span class="text-sm font-black text-white">Filter Transaksi Berulang</span>
+              <span class="text-sm font-black text-white">Filter Transaksi Ditolak</span>
             </div>
 
             <button

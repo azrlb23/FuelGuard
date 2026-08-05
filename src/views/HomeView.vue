@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import VehicleSelector from '@/components/operator/VehicleSelector.vue'
 import TransactionForm from '@/components/operator/TransactionForm.vue'
 import TransactionSuccess from '@/components/operator/TransactionSuccess.vue'
-import { useTransactionAction } from '@/composables/useTransactionAction'
+import { useTransactionAction } from '@/composables/operator/useTransactionAction'
 import { useAuthStore } from '@/stores/auth'
 
 const step = ref(1)

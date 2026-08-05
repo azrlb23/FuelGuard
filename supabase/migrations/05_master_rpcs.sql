@@ -790,4 +790,89 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_master_repeated_transactions(text, text, text, integer, integer) TO authenticated;
 
+
+-- ─── 7. FUNCTION: get_spbu_top_plates ─────────────────────────────────────────
+DROP FUNCTION IF EXISTS public.get_spbu_top_plates(text, text, text, integer);
+CREATE OR REPLACE FUNCTION public.get_spbu_top_plates(
+  p_spbu_id text DEFAULT NULL,
+  p_date_from text DEFAULT '',
+  p_date_to text DEFAULT '',
+  p_limit integer DEFAULT 10
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role text;
+  v_date_from timestamp with time zone;
+  v_date_to timestamp with time zone;
+  v_result json;
+BEGIN
+  -- 1. Security Authorization Guard: Wajib Terautentikasi
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: Sesi tidak terautentikasi';
+  END IF;
+
+  -- 2. Role Check: Wajib Role Master
+  v_role := public.get_user_role();
+  IF v_role IS NULL OR LOWER(v_role) != 'master' THEN
+    RAISE EXCEPTION 'Forbidden: Akses ditolak.';
+  END IF;
+
+  -- 3. Parse Date Range
+  IF p_date_from IS NOT NULL AND TRIM(p_date_from) != '' THEN
+    v_date_from := (p_date_from || ' 00:00:00')::timestamp with time zone;
+  END IF;
+
+  IF p_date_to IS NOT NULL AND TRIM(p_date_to) != '' THEN
+    v_date_to := (p_date_to || ' 23:59:59.999')::timestamp with time zone;
+  END IF;
+
+  -- 4. Query & Aggregate Top Plates by plat_nomor
+  WITH raw_trx AS (
+    SELECT 
+      regexp_replace(UPPER(TRIM(t.plat_nomor)), '\s+', ' ', 'g') AS plat_nomor,
+      t.liter,
+      t.harga,
+      COALESCE(t.is_ojol, false) AS is_ojol
+    FROM public.transaksi_pertalite t
+    INNER JOIN public.operator_profiles op ON op.id = t.operator_id
+    WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR op.spbu_id = p_spbu_id)
+      AND (v_date_from IS NULL OR t.waktu_pencatatan >= v_date_from)
+      AND (v_date_to IS NULL OR t.waktu_pencatatan <= v_date_to)
+  ),
+  aggregated_plates AS (
+    SELECT 
+      plat_nomor,
+      bool_or(is_ojol) AS is_ojol,
+      COUNT(*) AS trx_count,
+      SUM(liter) AS total_liter,
+      SUM(harga) AS total_harga
+    FROM raw_trx
+    GROUP BY plat_nomor
+    ORDER BY SUM(liter) DESC, COUNT(*) DESC
+    LIMIT LEAST(GREATEST(p_limit, 1), 50)
+  )
+  SELECT json_agg(
+    json_build_object(
+      'plat_nomor', plat_nomor,
+      'is_ojol', is_ojol,
+      'trx_count', trx_count,
+      'total_liter', total_liter,
+      'total_harga', total_harga
+    )
+  ) INTO v_result
+  FROM aggregated_plates;
+
+  RETURN json_build_object(
+    'success', true,
+    'top_plates', COALESCE(v_result, '[]'::json)
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_spbu_top_plates(text, text, text, integer) TO authenticated;
+
 NOTIFY pgrst, 'reload schema';

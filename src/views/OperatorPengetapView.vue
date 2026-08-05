@@ -1,5 +1,5 @@
 <script setup>
-import { useRepeatedLogs } from '@/composables/useRepeatedLogs'
+import { useRepeatedLogs } from '@/composables/operator/useRepeatedLogs'
 
 const itemsPerPage = 10
 const {
@@ -74,7 +74,7 @@ const prevPage = () => {
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Cari Plat Nomor..."
+            placeholder="Cari Plat, Operator, Waktu (14:30)..."
             class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] focus:bg-white transition-all"
           />
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-gray-400 absolute left-3.5 top-2.5">

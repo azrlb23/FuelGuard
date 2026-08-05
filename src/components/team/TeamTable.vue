@@ -141,6 +141,8 @@ const resetForm = ref({
   success: false
 })
 const resetSubmitting = ref(false)
+const isResetConfirmModalOpen = ref(false)
+const showResetPassword = ref(false)
 
 const openResetModal = (account) => {
   selectedAccount.value = account
@@ -149,12 +151,30 @@ const openResetModal = (account) => {
     copied: false,
     success: false
   }
+  showResetPassword.value = false
   isResetModalOpen.value = true
 }
 
 const generateRandomPassword = () => {
   resetForm.value.password = `Pertamina#${Math.floor(1000 + Math.random() * 9000)}`
   resetForm.value.success = false
+}
+
+const openResetConfirmModal = () => {
+  if (!selectedAccount.value || !selectedAccount.value.user_id) {
+    alert("Akun SPBU ini belum memiliki User ID Auth (belum ditautkan di tabel user_roles).")
+    return
+  }
+  if (!resetForm.value.password || resetForm.value.password.length < 6) {
+    alert("Password minimal harus 6 karakter")
+    return
+  }
+  isResetConfirmModalOpen.value = true
+}
+
+const confirmResetPassword = async () => {
+  isResetConfirmModalOpen.value = false
+  await handleExecuteResetPassword()
 }
 
 const handleExecuteResetPassword = async () => {
@@ -211,8 +231,9 @@ const formatDate = (dateString) => {
 <template>
   <div class="w-full">
 
-    <!-- Single Unified Card: Tabs + Filters + Table -->
-    <div class="bg-gradient-to-br from-[#103427] via-[#143d2e] to-[#0d2b20] rounded-[2rem] p-5 md:p-6 border border-emerald-800/40 shadow-xl shadow-green-900/10 text-white relative">
+    <!-- Single Unified Card: Tabs + Filters + Table (Signature Green Glassmorphism Gradient) -->
+    <div class="bg-gradient-to-br from-[#143d2e] via-[#1b4d3a] to-[#256a50] rounded-3xl md:rounded-[2rem] p-5 md:p-8 border border-white/20 shadow-xl shadow-green-900/15 text-white relative overflow-hidden backdrop-blur-xl">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
 
       <!-- Background Glow Effect -->
       <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
@@ -366,13 +387,13 @@ const formatDate = (dateString) => {
         <!-- Desktop Table View -->
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider">
-                <th class="pt-3 pb-4 pl-3 border-b border-white/15">NAMA OPERATOR</th>
-                <th class="pt-3 pb-4 border-b border-white/15">SPBU</th>
-                <th class="pt-3 pb-4 border-b border-white/15">STATUS PETUGAS</th>
-                <th class="pt-3 pb-4 border-b border-white/15">TANGGAL DIBUAT</th>
-                <th class="pt-3 pb-4 pr-3 text-right border-b border-white/15">AKSI</th>
+            <thead class="border-b border-white/15 text-emerald-200/90">
+              <tr class="text-xs font-extrabold uppercase tracking-wider">
+                <th class="py-3.5 pl-3">NAMA OPERATOR</th>
+                <th class="py-3.5">SPBU</th>
+                <th class="py-3.5">STATUS PETUGAS</th>
+                <th class="py-3.5">TANGGAL DIBUAT</th>
+                <th class="py-3.5 pr-3 text-right">AKSI</th>
               </tr>
             </thead>
 
@@ -480,9 +501,9 @@ const formatDate = (dateString) => {
             <div class="flex items-center justify-between">
               <div>
                 <h4 class="font-bold text-white text-sm leading-tight">{{ acc.spbu_name }}</h4>
-                <p class="text-xs text-amber-300 font-mono mt-0.5">{{ acc.email }}</p>
+                <p class="text-xs text-green-200/80 font-medium mt-0.5">{{ acc.email }}</p>
               </div>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-200 border border-purple-500/30 uppercase">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
                 {{ acc.role || 'Operator' }}
               </span>
             </div>
@@ -492,7 +513,7 @@ const formatDate = (dateString) => {
             <div class="flex justify-end pt-0.5">
               <button
                 @click="openResetModal(acc)"
-                class="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded-xl text-xs font-bold border border-amber-500/30 transition-colors cursor-pointer"
+                class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 Reset Password Akun
               </button>
@@ -503,12 +524,12 @@ const formatDate = (dateString) => {
         <!-- Desktop Table View -->
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider pt-4">
-                <th class="pt-3 pb-4 pl-3 border-b border-white/15">UNIT SPBU</th>
-                <th class="pt-3 pb-4 border-b border-white/15">EMAIL AKUN LOGIN</th>
-                <th class="pt-3 pb-4 border-b border-white/15">HAK AKSES (ROLE)</th>
-                <th class="pt-3 pb-4 pr-3 text-right border-b border-white/15">AKSI AUTHENTICATION</th>
+            <thead class="border-b border-white/15 text-emerald-200/90">
+              <tr class="text-xs font-extrabold uppercase tracking-wider">
+                <th class="py-3.5 pl-3">UNIT SPBU</th>
+                <th class="py-3.5">EMAIL AKUN LOGIN</th>
+                <th class="py-3.5">HAK AKSES (ROLE)</th>
+                <th class="py-3.5 pr-3 text-right">AKSI AUTHENTICATION</th>
               </tr>
             </thead>
 
@@ -537,7 +558,7 @@ const formatDate = (dateString) => {
                 <td class="py-4 pl-3">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center font-black text-white text-sm shadow-xs border border-white/10">
-                      {{ acc.spbu_name.indexOf(0) }}
+                      {{ acc.spbu_name?.charAt(0).toUpperCase() || 'S' }}
                     </div>
                     <div>
                       <p class="font-bold text-white text-sm leading-tight">{{ acc.spbu_name }}</p>
@@ -546,12 +567,12 @@ const formatDate = (dateString) => {
                   </div>
                 </td>
 
-                <td class="py-4 font-mono text-xs font-bold text-amber-200">
+                <td class="py-4 text-emerald-100 font-bold text-xs md:text-sm">
                   {{ acc.email }}
                 </td>
 
                 <td class="py-4">
-                  <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-200 border border-purple-500/30 uppercase tracking-wider">
+                  <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
                     {{ acc.role || 'Operator' }}
                   </span>
                 </td>
@@ -559,7 +580,7 @@ const formatDate = (dateString) => {
                 <td class="py-4 pr-3 text-right">
                   <button
                     @click="openResetModal(acc)"
-                    class="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded-xl text-xs font-bold border border-amber-500/30 transition-all cursor-pointer active:scale-95"
+                    class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs shadow-sm transition-all cursor-pointer active:scale-95"
                   >
                     Reset Password Akun
                   </button>
@@ -644,7 +665,6 @@ const formatDate = (dateString) => {
                 class="flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
                 :class="formData.is_active ? 'bg-emerald-600 text-white shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'"
               >
-                <span class="w-2 h-2 rounded-full bg-current"></span>
                 Aktif
               </button>
               <button
@@ -653,7 +673,6 @@ const formatDate = (dateString) => {
                 class="flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
                 :class="!formData.is_active ? 'bg-red-600 text-white shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'"
               >
-                <span class="w-2 h-2 rounded-full bg-current"></span>
                 Nonaktif
               </button>
             </div>
@@ -663,7 +682,7 @@ const formatDate = (dateString) => {
             <button
               type="button"
               @click="isModalOpen = false"
-              class="px-5 py-2.5 rounded-full text-xs font-bold text-gray-600 hover:bg-gray-100 transition-colors"
+              class="px-5 py-2.5 rounded-full text-xs font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 transition-colors"
             >
               Batal
             </button>
@@ -685,36 +704,16 @@ const formatDate = (dateString) => {
         <div class="flex items-center justify-between border-b border-gray-100 pb-4">
           <div>
             <h3 class="text-lg font-black text-[#143d2e]">Reset Password Akun SPBU</h3>
-            <p class="text-xs text-gray-500 font-medium">Unit: {{ selectedAccount?.spbu_name }} ({{ selectedAccount?.email }})</p>
+            <p class="text-xs text-gray-500 font-medium">Akun: {{ selectedAccount?.spbu_name }} ({{ selectedAccount?.email }})</p>
           </div>
           <button @click="isResetModalOpen = false" class="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        <div v-if="resetForm.success" class="space-y-4">
-          <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-200/80 space-y-3">
-            <div class="flex items-center gap-2 text-emerald-800 font-bold text-xs">
-              <span>✅ Password Akun Berhasil Di-reset!</span>
-            </div>
-            <p class="text-[11px] text-emerald-900/80 leading-relaxed font-medium">
-              Password baru untuk login akun autentikasi unit <strong>{{ selectedAccount?.spbu_name }}</strong> adalah:
-            </p>
-            <div class="flex items-center gap-2 pt-1">
-              <input
-                readonly
-                :value="resetForm.password"
-                class="flex-1 bg-white font-mono font-bold text-sm px-3 py-2 rounded-xl border border-emerald-300 text-gray-800 focus:outline-none"
-              />
-              <button
-                @click="copyTempPassword"
-                class="px-3 py-2 bg-[#143d2e] hover:bg-[#1a4a38] text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-              >
-                {{ resetForm.copied ? 'Tercopy!' : 'Copy' }}
-              </button>
-            </div>
-          </div>
-          <div class="flex justify-end">
+        <div v-if="resetForm.success" class="space-y-6 text-center py-4">
+          <h4 class="text-base font-black text-[#143d2e]">Password Akun Berhasil Di-reset!</h4>
+          <div class="flex justify-end pt-2">
             <button
               @click="isResetModalOpen = false"
               class="px-6 py-2.5 rounded-full text-xs font-bold bg-[#143d2e] text-white hover:bg-[#1a4a38] transition-colors shadow-md cursor-pointer"
@@ -724,44 +723,57 @@ const formatDate = (dateString) => {
           </div>
         </div>
 
-        <form v-else @submit.prevent="handleExecuteResetPassword" class="space-y-4">
+        <form v-else @submit.prevent="openResetConfirmModal" class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase mb-1.5">Password Baru Akun SPBU</label>
             <div class="flex items-center gap-2">
-              <input
-                v-model="resetForm.password"
-                type="text"
-                required
-                minlength="6"
-                placeholder="Masukkan password baru"
-                class="flex-1 px-4 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-mono font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e]"
-              />
+              <div class="relative flex-1">
+                <input
+                  v-model="resetForm.password"
+                  :type="showResetPassword ? 'text' : 'password'"
+                  required
+                  minlength="6"
+                  placeholder="Masukkan password baru"
+                  class="w-full pl-4 pr-10 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] transition-all"
+                />
+                <button
+                  type="button"
+                  @click="showResetPassword = !showResetPassword"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-lg transition-colors cursor-pointer select-none"
+                  :title="showResetPassword ? 'Sembunyikan Password' : 'Tampilkan Password'"
+                >
+                  <svg v-if="showResetPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                  </svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12c1.274-4.057 5.065-7 9.542-7 4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                </button>
+              </div>
               <button
                 type="button"
                 @click="generateRandomPassword"
                 title="Generate Password Acak"
-                class="px-3 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0"
+                class="px-4 py-2.5 bg-[#143d2e] hover:bg-[#1a4a38] border border-[#143d2e] text-white rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 select-none flex items-center justify-center"
               >
-                🎲 Acak
+                Acak
               </button>
             </div>
-            <p class="text-[11px] text-gray-400 mt-1.5">
-              Dapat diketik manual atau menggunakan tombol acak di atas.
-            </p>
           </div>
 
-          <div class="flex justify-end gap-3 pt-2">
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
             <button
               type="button"
               @click="isResetModalOpen = false"
-              class="px-5 py-2.5 rounded-full text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+              class="px-5 py-2.5 rounded-full text-xs font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 transition-colors"
             >
               Batal
             </button>
             <button
               type="submit"
               :disabled="resetSubmitting"
-              class="px-6 py-2.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition-colors shadow-md active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+              class="px-6 py-2.5 rounded-full text-xs font-bold bg-[#143d2e] text-white hover:bg-[#1a4a38] transition-colors shadow-md shadow-green-900/10 active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-2"
             >
               <span v-if="resetSubmitting" class="loading loading-spinner loading-xs"></span>
               Reset Password Akun
@@ -771,32 +783,78 @@ const formatDate = (dateString) => {
       </div>
     </div>
 
-    <!-- Custom Modern Confirmation Modal (Edit Profil) -->
-    <div v-if="isConfirmModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <!-- Custom Modern Confirmation Modal (Reset Password) -->
+    <div v-if="isResetConfirmModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
       <div class="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-gray-100 space-y-5 animate-enter text-center">
-        <!-- Icon Badge -->
-        <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 flex items-center justify-center mx-auto shadow-inner">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-          </svg>
-        </div>
 
         <div>
-          <h3 class="text-base font-black text-[#143d2e]">Konfirmasi Pembaruan</h3>
+          <h3 class="text-base font-black text-[#143d2e]">Konfirmasi Reset Password</h3>
           <p class="text-xs text-gray-500 font-medium mt-1.5 leading-relaxed">
-            Apakah Anda yakin ingin menyimpan perubahan data profil operator ini?
+            Apakah Anda yakin ingin mengubah password ini ?
           </p>
         </div>
 
         <!-- Summary Preview Box -->
-        <div class="bg-gray-50 rounded-2xl p-3.5 border border-gray-150 text-left space-y-2 text-xs font-semibold text-gray-700">
+        <div class="bg-gray-50 rounded-2xl p-3.5 text-left space-y-2 text-xs font-semibold text-gray-700">
+          <div class="flex justify-between items-center">
+            <span class="text-gray-400 font-bold uppercase text-[10px]">Akun SPBU</span>
+            <span class="font-bold text-gray-900 truncate max-w-[170px]">{{ selectedAccount?.spbu_name }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-400 font-bold uppercase text-[10px]">Email Akun</span>
+            <span class="font-bold text-[#143d2e] truncate max-w-[170px]">{{ selectedAccount?.email }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-400 font-bold uppercase text-[10px]">Password Baru</span>
+            <span class="font-mono font-bold text-emerald-700 py-0.5 rounded-lg">{{ resetForm.password }}</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="space-y-3 pt-1">
+          <p class="text-[11px] font-bold text-red-500/90 text-center">
+            Tindakan ini tidak dapat dibatalkan.
+          </p>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              @click="isResetConfirmModalOpen = false"
+              class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-xs font-bold bg-gray-200 hover:bg-gray-300 active:scale-95 transition-all cursor-pointer select-none"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              @click="confirmResetPassword"
+              class="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#143d2e] to-[#1a4a38] text-white text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer select-none"
+            >
+              Ya, Reset
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Modern Confirmation Modal (Edit Profil) -->
+    <div v-if="isConfirmModalOpen" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-gray-100 space-y-5 animate-enter text-center">
+
+        <div>
+          <h3 class="text-base font-black text-[#143d2e]">Konfirmasi Pembaruan</h3>
+          <p class="text-xs text-gray-500 font-medium mt-1.5 leading-relaxed">
+            Apakah Anda yakin ?
+          </p>
+        </div>
+
+        <!-- Summary Preview Box -->
+        <div class="bg-gray-50 rounded-2xl p-3.5 text-left space-y-2 text-xs font-semibold text-gray-700">
           <div class="flex justify-between items-center">
             <span class="text-gray-400 font-bold uppercase text-[10px]">Nama Operator</span>
             <span class="font-bold text-gray-900 truncate max-w-[170px]">{{ formData.nama_operator }}</span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-gray-400 font-bold uppercase text-[10px]">Unit SPBU</span>
-            <span class="font-bold text-[#143d2e] bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60">{{ getSelectedSpbuName() }}</span>
+            <span class="font-bold text-[#143d2e] py-0.5 rounded-lg">{{ getSelectedSpbuName() }}</span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-gray-400 font-bold uppercase text-[10px]">Status</span>
@@ -807,21 +865,26 @@ const formatDate = (dateString) => {
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex items-center gap-3 pt-1">
-          <button
-            type="button"
-            @click="isConfirmModalOpen = false"
-            class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-100 active:scale-95 transition-all cursor-pointer select-none"
-          >
-            Batal
-          </button>
-          <button
-            type="button"
-            @click="confirmUpdateOperator"
-            class="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#143d2e] to-[#1a4a38] text-white text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer select-none"
-          >
-            Ya, Perbarui
-          </button>
+        <div class="space-y-3 pt-1">
+          <p class="text-[11px] font-bold text-red-500/90 text-center">
+            Tindakan ini tidak dapat dibatalkan.
+          </p>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              @click="isConfirmModalOpen = false"
+              class="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-600 text-xs font-bold hover:bg-gray-100 active:scale-95 transition-all cursor-pointer select-none"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              @click="confirmUpdateOperator"
+              class="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#143d2e] to-[#1a4a38] text-white text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer select-none"
+            >
+              Ya, Perbarui
+            </button>
+          </div>
         </div>
       </div>
     </div>

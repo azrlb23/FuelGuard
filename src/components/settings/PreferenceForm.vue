@@ -1,5 +1,5 @@
 <script setup>
-import { useAudioAlert } from '@/composables/useAudioAlert'
+import { useAudioAlert } from '@/composables/common/useAudioAlert'
 import { toast } from 'vue3-toastify'
 
 const {
