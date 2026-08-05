@@ -310,14 +310,30 @@ const handleScan = async () => {
   }
 }
 
-// Harga per liter digunakan hanya untuk kalkulasi tampilan UI (2 arah liter <-> harga).
-// Harga sesungguhnya dihitung di backend (fn_safe_insert_transaction) dari tabel fuel_prices.
+// Harga per liter digunakan untuk kalkulasi tampilan UI 2 arah (liter <-> harga).
 const hargaPerLiter = ref(10000)
 
-// const calculatedPrice = computed(() => {
-//   const liter = parseFloat(form.value.liter) || 0
-//   return liter * hargaPerLiter.value
-// })
+const fetchFuelPrice = async () => {
+  try {
+    const spbuId = authStore.spbuId || '64.761.01'
+    const { data } = await supabase
+      .from('fuel_prices')
+      .select('price_per_liter')
+      .eq('spbu_id', spbuId)
+      .eq('fuel_type', 'Pertalite')
+      .maybeSingle()
+
+    if (data && data.price_per_liter) {
+      hargaPerLiter.value = Number(data.price_per_liter)
+    }
+  } catch (err) {
+    console.error('Error fetching Pertalite price for operator:', err)
+  }
+}
+
+onMounted(() => {
+  fetchFuelPrice()
+})
 
 const formatRupiah = (val) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)

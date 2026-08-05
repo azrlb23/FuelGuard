@@ -105,7 +105,7 @@ const updatePassword = async () => {
         <button
           type="submit"
           :disabled="loading"
-          class="bg-[#143d2e] hover:bg-[#1e5c45] text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-green-900/10 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] hover:from-[#1b4d3a] hover:to-[#258f62] text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-green-950/20 hover:shadow-green-900/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer border border-white/10 backdrop-blur-md"
         >
           <span v-if="loading" class="loading loading-spinner loading-xs"></span>
           Perbarui Password

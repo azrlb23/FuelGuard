@@ -149,15 +149,15 @@ const prevPage = () => {
 
     <div class="hidden md:block overflow-x-auto">
       <table class="w-full text-left border-collapse">
-        <thead>
-          <tr class="text-green-100/70 text-xs uppercase tracking-wider border-b border-white/10">
-            <th class="pb-4 pl-2 font-medium">Tanggal</th>
-            <th class="pb-4 font-medium">Waktu</th>
-            <th class="pb-4 font-medium">Operator</th>
-            <th class="pb-4 font-medium">Kendaraan</th>
-            <th class="pb-4 font-medium">Plat Nomor</th>
-            <th class="pb-4 font-medium">Volume</th>
-            <th class="pb-4 pr-2 font-medium">Revenue</th>
+        <thead class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white">
+          <tr class="text-xs font-black uppercase tracking-wider border-b border-white/20">
+            <th class="py-3.5 pl-4 rounded-l-2xl">Tanggal</th>
+            <th class="py-3.5">Waktu</th>
+            <th class="py-3.5">Operator</th>
+            <th class="py-3.5">Kendaraan</th>
+            <th class="py-3.5">Plat Nomor</th>
+            <th class="py-3.5">Volume</th>
+            <th class="py-3.5 pr-4 rounded-r-2xl">Revenue</th>
           </tr>
         </thead>
         <tbody class="text-sm">

@@ -211,8 +211,9 @@ const formatDate = (dateString) => {
 <template>
   <div class="w-full">
 
-    <!-- Single Unified Card: Tabs + Filters + Table -->
-    <div class="bg-gradient-to-br from-[#103427] via-[#143d2e] to-[#0d2b20] rounded-[2rem] p-5 md:p-6 border border-emerald-800/40 shadow-xl shadow-green-900/10 text-white relative">
+    <!-- Single Unified Card: Tabs + Filters + Table (Signature Green Glassmorphism Gradient) -->
+    <div class="bg-gradient-to-br from-[#143d2e] via-[#1b4d3a] to-[#256a50] rounded-3xl md:rounded-[2rem] p-5 md:p-8 border border-white/20 shadow-xl shadow-green-900/15 text-white relative overflow-hidden backdrop-blur-xl">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
 
       <!-- Background Glow Effect -->
       <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
@@ -366,13 +367,13 @@ const formatDate = (dateString) => {
         <!-- Desktop Table View -->
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider">
-                <th class="pt-3 pb-4 pl-3 border-b border-white/15">NAMA OPERATOR</th>
-                <th class="pt-3 pb-4 border-b border-white/15">SPBU</th>
-                <th class="pt-3 pb-4 border-b border-white/15">STATUS PETUGAS</th>
-                <th class="pt-3 pb-4 border-b border-white/15">TANGGAL DIBUAT</th>
-                <th class="pt-3 pb-4 pr-3 text-right border-b border-white/15">AKSI</th>
+            <thead class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white">
+              <tr class="text-xs font-black uppercase tracking-wider border-b border-white/20">
+                <th class="py-3.5 pl-4 rounded-l-2xl">NAMA OPERATOR</th>
+                <th class="py-3.5">SPBU</th>
+                <th class="py-3.5">STATUS PETUGAS</th>
+                <th class="py-3.5">TANGGAL DIBUAT</th>
+                <th class="py-3.5 pr-4 text-right rounded-r-2xl">AKSI</th>
               </tr>
             </thead>
 
@@ -644,7 +645,6 @@ const formatDate = (dateString) => {
                 class="flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
                 :class="formData.is_active ? 'bg-emerald-600 text-white shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'"
               >
-                <span class="w-2 h-2 rounded-full bg-current"></span>
                 Aktif
               </button>
               <button
@@ -653,7 +653,6 @@ const formatDate = (dateString) => {
                 class="flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
                 :class="!formData.is_active ? 'bg-red-600 text-white shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-700'"
               >
-                <span class="w-2 h-2 rounded-full bg-current"></span>
                 Nonaktif
               </button>
             </div>

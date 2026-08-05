@@ -68,8 +68,8 @@ watch(() => authStore.activeKasirId, (newVal) => {
     <header class="flex-none px-4 md:px-8 pt-4 pb-2 z-40">
       <div class="max-w-7xl mx-auto bg-white/90 backdrop-blur-xl border border-white/60 rounded-3xl md:rounded-full px-4 md:px-6 h-16 flex items-center justify-between shadow-lg shadow-green-900/5 transition-all">
         
-        <!-- Brand Logo & Title -->
-        <router-link to="/operator" class="flex items-center gap-3 cursor-pointer group">
+        <!-- Brand Logo & Title (Click to open sidebar on mobile) -->
+        <div @click="isSidebarOpen = true" class="flex items-center gap-3 cursor-pointer group select-none">
           <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#143d2e] via-[#1b4d3a] to-[#256a50] flex items-center justify-center p-2 shadow-md shadow-emerald-950/20 group-hover:scale-105 transition-transform border border-white/10">
             <img src="@/assets/fuelguard_logo.png" alt="FuelGuard Logo" class="w-full h-full object-contain brightness-0 invert" />
           </div>
@@ -77,7 +77,7 @@ watch(() => authStore.activeKasirId, (newVal) => {
             <h1 class="font-black text-lg tracking-tight text-[#143d2e] leading-none">FuelGuard</h1>
             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Operator Console</p>
           </div>
-        </router-link>
+        </div>
 
         <!-- Desktop Action Controls -->
         <div class="hidden md:flex items-center gap-3">

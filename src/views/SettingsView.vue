@@ -1,45 +1,38 @@
 <script setup>
-import { useAuthStore } from '@/stores/auth'
 import ProfileCard from '@/components/settings/ProfileCard.vue'
 import SecurityForm from '@/components/settings/SecurityForm.vue'
 import FuelPriceForm from '@/components/settings/FuelPriceForm.vue'
-import ProfileForm from '@/components/settings/ProfileForm.vue'
-
-const authStore = useAuthStore()
-const isOperator = authStore.role === 'operator'
 </script>
 
 <template>
-  <div class="space-y-6 animate-enter pb-8">
+  <div class="flex flex-col gap-6 animate-enter pb-10">
 
+    <!-- Top Header -->
     <div class="px-1">
-      <h2 class="text-3xl font-extrabold text-black tracking-tight mb-1">Settings</h2>
-      <p class="text-gray-500 font-bold text-xs sm:text-sm">Kelola preferensi akun, sistem, dan keamanan.</p>
+      <h2 class="text-3xl md:text-4xl font-extrabold text-[#143d2e] tracking-tight">Pengaturan Admin</h2>
     </div>
 
-    <ProfileCard />
-
-    <div v-if="isOperator" class="animate-enter" style="animation-delay: 100ms">
-      <div class="px-1 mb-2 mt-8">
-        <span class="text-xs font-bold text-[#143d2e] bg-green-100 px-2.5 py-1 rounded-full uppercase tracking-wider">
-          Admin Zone
-        </span>
-      </div>
-      <div class="grid grid-cols-1 gap-6">
-        <FuelPriceForm />
-      </div>
+    <!-- Section 1: Profil Admin Banner (Gradient Card) -->
+    <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-green-900/10 relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
+      <ProfileCard />
     </div>
 
-    <div class="px-1 mb-2 mt-6">
-      <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">General</span>
+    <!-- Section 2: Konfigurasi Harga BBM Pertalite -->
+    <div class="bg-white rounded-3xl border border-gray-100 shadow-xs p-6 md:p-8">
+      <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
+        Konfigurasi Harga BBM Pertalite
+      </h3>
+      <FuelPriceForm />
     </div>
-    
-    <ProfileForm />
-    <SecurityForm />
 
-    <p class="text-center text-xs text-gray-400 pt-8 pb-4 font-medium">
-      Habi Jaya Management System v2.1 &copy; {{ new Date().getFullYear() }}
-    </p>
+    <!-- Section 3: Keamanan Akun Admin -->
+    <div class="bg-white rounded-3xl border border-gray-100 shadow-xs p-6 md:p-8">
+      <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
+        Keamanan Akun & Sandi
+      </h3>
+      <SecurityForm />
+    </div>
 
   </div>
 </template>

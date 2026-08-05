@@ -191,7 +191,6 @@ const setPage = (p) => {
           <div class="flex justify-between items-start">
             <div class="flex items-center gap-2 text-xs text-green-200/70 font-medium">
               <span>{{ formatDateOnly(trx.waktu_pencatatan) }}</span>
-              <span class="text-white/40">•</span>
               <span class="font-mono text-green-300">{{ formatTimeOnly(trx.waktu_pencatatan) }}</span>
             </div>
             <span class="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/20">Success</span>
@@ -233,15 +232,15 @@ const setPage = (p) => {
     <!-- Desktop Table View -->
     <div class="hidden md:block overflow-x-auto">
       <table class="w-full text-left border-collapse">
-        <thead>
-          <tr class="text-green-200/70 text-xs font-bold uppercase tracking-wider border-b border-white/15 pb-4">
-            <th class="pb-4 pl-3">TANGGAL</th>
-            <th class="pb-4">WAKTU</th>
-            <th class="pb-4">SPBU</th>
-            <th class="pb-4">OPERATOR</th>
-            <th class="pb-4">PLAT NOMOR</th>
-            <th class="pb-4">VOLUME</th>
-            <th class="pb-4 pr-3">REVENUE</th>
+        <thead class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white">
+          <tr class="text-xs font-black uppercase tracking-wider border-b border-white/20">
+            <th class="py-3.5 pl-4 rounded-l-2xl">TANGGAL</th>
+            <th class="py-3.5">WAKTU</th>
+            <th class="py-3.5">SPBU</th>
+            <th class="py-3.5">OPERATOR</th>
+            <th class="py-3.5">PLAT NOMOR</th>
+            <th class="py-3.5">VOLUME</th>
+            <th class="py-3.5 pr-4 rounded-r-2xl">REVENUE</th>
           </tr>
         </thead>
         <tbody class="text-sm">

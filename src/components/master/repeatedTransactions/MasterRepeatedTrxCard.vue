@@ -143,10 +143,10 @@ const exportToExcel = () => {
 </script>
 
 <template>
-  <div class="bg-gradient-to-br from-[#103427] via-[#143d2e] to-[#0d2b20] rounded-[2rem] p-5 md:p-6 text-white shadow-xl shadow-green-900/10 border border-emerald-800/40 relative flex flex-col space-y-4">
+  <div class="bg-gradient-to-br from-[#143d2e] via-[#1b4d3a] to-[#256a50] rounded-3xl md:rounded-[2rem] p-5 md:p-8 text-white shadow-xl shadow-green-900/15 border border-white/20 relative flex flex-col space-y-4 overflow-hidden backdrop-blur-xl">
 
     <!-- Background Glow Effect -->
-    <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
 
     <!-- Filter Bar Header -->
     <MasterRepeatedFilterBar

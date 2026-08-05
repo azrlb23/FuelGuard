@@ -70,13 +70,13 @@ defineExpose({ fetchTodayHistory })
     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left">
-          <thead class="bg-gray-50 border-b border-gray-100">
+          <thead class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white">
             <tr>
-              <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Waktu</th>
-              <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Plat Nomor</th>
-              <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase">Jenis</th>
-              <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Liter</th>
-              <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase text-right">Total</th>
+              <th class="px-6 py-4 text-xs font-black uppercase tracking-wider rounded-l-2xl">Waktu</th>
+              <th class="px-6 py-4 text-xs font-black uppercase tracking-wider">Plat Nomor</th>
+              <th class="px-6 py-4 text-xs font-black uppercase tracking-wider">Jenis</th>
+              <th class="px-6 py-4 text-xs font-black uppercase tracking-wider text-right">Liter</th>
+              <th class="px-6 py-4 text-xs font-black uppercase tracking-wider text-right rounded-r-2xl">Total</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">

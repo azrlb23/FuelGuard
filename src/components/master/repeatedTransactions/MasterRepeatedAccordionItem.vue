@@ -49,7 +49,7 @@ const getInitials = (name) => {
 </script>
 
 <template>
-  <div class="bg-[#184635]/90 border border-emerald-800/60 rounded-2xl overflow-hidden shadow-md transition-all duration-200">
+  <div class="bg-[#143d2e]/90 border border-white/15 rounded-2xl overflow-hidden shadow-md transition-all duration-200 backdrop-blur-md">
     <!-- Accordion Header Bar -->
     <div
       @click="$emit('toggle')"
@@ -86,7 +86,7 @@ const getInitials = (name) => {
     <!-- Expanded Accordion Content -->
     <div
       v-if="isExpanded"
-      class="px-4 pb-4 pt-1 border-t border-emerald-800/40 bg-[#0e2e23]/90"
+      class="px-4 pb-4 pt-1 border-t border-white/10 bg-[#0d2b20]/90"
     >
       <!-- Mobile View: Compact Responsive Cards -->
       <div class="block md:hidden space-y-2.5 pt-2">
@@ -148,14 +148,14 @@ const getInitials = (name) => {
       <!-- Desktop View: Clean Table -->
       <div class="hidden md:block overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[700px]">
-          <thead>
-            <tr class="text-[10px] font-black uppercase tracking-wider text-emerald-300/60 border-b border-emerald-800/30">
-              <th class="py-2.5 px-3">JAM (WITA)</th>
+          <thead class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white">
+            <tr class="text-[10px] font-black uppercase tracking-wider border-b border-white/20">
+              <th class="py-2.5 px-3 rounded-l-xl">JAM (WITA)</th>
               <th class="py-2.5 px-3">KATEGORI</th>
               <th class="py-2.5 px-3">LOKASI SPBU</th>
               <th class="py-2.5 px-3">OPERATOR BERTUGAS</th>
               <th class="py-2.5 px-3">ALASAN DITOLAK</th>
-              <th class="py-2.5 px-3 text-right">TANGGAL</th>
+              <th class="py-2.5 px-3 text-right rounded-r-xl">TANGGAL</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-emerald-800/20 text-xs font-semibold">
