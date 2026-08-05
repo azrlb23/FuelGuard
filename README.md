@@ -61,4 +61,4 @@ src/
 └── views/           # Halaman utama aplikasi
 ```
 
-Hak Cipta © 2025 PT. Habi Jaya. Seluruh hak cipta dilindungi undang-undang. Sistem ini bersifat privat dan hanya ditujukan untuk penggunaan internal perusahaan.
+Hak Cipta © 2026 FuelGuard. Seluruh hak cipta dilindungi undang-undang. Sistem ini bersifat privat dan hanya ditujukan untuk penggunaan internal perusahaan.

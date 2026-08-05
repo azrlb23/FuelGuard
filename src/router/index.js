@@ -58,18 +58,6 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'master', layout: 'master' }
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('../views/DashboardView.vue'),
-      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
-    },
-    {
-      path: '/history',
-      name: 'history',
-      component: () => import('../views/HistoryView.vue'),
-      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
-    },
-    {
       path: '/operator',
       name: 'operator',
       component: () => import('../views/HomeView.vue'),
@@ -86,30 +74,6 @@ const router = createRouter({
       name: 'operator-pengetap',
       component: () => import('../views/OperatorPengetapView.vue'),
       meta: { requiresAuth: true, role: 'operator', layout: 'operator' }
-    },
-    {
-      path: '/laporan',
-      name: 'laporan',
-      component: () => import('../views/ReportView.vue'),
-      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
-    },
-    {
-      path: '/support',
-      name: 'support',
-      component: () => import('../views/SupportView.vue'),
-      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
-    },
-    {
-      path: '/team',
-      name: 'team',
-      component: () => import('../views/TeamView.vue'),
-      meta: { requiresAuth: true, role: 'operator', layout: 'admin' }
-    },
-    {
-      path: '/settings',
-      name: 'settings',
-      component: () => import('../views/SettingsView.vue'),
-      meta: { requiresAuth: true, layout: 'admin' }
     },
     {
       path: '/operator/settings',

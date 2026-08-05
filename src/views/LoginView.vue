@@ -100,7 +100,7 @@ const isContactModalOpen = ref(false)
 
       <!-- Footer -->
       <div class="pt-5 mt-4 text-center text-[11px] font-semibold text-gray-400 border-t border-gray-100">
-        <p>© {{ new Date().getFullYear() }} FuelGuard</p>
+        <p>© 2026 FuelGuard</p>
       </div>
 
     </div>

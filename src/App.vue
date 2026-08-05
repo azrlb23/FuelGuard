@@ -4,7 +4,6 @@ import { useAuthStore } from '@/stores/auth'
 import { usePresence } from '@/composables/common/usePresence'
 import { useRoute } from 'vue-router'
 import MasterLayout from '@/layouts/MasterLayout.vue'
-import AdminLayout from '@/layouts/AdminLayout.vue'
 import OperatorLayout from '@/layouts/OperatorLayout.vue'
 
 const authStore = useAuthStore()
@@ -41,13 +40,7 @@ onUnmounted(() => {
     </RouterView>
   </MasterLayout>
 
-  <AdminLayout v-else-if="layout === 'admin'">
-    <RouterView v-slot="{ Component }">
-      <Transition name="content" mode="out-in">
-        <component :is="Component" :key="route.fullPath" />
-      </Transition>
-    </RouterView>
-  </AdminLayout>
+
 
   <OperatorLayout v-else-if="layout === 'operator'">
     <RouterView v-slot="{ Component }">
