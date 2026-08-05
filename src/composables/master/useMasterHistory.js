@@ -212,12 +212,25 @@ export function useMasterHistory(itemsPerPage = 10) {
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat Transaksi')
 
-      const dNow = new Date()
-      const year = dNow.getFullYear()
-      const month = String(dNow.getMonth() + 1).padStart(2, '0')
-      const day = String(dNow.getDate()).padStart(2, '0')
-      const dateTag = `${year}-${month}-${day}`
-      const fileName = `Riwayat_Transaksi_Master_${dateTag}.xlsx`
+      let periodTag = ''
+      if (dateFrom.value && dateTo.value) {
+        periodTag = dateFrom.value === dateTo.value ? dateFrom.value : `${dateFrom.value}_sd_${dateTo.value}`
+      } else if (dateFrom.value) {
+        periodTag = `mulai_${dateFrom.value}`
+      } else if (dateTo.value) {
+        periodTag = `sampai_${dateTo.value}`
+      } else {
+        const dates = allTransactions.map(t => new Date(t.waktu_pencatatan).toISOString().slice(0, 10)).filter(Boolean).sort()
+        if (dates.length > 0) {
+          const minDate = dates[0]
+          const maxDate = dates[dates.length - 1]
+          periodTag = minDate === maxDate ? minDate : `${minDate}_sd_${maxDate}`
+        } else {
+          periodTag = new Date().toISOString().slice(0, 10)
+        }
+      }
+
+      const fileName = `Riwayat_Transaksi_Periode_${periodTag}.xlsx`
       XLSX.writeFile(workbook, fileName)
     } catch (err) {
       console.error('[useMasterHistory] Export Excel Error:', err)

@@ -66,8 +66,7 @@ export function useExcelExport() {
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Transaksi")
 
-      XLSX.writeFile(workbook, `Laporan_${startDate}_${endDate}.xlsx`)
-      toast.success(`Berhasil mengunduh ${dataList.length} data!`)
+      XLSX.writeFile(workbook, `Riwayat_Transaksi_${startDate}_sd_${endDate}.xlsx`)
 
     } catch (err) {
       console.error(err)

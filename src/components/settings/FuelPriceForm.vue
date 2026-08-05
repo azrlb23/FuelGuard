@@ -21,7 +21,7 @@ const fetchPrices = async () => {
       .eq('spbu_id', spbuId)
       .eq('fuel_type', 'Pertalite')
       .maybeSingle()
-    
+
     if (data) {
       pertalitePrice.value = Number(data.price_per_liter) || 10000
       rowId.value = data.id
@@ -77,42 +77,26 @@ onMounted(() => fetchPrices())
 
 <template>
   <div class="space-y-4">
-    
-    <div class="flex items-center justify-between gap-4 p-4 bg-gray-50/80 rounded-2xl border border-gray-100">
-      <div class="flex items-center gap-3.5">
-        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#143d2e] to-[#1e5c45] text-white flex items-center justify-center shadow-md shadow-green-900/10 shrink-0 p-2 border border-white/10">
-          <img src="@/assets/fuelguard_logo.png" alt="FuelGuard Logo" class="w-full h-full object-contain brightness-0 invert" />
-        </div>
-        <div>
-          <h4 class="font-black text-gray-900 text-base md:text-lg leading-tight">Pertalite (BBM Khusus Pengetap)</h4>
-          <p class="text-xs text-gray-500 font-medium mt-0.5">Harga per liter yang tersinkronisasi otomatis pada kalkulator Operator.</p>
-        </div>
-      </div>
-    </div>
 
     <form @submit.prevent="savePrice" class="space-y-4">
       <div class="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-2xs space-y-3">
         <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Harga Pertalite / Liter (Rp)</label>
-        
+
         <div class="relative flex items-center">
           <span class="absolute left-4 text-gray-400 font-black text-base">Rp</span>
-          <input 
+          <input
             v-model="pertalitePrice"
-            type="number" 
+            type="number"
             min="0"
             class="no-spinner w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-lg font-mono font-black text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] transition-all"
             placeholder="10000"
           />
         </div>
-
-        <div class="flex items-center justify-between text-xs text-gray-400 pt-1">
-          <span>Kalkulasi 1 Liter = <strong class="text-gray-800">Rp {{ formatAngka(pertalitePrice) }}</strong></span>
-        </div>
       </div>
 
       <div class="flex justify-end pt-2">
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           :disabled="loading"
           class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] hover:from-[#1b4d3a] hover:to-[#258f62] text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-green-950/20 hover:shadow-green-900/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer border border-white/10 backdrop-blur-md"
         >

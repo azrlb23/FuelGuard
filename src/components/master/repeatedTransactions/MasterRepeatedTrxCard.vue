@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import * as XLSX from 'xlsx'
 import { toast } from 'vue3-toastify'
 import MasterRepeatedFilterBar from './MasterRepeatedFilterBar.vue'
@@ -60,6 +60,31 @@ const emit = defineEmits([
   'update:currentPage',
   'resetFilters'
 ])
+
+const totalPages = computed(() => Math.ceil((props.totalPlates || 0) / (props.itemsPerPage || 10)) || 1)
+
+const visiblePages = computed(() => {
+  const total = totalPages.value
+  const current = props.currentPage
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  const pages = []
+  if (current <= 3) {
+    pages.push(1, 2, 3, '...', total)
+  } else if (current >= total - 2) {
+    pages.push(1, '...', total - 2, total - 1, total)
+  } else {
+    pages.push(1, '...', current, '...', total)
+  }
+  return pages
+})
+
+const setPage = (p) => {
+  if (p >= 1 && p <= totalPages.value) {
+    emit('update:currentPage', p)
+  }
+}
 
 // Expanded state for accordion rows (plat_nomor key map)
 const expandedPlates = ref({})
@@ -202,43 +227,68 @@ const exportToExcel = () => {
     </div>
 
     <!-- Card Footer -->
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-emerald-800/40 text-xs font-semibold text-emerald-200/70 relative z-10">
-      <p>
-        Menampilkan {{ repeatedLogs.length ? ((currentPage - 1) * itemsPerPage + 1) : 0 }} - {{ Math.min(currentPage * itemsPerPage, totalPlates) }} dari {{ totalPlates }} plat ({{ totalCount }} total percobaan)
-      </p>
+    <div class="flex flex-col md:flex-row items-center justify-between gap-3 pt-3 border-t border-emerald-800/40 text-xs font-semibold text-emerald-200/70 relative z-10">
+      <!-- Total Items & Download XLSX Button -->
+      <div class="flex flex-wrap items-center gap-3 text-center md:text-left justify-center md:justify-start">
+        <span>
+          Menampilkan {{ repeatedLogs.length ? ((currentPage - 1) * itemsPerPage + 1) : 0 }} - {{ Math.min(currentPage * itemsPerPage, totalPlates) }} dari {{ totalPlates }} plat ({{ totalCount }} total percobaan)
+        </span>
 
-      <div class="flex items-center gap-2">
+        <!-- Downloadable Ekspor XLSX Button -->
         <button
           type="button"
-          @click="$emit('update:currentPage', currentPage - 1)"
-          :disabled="currentPage <= 1 || loading"
-          class="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer select-none text-white"
+          @click="exportToExcel"
+          :disabled="repeatedLogs.length === 0"
+          title="Ekspor Data Transaksi Berulang ke File Excel (.xlsx)"
+          class="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/15 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed select-none active:scale-95 shadow-xs shrink-0"
         >
-          Prev
-        </button>
-        <button
-          type="button"
-          @click="$emit('update:currentPage', currentPage + 1)"
-          :disabled="(currentPage * itemsPerPage) >= totalPlates || loading"
-          class="px-4 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer select-none"
-        >
-          Next
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 text-emerald-300 shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          <span>Ekspor (.xlsx)</span>
         </button>
       </div>
 
-      <!-- Downloadable Ekspor XLSX Button -->
-      <button
-        type="button"
-        @click="exportToExcel"
-        :disabled="repeatedLogs.length === 0"
-        title="Ekspor Data Transaksi Berulang ke File Excel (.xlsx)"
-        class="w-full sm:w-auto px-4 py-2.5 rounded-full text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 border select-none shadow-sm bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-400/40 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 shrink-0"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-emerald-300 shrink-0">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-        </svg>
-        <span>Ekspor (.xlsx)</span>
-      </button>
+      <!-- Pagination Page Buttons -->
+      <div class="flex items-center gap-1.5 flex-wrap justify-center shrink-0">
+        <!-- Kembali Button -->
+        <button
+          type="button"
+          @click="setPage(currentPage - 1)"
+          :disabled="currentPage <= 1 || loading"
+          class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer mr-1 text-white select-none active:scale-95"
+        >
+          Kembali
+        </button>
+
+        <!-- Page Numbers -->
+        <template v-for="(p, index) in visiblePages" :key="index">
+          <span v-if="p === '...'" class="px-1 text-white/50 text-xs font-bold select-none">...</span>
+          <button
+            v-else
+            type="button"
+            @click="setPage(p)"
+            :class="[
+              'min-w-8 h-8 px-2 rounded-full text-xs font-black transition-all cursor-pointer flex items-center justify-center shrink-0 select-none',
+              currentPage === p
+                ? 'bg-white text-[#143d2e] shadow-md scale-105'
+                : 'text-white/80 hover:bg-white/15'
+            ]"
+          >
+            {{ p }}
+          </button>
+        </template>
+
+        <!-- Lanjut Button -->
+        <button
+          type="button"
+          @click="setPage(currentPage + 1)"
+          :disabled="currentPage >= totalPages || loading"
+          class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer ml-1 text-white select-none active:scale-95"
+        >
+          Lanjut
+        </button>
+      </div>
     </div>
   </div>
 </template>

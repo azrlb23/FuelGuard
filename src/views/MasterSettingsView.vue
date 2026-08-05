@@ -6,7 +6,7 @@ import FuelPriceForm from '@/components/settings/FuelPriceForm.vue'
 
 <template>
   <div class="flex flex-col gap-6 animate-enter pb-10">
-    
+
     <!-- Top Header -->
     <div class="px-1">
       <h2 class="text-3xl md:text-4xl font-extrabold text-[#143d2e] tracking-tight">Pengaturan</h2>
@@ -21,7 +21,7 @@ import FuelPriceForm from '@/components/settings/FuelPriceForm.vue'
     <!-- Section 2: Konfigurasi Harga BBM Pertalite -->
     <div class="bg-white rounded-3xl border border-gray-100 shadow-xs p-6 md:p-8">
       <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
-        Konfigurasi Harga BBM Pertalite
+        Pengaturan Harga Pertalite
       </h3>
       <FuelPriceForm />
     </div>
@@ -29,7 +29,7 @@ import FuelPriceForm from '@/components/settings/FuelPriceForm.vue'
     <!-- Section 3: Keamanan Akun Superadmin -->
     <div class="bg-white rounded-3xl border border-gray-100 shadow-xs p-6 md:p-8">
       <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
-        Keamanan Akun Superadmin
+        Pengaturan Keamanan Akun
       </h3>
       <SecurityForm />
     </div>
