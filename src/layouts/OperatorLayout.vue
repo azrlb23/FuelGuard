@@ -196,7 +196,7 @@ watch(() => authStore.activeKasirId, (newVal) => {
           <router-link
             to="/operator"
             @click="isSidebarOpen = false"
-            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all text-gray-700 hover:bg-gray-100"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-gray-700 hover:bg-gray-100"
             active-class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white shadow-md"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
@@ -208,7 +208,7 @@ watch(() => authStore.activeKasirId, (newVal) => {
           <router-link
             to="/operator/history"
             @click="isSidebarOpen = false"
-            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all text-gray-700 hover:bg-gray-100"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-gray-700 hover:bg-gray-100"
             active-class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white shadow-md"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
@@ -220,7 +220,7 @@ watch(() => authStore.activeKasirId, (newVal) => {
           <router-link
             to="/operator/settings"
             @click="isSidebarOpen = false"
-            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all text-gray-700 hover:bg-gray-100"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-gray-700 hover:bg-gray-100"
             active-class="bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white shadow-md"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">

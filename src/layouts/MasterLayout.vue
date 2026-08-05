@@ -105,15 +105,15 @@ const menuItems = [
           :to="item.route"
           class="flex items-center px-3.5 py-3 rounded-2xl transition-all duration-300 ease-in-out group cursor-pointer overflow-hidden whitespace-nowrap"
           :class="[
-            route.path === item.route ? 'bg-white/15 text-white font-bold shadow-lg shadow-black/10' : 'text-green-200/70 hover:bg-white/10 hover:text-white font-medium'
+            route.path === item.route ? 'bg-white/15 text-white font-bold shadow-lg shadow-black/10' : 'text-emerald-100/90 hover:bg-white/10 hover:text-white font-semibold'
           ]"
           :title="isCollapsed ? item.name : ''"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5 flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-[22px] h-[22px] flex-shrink-0">
             <path stroke-linecap="round" stroke-linejoin="round" :d="item.iconPath" />
           </svg>
           <span
-            class="text-sm tracking-tight truncate transition-all duration-300 ease-in-out overflow-hidden"
+            class="text-[15px] font-semibold tracking-normal truncate transition-all duration-300 ease-in-out overflow-hidden"
             :class="isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-xs ml-3'"
           >
             {{ item.name }}
@@ -124,16 +124,16 @@ const menuItems = [
           to="/master/settings"
           class="flex items-center px-3.5 py-3 rounded-2xl transition-all duration-300 ease-in-out group cursor-pointer overflow-hidden whitespace-nowrap"
           :class="[
-            route.path.includes('/master/settings') ? 'bg-white/15 text-white font-bold shadow-lg' : 'text-green-200/70 hover:bg-white/10 hover:text-white font-medium'
+            route.path.includes('/master/settings') ? 'bg-white/15 text-white font-bold shadow-lg' : 'text-emerald-100/90 hover:bg-white/10 hover:text-white font-semibold'
           ]"
           :title="isCollapsed ? 'Pengaturan' : ''"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-5 h-5 flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-[22px] h-[22px] flex-shrink-0">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span
-            class="text-sm tracking-tight truncate transition-all duration-300 ease-in-out overflow-hidden"
+            class="text-[15px] font-semibold tracking-normal truncate transition-all duration-300 ease-in-out overflow-hidden"
             :class="isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-xs ml-3'"
           >
             Pengaturan
@@ -240,7 +240,7 @@ const menuItems = [
             :key="item.name"
             :to="item.route"
             @click="isSidebarOpen = false"
-            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all text-green-200/70 hover:bg-white/10 hover:text-white"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-[15px] font-bold transition-all text-emerald-100/90 hover:bg-white/10 hover:text-white"
             active-class="bg-white/15 text-white font-extrabold shadow-lg shadow-black/10 border border-white/10"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
@@ -252,7 +252,7 @@ const menuItems = [
           <router-link
             to="/master/settings"
             @click="isSidebarOpen = false"
-            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all text-green-200/70 hover:bg-white/10 hover:text-white"
+            class="flex items-center gap-3 px-4 py-3 rounded-2xl text-[15px] font-bold transition-all text-emerald-100/90 hover:bg-white/10 hover:text-white"
             active-class="bg-white/15 text-white font-extrabold shadow-lg shadow-black/10 border border-white/10"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
