@@ -47,7 +47,7 @@ const selectKasir = (kasir) => {
   <Teleport to="body">
     <div
       v-if="isOpen && authStore.user"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in"
+      class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in"
     >
       <div
         class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-scale-up"
@@ -141,15 +141,7 @@ const selectKasir = (kasir) => {
           </div>
         </div>
 
-        <!-- Sleek Glass Footer -->
-        <div v-if="canClose && activeKasirId && !isIdle" class="p-4 bg-gray-50/80 border-t border-gray-100 flex justify-end">
-          <button
-            @click="$emit('close')"
-            class="px-5 py-2.5 bg-gradient-to-r from-[#143d2e] to-[#1e5c45] hover:from-[#1e5c45] hover:to-[#256a50] text-white font-extrabold text-xs rounded-2xl shadow-md shadow-emerald-900/10 transition-all active:scale-95 cursor-pointer"
-          >
-            Lanjutkan
-          </button>
-        </div>
+
       </div>
     </div>
   </Teleport>

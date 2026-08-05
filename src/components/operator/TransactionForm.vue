@@ -666,10 +666,10 @@ const handleSubmit = async () => {
             </div>
             <div>
               <span class="inline-block text-[10px] font-bold text-red-600 uppercase tracking-wide mb-0.5">
-                {{ refueledInfo?.isQuotaExceededTransaction ? 'Melebihi Batas Kuota' : (refueledInfo?.isCategoryMismatch ? 'Pelanggaran Kategori' : 'Peringatan Transaksi') }}
+                {{ refueledInfo?.isQuotaExceededTransaction ? 'Kelebihan Kuota Subsidi' : (refueledInfo?.isCategoryMismatch ? 'Pelanggaran Kategori' : 'Peringatan Transaksi') }}
               </span>
               <h3 class="text-base md:text-lg font-extrabold text-[#143d2e] tracking-tight leading-tight">
-                {{ refueledInfo?.isQuotaExceededTransaction ? 'Transaksi Melebihi Limit' : (refueledInfo?.isCategoryMismatch ? 'Kategori Tidak Sesuai' : 'Kendaraan Sudah Mengisi') }}
+                {{ refueledInfo?.isQuotaExceededTransaction ? 'Melebihi Kuota Subsidi' : (refueledInfo?.isCategoryMismatch ? 'Kategori Tidak Sesuai' : 'Melebihi batas pengisian') }}
               </h3>
             </div>
           </div>
@@ -708,12 +708,20 @@ const handleSubmit = async () => {
             </template>
 
             <!-- Percobaan Pengisian (Jika Melebihi Kuota) -->
-            <div v-else-if="refueledInfo?.attemptedLiter" class="flex justify-between items-center py-1 border-b border-gray-200/50">
-              <span class="text-gray-500 font-medium">Input Transaksi</span>
-              <span class="font-bold text-red-600">
-                {{ refueledInfo.attemptedLiter }} Liter ({{ formatRupiah(refueledInfo.attemptedHarga) }})
-              </span>
-            </div>
+            <template v-else-if="refueledInfo?.attemptedLiter">
+              <div class="flex justify-between items-center py-1 border-b border-gray-200/50">
+                <span class="text-gray-500 font-medium">Input Transaksi</span>
+                <span class="font-bold text-red-600">
+                  {{ refueledInfo.attemptedLiter }} Liter ({{ formatRupiah(refueledInfo.attemptedHarga) }})
+                </span>
+              </div>
+              
+              <div v-if="refueledInfo?.isQuotaExceededTransaction" class="pt-2 pb-1 border-b border-gray-200/50">
+                <div class="bg-red-50 text-red-700 text-[11px] p-2.5 rounded-lg border border-red-100 font-medium leading-relaxed">
+                  <span class="font-bold">Peringatan:</span> Nominal pengisian melebihi sisa kuota subsidi kendaraan ini. Transaksi dibatalkan secara otomatis.
+                </div>
+              </div>
+            </template>
 
             <template v-if="!refueledInfo?.isCategoryMismatch">
               <!-- Total Terisi -->
@@ -731,7 +739,9 @@ const handleSubmit = async () => {
 
               <!-- Sisa Kuota -->
               <div v-if="refueledInfo?.remainingQuota !== undefined" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
-                <span class="text-gray-500 font-medium">Sisa Kuota Hari Ini</span>
+                <span class="text-gray-500 font-medium">
+                  {{ refueledInfo?.hasRefueledToday ? 'Sisa Kuota Hari Ini' : 'Kuota Hari Ini' }}
+                </span>
                 <span class="font-black text-red-600">
                   <template v-if="typeof refueledInfo?.remainingQuota === 'number'">
                     <template v-if="refueledInfo.remainingQuota > 100">
