@@ -78,6 +78,14 @@ onMounted(() => fetchPrices())
 <template>
   <div class="space-y-4">
 
+    <div class="flex items-center justify-between gap-4 p-4 bg-gray-50/80 rounded-2xl border border-gray-100">
+      <div class="flex items-center gap-3.5">
+        <div>
+          <h4 class="font-black text-gray-900 text-base md:text-lg leading-tight">Pertalite</h4>
+        </div>
+      </div>
+    </div>
+
     <form @submit.prevent="savePrice" class="space-y-4">
       <div class="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-2xs space-y-3">
         <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Harga Pertalite / Liter (Rp)</label>

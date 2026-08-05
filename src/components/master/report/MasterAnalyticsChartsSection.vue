@@ -124,7 +124,7 @@ defineProps({
         <div
           v-for="(item, idx) in topPlates"
           :key="item.plat_nomor"
-          class="flex items-center justify-between p-2.5 rounded-2xl bg-gray-50/80 hover:bg-emerald-50/70 border border-gray-100 hover:border-emerald-200 transition-all duration-200"
+          class="flex items-center justify-between p-2.5 rounded-2xl bg-gray-50/80 hover:bg-gray-100/90 border border-gray-100 hover:border-gray-200 transition-all duration-200"
         >
           <div class="flex items-center gap-2.5 min-w-0">
             <!-- Rank Badge -->
