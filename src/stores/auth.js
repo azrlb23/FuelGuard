@@ -88,13 +88,40 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async (email, password) => {
     isLoading.value = true
     try {
-      const { data: { session }, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // 🟢 Panggil Edge Function rate-limiter-login untuk proteksi Rate Limiting Upstash Redis
+      const { data, error } = await supabase.functions.invoke('rate-limiter-login', {
+        body: { email, password }
       })
-      if (signInError) throw signInError
 
-      user.value = session.user
+      if (error) {
+        // Parse HTTP 400 / 429 Error Response dari Edge Function
+        if (error.context && typeof error.context.json === 'function') {
+          try {
+            const errJson = await error.context.json()
+            if (errJson && errJson.message) {
+              throw new Error(errJson.message)
+            }
+          } catch (e) {
+            if (e.message && e.message !== 'Unexpected end of JSON input') throw e
+          }
+        }
+        throw new Error(error.message || 'Gagal terhubung ke server autentikasi.')
+      }
+
+      if (!data || !data.success) {
+        throw new Error((data && data.message) || 'Login ditolak oleh sistem.')
+      }
+
+      if (data.session) {
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        })
+        if (setSessionError) throw setSessionError
+      }
+
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      user.value = currentUser
 
       const meta = await fetchUserMeta()
       role.value = meta.role

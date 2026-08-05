@@ -14,12 +14,29 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
+DECLARE
+  v_operator_name text;
+  v_spbu_name text;
+  v_enriched_details jsonb;
 BEGIN
+  -- Ambil nama kasir asli dan nama SPBU dari relasi
+  SELECT op.nama_operator, s.nama
+  INTO v_operator_name, v_spbu_name
+  FROM public.operator_profiles op
+  JOIN public.spbu s ON s.id = op.spbu_id
+  WHERE op.id = NEW.operator_id;
+
+  -- Sisipkan data tambahan ke dalam JSON details
+  v_enriched_details := row_to_json(NEW)::jsonb || jsonb_build_object(
+    'operator_name', COALESCE(v_operator_name, 'Unknown'),
+    'spbu_name', COALESCE(v_spbu_name, 'Unknown')
+  );
+
   INSERT INTO public.activity_logs (user_email, action, details, timestamp)
   VALUES (
-    'system_trigger@fuelguard',
+    COALESCE(v_operator_name, 'System') || ' (' || COALESCE(v_spbu_name, 'Unknown') || ')',
     'INSERT_TRANSACTION',
-    row_to_json(NEW)::jsonb,
+    v_enriched_details,
     NOW()
   );
   RETURN NEW;
@@ -59,7 +76,7 @@ CREATE POLICY "trx_select_policy" ON public.transaksi_pertalite
 -- Master juga bisa insert untuk keperluan administratif
 CREATE POLICY "trx_insert_policy" ON public.transaksi_pertalite
   FOR INSERT WITH CHECK (
-    auth.uid() IS NOT NULL
+    public.get_user_role() = 'master'
   );
 
 -- ─── 3. RLS: FUEL_PRICES ─────────────────────────────────────────────────────
@@ -120,6 +137,40 @@ CREATE POLICY "operator_profiles_select" ON public.operator_profiles
 CREATE POLICY "operator_profiles_modify" ON public.operator_profiles
   FOR ALL USING (
     public.get_user_role() = 'master'
+  )
+  WITH CHECK (
+    public.get_user_role() = 'master'
   );
+
+-- ─── 7. RLS: SPBU ────────────────────────────────────────────────────────────
+ALTER TABLE public.spbu ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "spbu_select" ON public.spbu;
+DROP POLICY IF EXISTS "spbu_modify" ON public.spbu;
+
+CREATE POLICY "spbu_select" ON public.spbu
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "spbu_modify" ON public.spbu
+  FOR ALL USING (public.get_user_role() = 'master')
+  WITH CHECK (public.get_user_role() = 'master');
+
+-- ─── 8. RLS: REGION_CODES ────────────────────────────────────────────────────
+ALTER TABLE public.region_codes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "region_codes_select" ON public.region_codes;
+DROP POLICY IF EXISTS "region_codes_modify" ON public.region_codes;
+
+CREATE POLICY "region_codes_select" ON public.region_codes
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "region_codes_modify" ON public.region_codes
+  FOR ALL USING (public.get_user_role() = 'master')
+  WITH CHECK (public.get_user_role() = 'master');
+
+-- ─── 9. RLS: ACTIVITY_LOGS ───────────────────────────────────────────────────
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "activity_logs_select" ON public.activity_logs;
+
+CREATE POLICY "activity_logs_select" ON public.activity_logs
+  FOR SELECT USING (public.get_user_role() = 'master');
 
 NOTIFY pgrst, 'reload schema';
