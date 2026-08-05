@@ -14,12 +14,6 @@ const router = createRouter({
       meta: { requiresAuth: false, layout: 'auth' }
     },
     {
-      path: '/reset-password',
-      name: 'reset-password',
-      component: () => import('../views/ResetPasswordView.vue'),
-      meta: { requiresAuth: false, layout: 'auth' }
-    },
-    {
       path: '/master',
       redirect: '/master/dashboard'
     },
@@ -127,8 +121,6 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  if (to.name === 'reset-password') return next()
-
   const authStore = useAuthStore()
 
   const { data: { session } } = await supabase.auth.getSession()
