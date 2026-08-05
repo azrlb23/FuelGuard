@@ -161,34 +161,32 @@ const menuItems = [
       </div>
     </aside>
 
-    <!-- MOBILE & TABLET TOP HEADER BAR (operator-style floating navbar) -->
-    <header class="xl:hidden flex-none px-4 pt-4 pb-2 z-40">
-      <div class="max-w-7xl mx-auto bg-white/90 backdrop-blur-xl border border-white/60 rounded-3xl px-4 h-16 flex items-center justify-between shadow-lg shadow-green-900/5 transition-all">
-        <!-- Logo & Brand (Clickable to open drawer) -->
-        <div @click="isSidebarOpen = true" class="flex items-center gap-3 cursor-pointer group select-none">
-          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#143d2e] via-[#1b4d3a] to-[#256a50] flex items-center justify-center p-2 shadow-md shadow-emerald-950/20 group-hover:scale-105 transition-transform border border-white/10">
-            <img src="@/assets/fuelguard_logo.png" alt="FuelGuard Logo" class="w-full h-full object-contain brightness-0 invert" />
-          </div>
-          <div>
-            <h1 class="font-black text-lg tracking-tight text-[#143d2e] leading-none">FuelGuard</h1>
-            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Master Management</p>
-          </div>
+    <!-- MOBILE & TABLET TOP HEADER BAR (Solid Flat Rectangular Navbar) -->
+    <header class="xl:hidden flex-none w-full bg-white border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center justify-between shadow-xs z-40">
+      <!-- Logo & Brand (Clickable to open drawer) -->
+      <div @click="isSidebarOpen = true" class="flex items-center gap-3 cursor-pointer group select-none">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#143d2e] via-[#1b4d3a] to-[#256a50] flex items-center justify-center p-2 shadow-md shadow-emerald-950/20 group-hover:scale-105 transition-transform border border-white/10">
+          <img src="@/assets/fuelguard_logo.png" alt="FuelGuard Logo" class="w-full h-full object-contain brightness-0 invert" />
         </div>
-
-        <!-- Mobile Hamburger Button -->
-        <button
-          @click="isSidebarOpen = !isSidebarOpen"
-          class="w-10 h-10 rounded-2xl bg-gray-100 hover:bg-gray-200 text-[#143d2e] flex items-center justify-center transition-colors cursor-pointer"
-          aria-label="Toggle Navigation Menu"
-        >
-          <svg v-if="!isSidebarOpen" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div>
+          <h1 class="font-black text-lg tracking-tight text-[#143d2e] leading-none">FuelGuard</h1>
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Master Management</p>
+        </div>
       </div>
+
+      <!-- Mobile Hamburger Button -->
+      <button
+        @click="isSidebarOpen = !isSidebarOpen"
+        class="w-10 h-10 rounded-2xl bg-gray-100 hover:bg-gray-200 text-[#143d2e] flex items-center justify-center transition-colors cursor-pointer"
+        aria-label="Toggle Navigation Menu"
+      >
+        <svg v-if="!isSidebarOpen" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
     </header>
 
     <!-- TELEPORTED MOBILE DRAWER OVERLAY (Operator-style exact smooth slide animation) -->

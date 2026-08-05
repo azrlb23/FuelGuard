@@ -204,6 +204,7 @@ export function useMasterAnalytics() {
       <html>
         <head>
           <title>Laporan Analisis SPBU - FuelGuard</title>
+          <link rel="icon" href="${window.location.origin}/fuelguard_white.png" type="image/png">
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1a1a1a; }
             .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #143d2e; padding-bottom: 15px; margin-bottom: 30px; }
@@ -220,9 +221,14 @@ export function useMasterAnalytics() {
         </head>
         <body>
           <div class="header">
-            <div>
-              <h1 class="title">FUELGUARD</h1>
-              <div class="sub">Laporan Analisis Penjualan BBM SPBU</div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:40px; height:40px; border-radius:12px; background:#143d2e; display:flex; align-items:center; justify-content:center; padding:7px; shrink:0;">
+                <img src="${window.location.origin}/fuelguard_logo.png" alt="FuelGuard Logo" style="width:100%; height:100%; object-fit:contain; filter:brightness(0) invert(1);" />
+              </div>
+              <div>
+                <h1 class="title">FUELGUARD</h1>
+                <div class="sub">Laporan Analisis Penjualan BBM SPBU</div>
+              </div>
             </div>
             <div style="text-align:right;">
               <div style="font-size:12px; font-weight:bold; color:#143d2e;">Periode Laporan:</div>
