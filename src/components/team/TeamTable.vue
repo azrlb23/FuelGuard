@@ -526,10 +526,10 @@ const formatDate = (dateString) => {
           <table class="w-full text-left border-collapse">
             <thead class="border-b border-white/15 text-emerald-200/90">
               <tr class="text-xs font-extrabold uppercase tracking-wider">
-                <th class="py-3.5 pl-3">UNIT SPBU</th>
-                <th class="py-3.5">EMAIL AKUN LOGIN</th>
-                <th class="py-3.5">HAK AKSES (ROLE)</th>
-                <th class="py-3.5 pr-3 text-right">AKSI AUTHENTICATION</th>
+                <th class="py-3.5 pl-3">SPBU</th>
+                <th class="py-3.5">EMAIL AKUN</th>
+                <th class="py-3.5">PERAN</th>
+                <th class="py-3.5 pr-3 text-right">AKSI</th>
               </tr>
             </thead>
 
@@ -562,7 +562,7 @@ const formatDate = (dateString) => {
                     </div>
                     <div>
                       <p class="font-bold text-white text-sm leading-tight">{{ acc.spbu_name }}</p>
-                      <p class="text-[11px] text-green-200/60 font-semibold">ID: {{ acc.spbu_id }}</p>
+                      <!-- <p class="text-[11px] text-green-200/60 font-semibold  ">ID: {{ acc.spbu_id }}</p> -->
                     </div>
                   </div>
                 </td>
