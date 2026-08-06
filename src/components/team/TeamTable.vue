@@ -147,16 +147,33 @@ const showResetPassword = ref(false)
 const openResetModal = (account) => {
   selectedAccount.value = account
   resetForm.value = {
-    password: `Pertamina#${Math.floor(1000 + Math.random() * 9000)}`,
+    password: '',
     copied: false,
     success: false
   }
+  generateRandomPassword()
   showResetPassword.value = false
   isResetModalOpen.value = true
 }
 
 const generateRandomPassword = () => {
-  resetForm.value.password = `Pertamina#${Math.floor(1000 + Math.random() * 9000)}`
+  const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const lowercase = 'abcdefghijkmnpqrstuvwxyz'
+  const digits = '23456789'
+  const symbols = '#@!$'
+  const allChars = uppercase + lowercase + digits + symbols
+
+  let password = ''
+  password += uppercase.charAt(Math.floor(Math.random() * uppercase.length))
+  password += lowercase.charAt(Math.floor(Math.random() * lowercase.length))
+  password += digits.charAt(Math.floor(Math.random() * digits.length))
+  password += symbols.charAt(Math.floor(Math.random() * symbols.length))
+
+  for (let i = 0; i < 6; i++) {
+    password += allChars.charAt(Math.floor(Math.random() * allChars.length))
+  }
+
+  resetForm.value.password = password.split('').sort(() => 0.5 - Math.random()).join('')
   resetForm.value.success = false
 }
 
@@ -751,13 +768,35 @@ const formatDate = (dateString) => {
                   </svg>
                 </button>
               </div>
+
+              <!-- Tombol Copy -->
+              <button
+                type="button"
+                @click="copyTempPassword"
+                :title="resetForm.copied ? 'Tersalin ke clipboard!' : 'Salin Password'"
+                class="px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 select-none flex items-center justify-center gap-1.5 border active:scale-95"
+                :class="resetForm.copied ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'"
+              >
+                <svg v-if="resetForm.copied" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-emerald-600 shrink-0">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-gray-500 shrink-0">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v9.25c0 .621-.504 1.125-1.125 1.125Z" />
+                </svg>
+                <span>{{ resetForm.copied ? 'Tersalin!' : 'Copy' }}</span>
+              </button>
+
+              <!-- Tombol Acak -->
               <button
                 type="button"
                 @click="generateRandomPassword"
                 title="Generate Password Acak"
-                class="px-4 py-2.5 bg-[#143d2e] hover:bg-[#1a4a38] border border-[#143d2e] text-white rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 select-none flex items-center justify-center"
+                class="px-4 py-2.5 bg-[#143d2e] hover:bg-[#1a4a38] border border-[#143d2e] text-white rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 select-none flex items-center justify-center gap-1.5 active:scale-95"
               >
-                Acak
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-emerald-300 shrink-0">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+                <span>Acak</span>
               </button>
             </div>
           </div>
