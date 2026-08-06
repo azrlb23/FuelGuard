@@ -55,7 +55,7 @@ watch(() => authStore.activeKasirId, (newVal) => {
 </script>
 
 <template>
-  <div class="h-screen w-full bg-[#f5f5f5] font-sans text-gray-800 flex flex-col overflow-hidden relative">
+  <div class="h-screen h-[100dvh] w-full bg-[#f5f5f5] font-sans text-gray-800 flex flex-col overflow-hidden relative">
 
     <!-- Header (Navbar Top Solid Rectangular) -->
     <header class="w-full bg-white border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center justify-between shadow-xs z-40 flex-none">
@@ -127,12 +127,12 @@ watch(() => authStore.activeKasirId, (newVal) => {
     </header>
 
     <!-- Main View Content Area -->
-    <main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 flex flex-col overflow-y-auto relative hide-scrollbar">
+    <main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 flex flex-col overflow-y-auto relative hide-scrollbar pb-24 md:pb-8">
       <slot></slot>
     </main>
 
-    <!-- Bottom Navigation Bar (Mobile Only) -->
-    <nav class="md:hidden flex-none w-full bg-white border-t border-gray-200 flex justify-around items-center pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40">
+    <!-- Bottom Navigation Bar (Fixed on Mobile) -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 w-full bg-white border-t border-gray-200 flex justify-around items-center shadow-[0_-4px_10px_rgba(0,0,0,0.08)] z-50" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));">
 
       <!-- Input Transaksi -->
       <router-link
