@@ -68,7 +68,7 @@ onUnmounted(() => {
 })
 
 const selectedSpbuName = computed(() => {
-  if (!props.selectedSpbuId) return 'Semua SPBU Jaringan'
+  if (!props.selectedSpbuId) return 'Semua SPBU'
   const found = props.spbuOptions.find(s => String(s.id) === String(props.selectedSpbuId))
   return found ? found.name : `SPBU #${props.selectedSpbuId}`
 })
@@ -172,7 +172,7 @@ const resetFilters = () => {
                 !selectedSpbuId ? 'bg-[#143d2e]/10 text-[#143d2e] font-black' : 'hover:bg-gray-100 text-gray-700'
               ]"
             >
-              <span>Semua SPBU Jaringan</span>
+              <span>Semua SPBU</span>
               <svg v-if="!selectedSpbuId" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-3.5 h-3.5 text-[#143d2e] shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
               </svg>

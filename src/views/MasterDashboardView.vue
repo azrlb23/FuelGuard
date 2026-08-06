@@ -4,7 +4,6 @@ import { useMasterDashboard } from '@/composables/master/useMasterDashboard'
 
 import MasterDashboardHeader from '@/components/master/dashboard/MasterDashboardHeader.vue'
 import MasterKpiCards from '@/components/master/dashboard/MasterKpiCards.vue'
-import MasterVolumeChart from '@/components/master/dashboard/MasterVolumeChart.vue'
 import MasterSpbuAccordion from '@/components/master/dashboard/MasterSpbuAccordion.vue'
 
 // ─── Master Dashboard State via Composable ──────────────────────────────────
@@ -16,7 +15,6 @@ const {
   isLoading,
   stats,
   spbuList,
-  weeklyVolumeByDay,
 } = useMasterDashboard()
 
 // ─── Network Statistics Computed Properties ──────────────────────────────────
@@ -79,14 +77,6 @@ const transactionCardTitle = computed(() => {
       :spbuCount="spbuList.length"
     />
 
-    <!-- Row 2: Volume Mingguan Bar Chart -->
-    <!-- <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2">
-        <MasterVolumeChart :weeklyVolumeByDay="weeklyVolumeByDay" />
-      </div>
-    </div> -->
-
-    <!-- Row 3: SPBU Interactive Expandable Accordion List -->
     <MasterSpbuAccordion
       :spbuList="spbuList"
       v-model:searchQuery="searchQuery"

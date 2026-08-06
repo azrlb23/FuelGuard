@@ -279,7 +279,7 @@ const menuItems = [
     </Teleport>
 
     <!-- Main Workspace Content -->
-    <main class="flex-1 w-full p-4 md:p-6 lg:p-8 overflow-y-auto relative bg-[#f5f5f5] hide-scrollbar">
+    <main class="flex-1 w-full p-4 pb-24 md:p-6 lg:p-8 overflow-y-auto relative bg-[#f5f5f5] hide-scrollbar">
       <slot></slot>
     </main>
 
