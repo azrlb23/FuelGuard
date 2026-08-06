@@ -91,8 +91,8 @@ export const useAuthStore = defineStore('auth', () => {
       let isEdgeFunctionAuthenticated = false
 
       try {
-        // 🟢 Panggil Edge Function rate-limiter-login untuk proteksi Rate Limiting Upstash Redis
-        const { data, error } = await supabase.functions.invoke('rate-limiter-login', {
+        // 🟢 Panggil Edge Function super-service (rate-limiter-login) untuk proteksi Rate Limiting Upstash Redis
+        const { data, error } = await supabase.functions.invoke('super-service', {
           body: { email, password }
         })
 
