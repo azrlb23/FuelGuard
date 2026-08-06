@@ -315,12 +315,13 @@ const hargaPerLiter = ref(10000)
 
 const fetchFuelPrice = async () => {
   try {
-    const spbuId = authStore.spbuId || '64.761.01'
+    // Ambil harga Pertalite resmi regional
     const { data } = await supabase
       .from('fuel_prices')
       .select('price_per_liter')
-      .eq('spbu_id', spbuId)
-      .eq('fuel_type', 'Pertalite')
+      .ilike('fuel_type', '%pertalite%')
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     if (data && data.price_per_liter) {

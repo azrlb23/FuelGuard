@@ -8,10 +8,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Inisialisasi Upstash Redis REST Client
+// [AUDIT FIX #19] Inisialisasi Upstash Redis REST Client (credentials WAJIB dari env vars)
 const redis = new Redis({
-  url: Deno.env.get('UPSTASH_REDIS_REST_URL') || 'https://close-piglet-164869.upstash.io',
-  token: Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || 'gQAAAAAAAoQFAAIgcDE1M2JjYjJlYmQ3NTI0ZjNiYTEyMDhhYjAxYzVkMWRiNg',
+  url: Deno.env.get('UPSTASH_REDIS_REST_URL') ?? '',
+  token: Deno.env.get('UPSTASH_REDIS_REST_TOKEN') ?? '',
 })
 
 serve(async (req) => {
