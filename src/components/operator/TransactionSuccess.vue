@@ -4,7 +4,7 @@ defineEmits(['reset'])
 
 <template>
   <div class="flex flex-col items-center justify-center text-center animate-enter py-6 md:py-8 px-4 relative overflow-hidden">
-    
+
     <!-- Background Glow Rings -->
     <div class="absolute w-40 h-40 bg-emerald-400/20 rounded-full blur-3xl -z-10 animate-pulse"></div>
 
@@ -17,19 +17,19 @@ defineEmits(['reset'])
         </svg>
       </div>
     </div>
-    
+
     <span class="text-xs font-black text-emerald-300 uppercase tracking-widest mb-1.5 animate-fade-in-up">
       Transaksi Berhasil
     </span>
     <h3 class="text-2xl md:text-3xl font-black text-white mb-2 tracking-tight animate-fade-in-up">
-      DATA TERSSIMPAN
+      DATA TERSIMPAN
     </h3>
     <p class="text-emerald-100/70 mb-8 text-xs md:text-sm max-w-xs font-medium animate-fade-in-up">
       Pengisian BBM berhasil dicatat ke sistem FuelGuard.
     </p>
-    
-    <button 
-      @click="$emit('reset')" 
+
+    <button
+      @click="$emit('reset')"
       class="px-8 py-3.5 bg-white hover:bg-emerald-50 text-[#143d2e] rounded-2xl font-black text-sm md:text-base shadow-xl active:scale-95 transition-all cursor-pointer animate-fade-in-up"
     >
       INPUT TRANSAKSI BARU
