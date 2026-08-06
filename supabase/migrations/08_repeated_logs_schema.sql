@@ -150,8 +150,7 @@ BEGIN
   -- Get Price
   SELECT price_per_liter INTO v_harga_per_liter
   FROM public.fuel_prices
-  WHERE spbu_id = v_spbu_id
-    AND LOWER(fuel_type) LIKE '%pertalite%'
+  WHERE LOWER(fuel_type) LIKE '%pertalite%'
   ORDER BY updated_at DESC NULLS LAST
   LIMIT 1;
 
