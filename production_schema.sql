@@ -1296,17 +1296,18 @@ BEGIN
     )
   ) INTO v_operators_json FROM operator_details;
 
+  -- Get SPBU authentication accounts list (Hanya Akun Login SPBU Terdaftar)
   WITH account_details AS (
     SELECT 
       ur.user_id,
       ur.spbu_id,
       COALESCE(s.nama, CONCAT('SPBU #', ur.spbu_id)) AS spbu_name,
-      ur.role,
+      COALESCE(ur.role, 'operator') AS role,
       u.email
     FROM public.user_roles ur
     INNER JOIN auth.users u ON u.id = ur.user_id
     LEFT JOIN public.spbu s ON s.id = ur.spbu_id
-    WHERE ur.role = 'operator'
+    WHERE LOWER(COALESCE(ur.role, '')) != 'master'
       AND (COALESCE(p_spbu_id, '') = '' OR ur.spbu_id::text = p_spbu_id)
       AND (COALESCE(p_search, '') = '' OR s.nama ILIKE '%' || p_search || '%' OR COALESCE(u.email, '') ILIKE '%' || p_search || '%')
     ORDER BY ur.spbu_id ASC
