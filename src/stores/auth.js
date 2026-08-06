@@ -88,36 +88,53 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async (email, password) => {
     isLoading.value = true
     try {
-      // 🟢 Panggil Edge Function rate-limiter-login untuk proteksi Rate Limiting Upstash Redis
-      const { data, error } = await supabase.functions.invoke('rate-limiter-login', {
-        body: { email, password }
-      })
+      let isEdgeFunctionAuthenticated = false
 
-      if (error) {
-        // Parse HTTP 400 / 429 Error Response dari Edge Function
-        if (error.context && typeof error.context.json === 'function') {
-          try {
-            const errJson = await error.context.json()
-            if (errJson && errJson.message) {
-              throw new Error(errJson.message)
-            }
-          } catch (e) {
-            if (e.message && e.message !== 'Unexpected end of JSON input') throw e
-          }
-        }
-        throw new Error(error.message || 'Gagal terhubung ke server autentikasi.')
-      }
-
-      if (!data || !data.success) {
-        throw new Error((data && data.message) || 'Login ditolak oleh sistem.')
-      }
-
-      if (data.session) {
-        const { error: setSessionError } = await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token
+      try {
+        // 🟢 Panggil Edge Function rate-limiter-login untuk proteksi Rate Limiting Upstash Redis
+        const { data, error } = await supabase.functions.invoke('rate-limiter-login', {
+          body: { email, password }
         })
-        if (setSessionError) throw setSessionError
+
+        if (error) {
+          // Parse HTTP 400 / 429 Error Response dari Edge Function
+          if (error.context && typeof error.context.json === 'function') {
+            try {
+              const errJson = await error.context.json()
+              if (errJson && errJson.message) {
+                throw new Error(errJson.message)
+              }
+            } catch (e) {
+              if (e.message && e.message !== 'Unexpected end of JSON input') throw e
+            }
+          }
+
+          // Jika Edge Function belum di-deploy (404/500/CORS) atau offline, fallback ke Supabase Auth langsung
+          console.warn('Edge Function rate-limiter-login tidak terjangkau. Melakukan login langsung via Supabase Auth...', error.message)
+          const { data: directData, error: directError } = await supabase.auth.signInWithPassword({ email, password })
+          if (directError) throw directError
+          isEdgeFunctionAuthenticated = true
+        } else if (!data || !data.success) {
+          throw new Error((data && data.message) || 'Login ditolak oleh sistem.')
+        } else {
+          if (data.session) {
+            const { error: setSessionError } = await supabase.auth.setSession({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token
+            })
+            if (setSessionError) throw setSessionError
+          }
+          isEdgeFunctionAuthenticated = true
+        }
+      } catch (err) {
+        // Jika error berasal dari jaringan / CORS preflight (FunctionsFetchError / Failed to send request)
+        if (err.name === 'FunctionsFetchError' || err.message?.includes('Failed to send a request') || err.message?.includes('CORS')) {
+          console.warn('Edge Function CORS/Network Error. Fallback ke Supabase Auth langsung:', err.message)
+          const { data: directData, error: directError } = await supabase.auth.signInWithPassword({ email, password })
+          if (directError) throw directError
+        } else {
+          throw err
+        }
       }
 
       const { data: { user: currentUser } } = await supabase.auth.getUser()
