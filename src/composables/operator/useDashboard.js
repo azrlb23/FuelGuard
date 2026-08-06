@@ -38,7 +38,7 @@ export function useDashboard() {
 
       if (data) {
         stats.value = data.stats || { volume: 0, revenue: 0, vehicle: 0 }
-        feed.value = data.feed || []
+        feed.value = data.recentTransactions || data.feed || []
         vehicleStats.value = data.vehicle_chart || []
         peakHourStats.value = data.peak_hours || []
         loyalStats.value = data.loyal_customers || []

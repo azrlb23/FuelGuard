@@ -75,17 +75,15 @@ CREATE TABLE IF NOT EXISTS public.support_tickets (
   CONSTRAINT support_tickets_spbu_id_fkey FOREIGN KEY (spbu_id) REFERENCES public.spbu(id)
 );
 
--- Table: fuel_prices (Harga BBM Resmi per SPBU)
+-- Table: fuel_prices (Harga BBM Resmi Regional)
 CREATE TABLE IF NOT EXISTS public.fuel_prices (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   fuel_type text NOT NULL,
   price_per_liter numeric NOT NULL,
   updated_at timestamp with time zone DEFAULT now(),
   updated_by uuid,
-  spbu_id text,
   CONSTRAINT fuel_prices_pkey PRIMARY KEY (id),
-  CONSTRAINT fuel_prices_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id),
-  CONSTRAINT fuel_prices_spbu_id_fkey FOREIGN KEY (spbu_id) REFERENCES public.spbu(id)
+  CONSTRAINT fuel_prices_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
 );
 
 -- Table: transaksi_pertalite (Log Utama Transaksi Pengisian Pertalite)
@@ -199,28 +197,42 @@ CREATE INDEX IF NOT EXISTS idx_repeated_logs_spbu_date
 CREATE INDEX IF NOT EXISTS idx_repeated_logs_plat 
   ON public.repeated_transaction_logs (plat_nomor);
 
--- ─── 5. SECURITY HELPER FUNCTIONS & TRIGGER ───────────────────────────────────
+-- ─── 5. SECURITY HELPER FUNCTIONS & TRIGGERS ─────────────────────────────────
 
--- Helper: Ambil role akun yang sedang login dari tabel user_roles
+-- Helper: Ambil role akun yang sedang login dari tabel user_roles (PL/pgSQL untuk deferred check)
 CREATE OR REPLACE FUNCTION public.get_user_role()
 RETURNS text
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT role FROM public.user_roles WHERE user_id = auth.uid() LIMIT 1;
+DECLARE
+  v_role text;
+BEGIN
+  SELECT role INTO v_role FROM public.user_roles WHERE user_id = auth.uid() LIMIT 1;
+  RETURN v_role;
+EXCEPTION WHEN OTHERS THEN
+  RETURN NULL;
+END;
 $$;
 
--- Helper: Ambil spbu_id milik akun yang sedang login dari tabel user_roles
+-- Helper: Ambil spbu_id milik akun yang sedang login dari tabel user_roles (PL/pgSQL untuk deferred check)
 CREATE OR REPLACE FUNCTION public.get_user_spbu_id()
 RETURNS text
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT spbu_id FROM public.user_roles WHERE user_id = auth.uid() LIMIT 1;
+DECLARE
+  v_spbu_id text;
+BEGIN
+  SELECT spbu_id INTO v_spbu_id FROM public.user_roles WHERE user_id = auth.uid() LIMIT 1;
+  RETURN v_spbu_id;
+EXCEPTION WHEN OTHERS THEN
+  RETURN NULL;
+END;
 $$;
 
 -- Trigger Function: Automatic Audit Logging for Transactions
@@ -310,8 +322,9 @@ CREATE POLICY "support_tickets_select" ON public.support_tickets
     OR user_id = auth.uid()
   );
 
+-- [AUDIT FIX #15] Paksa user_id = auth.uid() agar tidak bisa buat tiket atas nama orang lain
 CREATE POLICY "support_tickets_insert" ON public.support_tickets
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (user_id = auth.uid());
 
 -- 6.4 RLS Table: user_roles
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
@@ -364,8 +377,29 @@ CREATE POLICY "repeated_logs_operator_select" ON public.repeated_transaction_log
     AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar'
   );
 
+-- [AUDIT FIX #6] Perketat: hanya role operator/master yang bisa insert log pengetap
 CREATE POLICY "repeated_logs_insert" ON public.repeated_transaction_logs
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (
+    public.get_user_role() IN ('operator', 'master')
+  );
+
+-- 6.8 RLS Table: activity_logs
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "activity_logs_select" ON public.activity_logs;
+DROP POLICY IF EXISTS "activity_logs_insert" ON public.activity_logs;
+
+CREATE POLICY "activity_logs_select" ON public.activity_logs
+  FOR SELECT USING (public.get_user_role() = 'master');
+
+CREATE POLICY "activity_logs_insert" ON public.activity_logs
+  FOR INSERT WITH CHECK (true);
+
+-- 6.9 RLS Table: region_codes
+ALTER TABLE public.region_codes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "region_codes_public_read" ON public.region_codes;
+
+CREATE POLICY "region_codes_public_read" ON public.region_codes
+  FOR SELECT USING (true);
 
 -- ─── 7. OPERATOR STORED PROCEDURES (RPCs) ────────────────────────────────────
 
@@ -399,7 +433,8 @@ BEGIN
   v_plat_clean := regexp_replace(UPPER(TRIM(p_plat)), '\s+', ' ', 'g');
 
   -- Validasi Strict ASCII Regex Plat Indonesia
-  IF NOT (v_plat_clean ~* '^[A-Z]{1,3}\s\d{1,4}(\s[A-Z]{1,3})?$') THEN
+  -- [AUDIT FIX #4] Seragamkan regex kode wilayah: 1-2 huruf (sesuai standar plat Indonesia)
+  IF NOT (v_plat_clean ~* '^[A-Z]{1,2}\s\d{1,4}(\s[A-Z]{1,3})?$') THEN
     RETURN json_build_object(
       'success', false,
       'reason', 'invalid_format',
@@ -518,6 +553,8 @@ DECLARE
   v_count_today integer;
   v_max_quota numeric := 50000;
   v_new_id bigint;
+  v_first_is_ojol boolean := NULL;
+  v_today_start timestamptz;
 BEGIN
   IF p_operator_id IS NULL THEN
     RETURN json_build_object('success', false, 'reason', 'no_operator', 'message', 'Operator ID tidak valid.');
@@ -533,8 +570,8 @@ BEGIN
     RETURN json_build_object('success', false, 'reason', 'invalid_input', 'message', 'Plat nomor dan liter harus valid.');
   END IF;
 
-  -- Validasi Strict ASCII Regex Plat Indonesia
-  IF NOT (v_plat_clean ~* '^[A-Z]{1,3}\s\d{1,4}(\s[A-Z]{1,3})?$') THEN
+  -- [AUDIT FIX #4] Seragamkan regex kode wilayah: 1-2 huruf (sesuai standar plat Indonesia)
+  IF NOT (v_plat_clean ~* '^[A-Z]{1,2}\s\d{1,4}(\s[A-Z]{1,3})?$') THEN
     RETURN json_build_object(
       'success', false,
       'reason', 'invalid_format',
@@ -542,73 +579,71 @@ BEGIN
     );
   END IF;
 
-  -- Validasi Kode Wilayah Plat Indonesia
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'region_codes') THEN
-    IF NOT EXISTS (
-      SELECT 1 FROM public.region_codes 
-      WHERE code = split_part(v_plat_clean, ' ', 1)
-    ) THEN
-      RETURN json_build_object(
-        'success', false,
-        'reason', 'invalid_region',
-        'message', 'Kode wilayah plat (' || split_part(v_plat_clean, ' ', 1) || ') tidak terdaftar di Indonesia.'
-      );
-    END IF;
+  -- [AUDIT FIX #12] Langsung query region_codes (konsisten dengan fn_check_plate_status)
+  IF NOT EXISTS (
+    SELECT 1 FROM public.region_codes 
+    WHERE code = split_part(v_plat_clean, ' ', 1)
+  ) THEN
+    RETURN json_build_object(
+      'success', false,
+      'reason', 'invalid_region',
+      'message', 'Kode wilayah plat (' || split_part(v_plat_clean, ' ', 1) || ') tidak terdaftar di Indonesia.'
+    );
   END IF;
 
-  DECLARE
-    v_first_is_ojol boolean := NULL;
-    v_today_start timestamptz;
-  BEGIN
-    v_today_start := date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar';
-
-    SELECT is_ojol INTO v_first_is_ojol
-    FROM public.transaksi_pertalite
-    WHERE plat_nomor = v_plat_clean
-      AND waktu_pencatatan >= v_today_start
-    ORDER BY waktu_pencatatan ASC
-    LIMIT 1;
-
-    IF v_first_is_ojol IS NOT NULL AND v_first_is_ojol != p_is_ojol THEN
-      INSERT INTO public.repeated_transaction_logs (
-        plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, 
-        attempted_liter, total_harga_today, reason, created_at
-      ) VALUES (
-        v_plat_clean, v_spbu_id, p_operator_id, p_is_ojol,
-        p_liter, 0, 'category_mismatch', NOW()
-      );
-
-      RETURN json_build_object(
-        'success', false,
-        'reason', 'category_mismatch',
-        'message', format('Kendaraan %s hari ini sudah terdaftar sebagai %s! Tidak dapat bertransaksi sebagai %s.',
-          v_plat_clean,
-          CASE WHEN v_first_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END,
-          CASE WHEN p_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END
-        )
-      );
-    END IF;
-
-    IF COALESCE(v_first_is_ojol, p_is_ojol) THEN
-      v_max_quota := 100000;
-    ELSE
-      v_max_quota := 50000;
-    END IF;
-  END;
-
-  -- Lock Transaksi Atomik (Pencegahan Race Condition Simultan)
+  -- [AUDIT FIX #2] Lock Transaksi Atomik SEBELUM semua pengecekan (cegah race condition category_mismatch)
   PERFORM pg_advisory_xact_lock(hashtext(v_plat_clean));
 
-  -- Get Price (Server-Side Pricing)
+  -- Hitung waktu awal hari (WITA) 1x di tingkat fungsi utama
+  v_today_start := date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar';
+
+  SELECT is_ojol INTO v_first_is_ojol
+  FROM public.transaksi_pertalite
+  WHERE plat_nomor = v_plat_clean
+    AND waktu_pencatatan >= v_today_start
+  ORDER BY waktu_pencatatan ASC
+  LIMIT 1;
+
+  IF v_first_is_ojol IS NOT NULL AND v_first_is_ojol != p_is_ojol THEN
+    INSERT INTO public.repeated_transaction_logs (
+      plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, 
+      attempted_liter, total_harga_today, reason, created_at
+    ) VALUES (
+      v_plat_clean, v_spbu_id, p_operator_id, p_is_ojol,
+      p_liter, 0, 'category_mismatch', NOW()
+    );
+
+    RETURN json_build_object(
+      'success', false,
+      'reason', 'category_mismatch',
+      'message', format('Kendaraan %s hari ini sudah terdaftar sebagai %s! Tidak dapat bertransaksi sebagai %s.',
+        v_plat_clean,
+        CASE WHEN v_first_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END,
+        CASE WHEN p_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END
+      )
+    );
+  END IF;
+
+  IF COALESCE(v_first_is_ojol, p_is_ojol) THEN
+    v_max_quota := 100000;
+  ELSE
+    v_max_quota := 50000;
+  END IF;
+
+  -- Get Price (Server-Side Pricing: Harga Regional Global)
   SELECT price_per_liter INTO v_harga_per_liter
   FROM public.fuel_prices
-  WHERE spbu_id = v_spbu_id
-    AND LOWER(fuel_type) LIKE '%pertalite%'
+  WHERE LOWER(fuel_type) LIKE '%pertalite%'
   ORDER BY updated_at DESC NULLS LAST
   LIMIT 1;
 
+  -- [AUDIT FIX #11] Tolak transaksi jika harga belum dikonfigurasi, bukan fallback diam-diam
   IF v_harga_per_liter IS NULL OR v_harga_per_liter <= 0 THEN
-    v_harga_per_liter := 10000;
+    RETURN json_build_object(
+      'success', false,
+      'reason', 'no_price',
+      'message', 'Harga Pertalite belum dikonfigurasi untuk SPBU ini. Hubungi admin untuk mengatur harga terlebih dahulu.'
+    );
   END IF;
 
   v_total_harga := p_liter * v_harga_per_liter;
@@ -619,7 +654,7 @@ BEGIN
   INTO v_total_harga_today, v_count_today
   FROM public.transaksi_pertalite
   WHERE plat_nomor = v_plat_clean
-    AND waktu_pencatatan >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar';
+    AND waktu_pencatatan >= v_today_start;
 
   IF (v_total_harga_today + v_total_harga) > v_max_quota THEN
     INSERT INTO public.repeated_transaction_logs (
@@ -676,7 +711,14 @@ DECLARE
   v_recent_transactions json;
   v_weekly_volume json;
 BEGIN
-  v_spbu_id := COALESCE(p_spbu_id, public.get_user_spbu_id());
+  -- [AUDIT FIX #8] Isolasi SPBU: operator dipaksa ke SPBU sendiri, role lain ditolak
+  IF public.get_user_role() = 'operator' THEN
+    v_spbu_id := public.get_user_spbu_id();
+  ELSIF public.get_user_role() = 'master' THEN
+    v_spbu_id := COALESCE(p_spbu_id, public.get_user_spbu_id());
+  ELSE
+    RAISE EXCEPTION 'Akses ditolak: Role tidak valid untuk mengakses dashboard';
+  END IF;
 
   IF p_filter = 'today' THEN
     v_start_time := date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar';
@@ -755,8 +797,8 @@ GRANT EXECUTE ON FUNCTION public.get_dashboard_summary(text, text) TO authentica
 
 -- 7.4 RPC: get_export_transactions
 CREATE OR REPLACE FUNCTION public.get_export_transactions(
-  p_start_date timestamp with time zone,
-  p_end_date timestamp with time zone,
+  p_start_date text DEFAULT '',
+  p_end_date text DEFAULT '',
   p_spbu_id text DEFAULT NULL
 )
 RETURNS json
@@ -766,12 +808,26 @@ SET search_path = public
 AS $$
 DECLARE
   v_effective_spbu text;
+  v_start_time timestamptz;
+  v_end_time timestamptz;
   v_result json;
 BEGIN
+  -- [AUDIT FIX #9] Tambah role check: hanya master/operator yang bisa export
   IF public.get_user_role() = 'operator' THEN
     v_effective_spbu := public.get_user_spbu_id();
-  ELSE
+  ELSIF public.get_user_role() = 'master' THEN
     v_effective_spbu := NULLIF(TRIM(p_spbu_id), '');
+  ELSE
+    RAISE EXCEPTION 'Akses ditolak: Role tidak valid untuk mengekspor data transaksi';
+  END IF;
+
+  -- [AUDIT FIX #NEW-3] Parse parameter tanggal dengan offset WITA (+08) agar jam 00:00-07:59 tidak terpotong
+  IF p_start_date IS NOT NULL AND TRIM(p_start_date) != '' THEN
+    v_start_time := (p_start_date || ' 00:00:00+08')::timestamp with time zone;
+  END IF;
+
+  IF p_end_date IS NOT NULL AND TRIM(p_end_date) != '' THEN
+    v_end_time := (p_end_date || ' 23:59:59.999+08')::timestamp with time zone;
   END IF;
 
   SELECT json_agg(sub) INTO v_result
@@ -790,15 +846,15 @@ BEGIN
     JOIN public.operator_profiles op ON op.id = t.operator_id
     LEFT JOIN public.spbu s ON s.id = op.spbu_id
     WHERE (v_effective_spbu IS NULL OR op.spbu_id = v_effective_spbu)
-      AND (p_start_date IS NULL OR t.waktu_pencatatan >= p_start_date)
-      AND (p_end_date IS NULL OR t.waktu_pencatatan <= p_end_date)
+      AND (v_start_time IS NULL OR t.waktu_pencatatan >= v_start_time)
+      AND (v_end_time IS NULL OR t.waktu_pencatatan <= v_end_time)
     ORDER BY t.waktu_pencatatan DESC
   ) sub;
 
   RETURN COALESCE(v_result, '[]'::json);
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.get_export_transactions(timestamp with time zone, timestamp with time zone, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_export_transactions(text, text, text) TO authenticated;
 
 -- 7.5 RPC: get_operator_repeated_logs
 CREATE OR REPLACE FUNCTION public.get_operator_repeated_logs(
@@ -880,7 +936,7 @@ GRANT EXECUTE ON FUNCTION public.get_operator_repeated_logs(text, integer, integ
 
 -- ─── 8. MASTER STORED PROCEDURES (RPCs) ──────────────────────────────────────
 
--- 8.1 RPC: get_master_dashboard_summary (Optimized LCP Summary)
+-- 8.1 RPC: get_master_dashboard_summary (Optimized LCP Summary - WITA Timezone Aligned)
 CREATE OR REPLACE FUNCTION public.get_master_dashboard_summary(p_filter text DEFAULT 'today')
 RETURNS json
 LANGUAGE plpgsql
@@ -888,7 +944,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_start_time timestamp;
+  v_caller_role text;
+  v_start_time timestamp with time zone;
   v_total_revenue numeric := 0;
   v_total_volume numeric := 0;
   v_active_spbu_count integer := 0;
@@ -898,14 +955,19 @@ DECLARE
   v_alerts json;
   v_result json;
 BEGIN         
+  v_caller_role := public.get_user_role();
+  IF v_caller_role IS NULL OR LOWER(v_caller_role) != 'master' THEN
+    RAISE EXCEPTION 'Akses ditolak: Hanya role Master yang diizinkan melihat dashboard master';
+  END IF;
+
   IF p_filter = 'today' THEN
-    v_start_time := date_trunc('day', NOW());
+    v_start_time := date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar';
   ELSIF p_filter = 'weekly' THEN
-    v_start_time := NOW() - INTERVAL '7 days';
+    v_start_time := date_trunc('day', (NOW() AT TIME ZONE 'Asia/Makassar') - INTERVAL '6 days') AT TIME ZONE 'Asia/Makassar';
   ELSIF p_filter = 'monthly' THEN
-    v_start_time := NOW() - INTERVAL '30 days';
+    v_start_time := date_trunc('day', (NOW() AT TIME ZONE 'Asia/Makassar') - INTERVAL '29 days') AT TIME ZONE 'Asia/Makassar';
   ELSE
-    v_start_time := '1970-01-01 00:00:00'::timestamp;
+    v_start_time := '1970-01-01 00:00:00+00'::timestamp with time zone;
   END IF;
 
   SELECT 
@@ -918,20 +980,20 @@ BEGIN
 
   SELECT COUNT(id) INTO v_active_spbu_count FROM public.spbu;
 
-  -- 7-Day Weekly Volume (Optimized without full table scan)
+  -- 7-Day Weekly Volume (Aligned to WITA Timezone)
   WITH days AS (
     SELECT generate_series(
-      date_trunc('day', NOW()) - INTERVAL '6 days',
-      date_trunc('day', NOW()),
+      date_trunc('day', (NOW() AT TIME ZONE 'Asia/Makassar') - INTERVAL '6 days'),
+      date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar'),
       INTERVAL '1 day'
     )::date AS d
   ),
   daily_sums AS (
     SELECT 
-      date_trunc('day', waktu_pencatatan)::date AS d,
+      date_trunc('day', waktu_pencatatan AT TIME ZONE 'Asia/Makassar')::date AS d,
       SUM(liter) AS total_liter
     FROM public.transaksi_pertalite
-    WHERE waktu_pencatatan >= date_trunc('day', NOW()) - INTERVAL '6 days'
+    WHERE waktu_pencatatan >= date_trunc('day', (NOW() AT TIME ZONE 'Asia/Makassar') - INTERVAL '6 days') AT TIME ZONE 'Asia/Makassar'
     GROUP BY 1
   )
   SELECT json_agg(COALESCE(ds.total_liter, 0) ORDER BY days.d) 
@@ -1020,7 +1082,7 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_master_dashboard_summary(text) TO authenticated;
 
--- 8.2 RPC: get_master_history_paginated
+-- 8.2 RPC: get_master_history_paginated (Strict Multi-Tenant Role Isolation)
 CREATE OR REPLACE FUNCTION public.get_master_history_paginated(
   p_page integer DEFAULT 1,
   p_page_size integer DEFAULT 10,
@@ -1037,6 +1099,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_caller_role text;
   v_effective_spbu text;
   v_offset integer;
   v_total_count integer;
@@ -1044,20 +1107,29 @@ DECLARE
   v_date_from timestamp with time zone;
   v_date_to timestamp with time zone;
 BEGIN
-  IF public.get_user_role() = 'operator' THEN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Akses ditolak: Sesi tidak terautentikasi';
+  END IF;
+
+  v_caller_role := public.get_user_role();
+
+  IF v_caller_role = 'operator' THEN
     v_effective_spbu := public.get_user_spbu_id();
-  ELSE
+  ELSIF v_caller_role = 'master' THEN
     v_effective_spbu := NULLIF(TRIM(p_spbu_id), '');
+  ELSE
+    RAISE EXCEPTION 'Akses ditolak: Role tidak valid';
   END IF;
 
   v_offset := (GREATEST(p_page, 1) - 1) * p_page_size;
 
+  -- [AUDIT FIX #NEW-3] Tambah offset +08 (WITA) agar tidak tergeser ke UTC
   IF p_date_from IS NOT NULL AND TRIM(p_date_from) != '' THEN
-    v_date_from := (p_date_from || ' 00:00:00')::timestamp with time zone;
+    v_date_from := (p_date_from || ' 00:00:00+08')::timestamp with time zone;
   END IF;
 
   IF p_date_to IS NOT NULL AND TRIM(p_date_to) != '' THEN
-    v_date_to := (p_date_to || ' 23:59:59.999')::timestamp with time zone;
+    v_date_to := (p_date_to || ' 23:59:59.999+08')::timestamp with time zone;
   END IF;
 
   SELECT COUNT(t.id) INTO v_total_count
@@ -1069,8 +1141,7 @@ BEGIN
       p_search = '' OR
       t.plat_nomor ILIKE '%' || p_search || '%' OR
       COALESCE(op.nama_operator, '') ILIKE '%' || p_search || '%' OR
-      COALESCE(s.nama, op.spbu_id) ILIKE '%' || p_search || '%' OR
-      to_char(t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar', 'HH24:MI') ILIKE '%' || p_search || '%'
+      COALESCE(s.nama, op.spbu_id) ILIKE '%' || p_search || '%'
     )
     AND (v_date_from IS NULL OR t.waktu_pencatatan >= v_date_from)
     AND (v_date_to IS NULL OR t.waktu_pencatatan <= v_date_to);
@@ -1096,8 +1167,7 @@ BEGIN
         p_search = '' OR
         t.plat_nomor ILIKE '%' || p_search || '%' OR
         COALESCE(op.nama_operator, '') ILIKE '%' || p_search || '%' OR
-        COALESCE(s.nama, op.spbu_id) ILIKE '%' || p_search || '%' OR
-        to_char(t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar', 'HH24:MI') ILIKE '%' || p_search || '%'
+        COALESCE(s.nama, op.spbu_id) ILIKE '%' || p_search || '%'
       )
       AND (v_date_from IS NULL OR t.waktu_pencatatan >= v_date_from)
       AND (v_date_to IS NULL OR t.waktu_pencatatan <= v_date_to)
@@ -1252,7 +1322,8 @@ DECLARE
   v_new_id uuid;
   v_result json;
 BEGIN
-  IF public.get_user_role() <> 'master' THEN
+  -- [AUDIT FIX #NEW-1] Fix NULL bypass: NULL <> 'master' = NULL (evaluasi FALSE), lewati exception
+  IF COALESCE(public.get_user_role(), '') != 'master' THEN
     RAISE EXCEPTION 'Akses ditolak: Hanya role Master yang diizinkan mengelola data operator';
   END IF;
 
@@ -1349,12 +1420,14 @@ BEGIN
     RAISE EXCEPTION 'Forbidden: Akses ditolak. Membutuhkan hak akses Master Admin.';
   END IF;
 
+  -- [AUDIT FIX #NEW-3] Tambah offset +08 (WITA) untuk date parsing
   SELECT COUNT(r.id) INTO v_total_attempts
   FROM public.repeated_transaction_logs r
   WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR r.attempt_spbu_id = p_spbu_id)
-    AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00')::timestamp with time zone)
-    AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999')::timestamp with time zone);
+    AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00+08')::timestamp with time zone)
+    AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999+08')::timestamp with time zone);
 
+  -- [OPTIMASI PERFORMANSI #3] Jalankan CTE 1x saja dengan window function COUNT(*) OVER() untuk total plates
   WITH raw_logs AS (
     SELECT 
       r.id,
@@ -1372,8 +1445,8 @@ BEGIN
     LEFT JOIN public.spbu s ON s.id = r.attempt_spbu_id
     LEFT JOIN public.operator_profiles op ON op.id = r.attempt_operator_id
     WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR r.attempt_spbu_id = p_spbu_id)
-      AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00')::timestamp with time zone)
-      AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999')::timestamp with time zone)
+      AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00+08')::timestamp with time zone)
+      AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999+08')::timestamp with time zone)
   ),
   grouped_plates AS (
     SELECT 
@@ -1394,64 +1467,23 @@ BEGIN
           'total_harga_today', total_harga_today,
           'reason', reason
         ) ORDER BY created_at DESC
-      ) AS attempts
+      ) AS attempts,
+      COUNT(*) OVER() AS full_plate_count
     FROM raw_logs
     GROUP BY plat_nomor
   )
-  SELECT COUNT(*) INTO v_total_plates FROM grouped_plates;
-
-  WITH raw_logs AS (
-    SELECT 
-      r.id,
-      regexp_replace(UPPER(TRIM(r.plat_nomor)), '\s+', ' ', 'g') AS plat_nomor,
-      r.attempt_spbu_id,
-      COALESCE(s.nama, 'SPBU ' || r.attempt_spbu_id) AS spbu_nama,
-      r.attempt_operator_id,
-      COALESCE(op.nama_operator, 'Sistem') AS operator_nama,
-      COALESCE(r.is_ojol, false) AS is_ojol,
-      r.attempted_liter,
-      r.total_harga_today,
-      r.reason,
-      r.created_at
-    FROM public.repeated_transaction_logs r
-    LEFT JOIN public.spbu s ON s.id = r.attempt_spbu_id
-    LEFT JOIN public.operator_profiles op ON op.id = r.attempt_operator_id
-    WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR r.attempt_spbu_id = p_spbu_id)
-      AND (p_date_from IS NULL OR TRIM(p_date_from) = '' OR r.created_at >= (p_date_from || ' 00:00:00')::timestamp with time zone)
-      AND (p_date_to IS NULL OR TRIM(p_date_to) = '' OR r.created_at <= (p_date_to || ' 23:59:59.999')::timestamp with time zone)
-  ),
-  grouped_plates AS (
-    SELECT 
-      plat_nomor,
-      bool_or(is_ojol) AS is_ojol,
-      COUNT(id) AS attempt_count,
-      MAX(created_at) AS latest_attempt_at,
-      json_agg(
-        json_build_object(
-          'id', id,
-          'created_at', created_at,
-          'spbu_id', attempt_spbu_id,
-          'spbu_nama', spbu_nama,
-          'operator_id', attempt_operator_id,
-          'operator_nama', operator_nama,
-          'is_ojol', is_ojol,
-          'attempted_liter', attempted_liter,
-          'total_harga_today', total_harga_today,
-          'reason', reason
-        ) ORDER BY created_at DESC
-      ) AS attempts
-    FROM raw_logs
-    GROUP BY plat_nomor
-  )
-  SELECT json_agg(
-    json_build_object(
-      'plat_nomor', plat_nomor,
-      'is_ojol', is_ojol,
-      'attempt_count', attempt_count,
-      'latest_attempt_at', latest_attempt_at,
-      'attempts', attempts
-    ) ORDER BY latest_attempt_at DESC
-  ) INTO v_logs
+  SELECT 
+    COALESCE(MAX(full_plate_count), 0),
+    json_agg(
+      json_build_object(
+        'plat_nomor', plat_nomor,
+        'is_ojol', is_ojol,
+        'attempt_count', attempt_count,
+        'latest_attempt_at', latest_attempt_at,
+        'attempts', attempts
+      ) ORDER BY latest_attempt_at DESC
+    )
+  INTO v_total_plates, v_logs
   FROM (
     SELECT * FROM grouped_plates
     ORDER BY latest_attempt_at DESC
@@ -1472,10 +1504,11 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_master_repeated_transactions(text, text, text, integer, integer) TO authenticated;
 
 -- 8.6 RPC: get_master_repeated_analytics
+-- [AUDIT FIX #NEW-4] Ubah tipe parameter dari date ke text untuk konsistensi timezone
 CREATE OR REPLACE FUNCTION public.get_master_repeated_analytics(
   p_spbu_id text DEFAULT NULL,
-  p_date_from date DEFAULT NULL,
-  p_date_to date DEFAULT NULL
+  p_date_from text DEFAULT NULL,
+  p_date_to text DEFAULT NULL
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -1486,18 +1519,35 @@ DECLARE
   v_total_detected integer;
   v_top_plates json;
   v_effective_spbu text;
+  v_from timestamptz;
+  v_to timestamptz;
 BEGIN
+  -- [AUDIT FIX #10] Tambah auth check dan role validation
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: Sesi tidak terautentikasi';
+  END IF;
+
   IF public.get_user_role() = 'master' THEN
     v_effective_spbu := NULLIF(TRIM(p_spbu_id), '');
-  ELSE
+  ELSIF public.get_user_role() = 'operator' THEN
     v_effective_spbu := public.get_user_spbu_id();
+  ELSE
+    RAISE EXCEPTION 'Akses ditolak: Role tidak valid untuk mengakses analytics';
+  END IF;
+
+  -- [AUDIT FIX #NEW-4] Parse date string dengan offset WITA (+08) eksplisit
+  IF p_date_from IS NOT NULL AND TRIM(p_date_from) != '' THEN
+    v_from := (p_date_from || ' 00:00:00+08')::timestamp with time zone;
+  END IF;
+  IF p_date_to IS NOT NULL AND TRIM(p_date_to) != '' THEN
+    v_to := (p_date_to || ' 23:59:59.999+08')::timestamp with time zone;
   END IF;
 
   SELECT COUNT(id) INTO v_total_detected
   FROM public.repeated_transaction_logs
   WHERE (v_effective_spbu IS NULL OR attempt_spbu_id = v_effective_spbu)
-    AND (p_date_from IS NULL OR created_at >= p_date_from)
-    AND (p_date_to IS NULL OR created_at < p_date_to + INTERVAL '1 day');
+    AND (v_from IS NULL OR created_at >= v_from)
+    AND (v_to IS NULL OR created_at <= v_to);
 
   SELECT json_agg(t) INTO v_top_plates
   FROM (
@@ -1507,8 +1557,8 @@ BEGIN
       MAX(created_at) as last_attempt
     FROM public.repeated_transaction_logs
     WHERE (v_effective_spbu IS NULL OR attempt_spbu_id = v_effective_spbu)
-      AND (p_date_from IS NULL OR created_at >= p_date_from)
-      AND (p_date_to IS NULL OR created_at < p_date_to + INTERVAL '1 day')
+      AND (v_from IS NULL OR created_at >= v_from)
+      AND (v_to IS NULL OR created_at <= v_to)
     GROUP BY plat_nomor
     ORDER BY total_attempts DESC
     LIMIT 10
@@ -1520,7 +1570,162 @@ BEGIN
   );
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.get_master_repeated_analytics(text, date, date) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_master_repeated_analytics(text, text, text) TO authenticated;
+
+-- 8.6.1 RPC: get_master_analytics_summary (LCP Master Analytics)
+CREATE OR REPLACE FUNCTION public.get_master_analytics_summary(
+  p_date_from text DEFAULT '',
+  p_date_to text DEFAULT '',
+  p_spbu_id text DEFAULT ''
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_caller_role text;
+  v_effective_spbu text;
+  v_total_sales numeric := 0;
+  v_total_volume numeric := 0;
+  v_total_trx integer := 0;
+  v_days_count integer := 1;
+  v_avg_trx_per_day numeric := 0;
+  v_trend_json json;
+  v_leaderboard_json json;
+  v_start_time timestamptz;
+  v_end_time timestamptz;
+  v_result json;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Akses ditolak: Sesi tidak terautentikasi';
+  END IF;
+
+  v_caller_role := public.get_user_role();
+  IF v_caller_role IS NULL OR LOWER(v_caller_role) != 'master' THEN
+    RAISE EXCEPTION 'Akses ditolak: Hanya role Master yang diizinkan melihat ringkasan analitik';
+  END IF;
+
+  v_effective_spbu := NULLIF(TRIM(p_spbu_id), '');
+
+  IF p_date_from IS NOT NULL AND TRIM(p_date_from) != '' THEN
+    v_start_time := (p_date_from || ' 00:00:00+08')::timestamp with time zone;
+  END IF;
+
+  IF p_date_to IS NOT NULL AND TRIM(p_date_to) != '' THEN
+    v_end_time := (p_date_to || ' 23:59:59.999+08')::timestamp with time zone;
+  END IF;
+
+  -- 1. Total KPIs
+  SELECT 
+    COALESCE(SUM(t.harga), 0),
+    COALESCE(SUM(t.liter), 0),
+    COUNT(t.id)
+  INTO 
+    v_total_sales,
+    v_total_volume,
+    v_total_trx
+  FROM public.transaksi_pertalite t
+  JOIN public.operator_profiles op ON op.id = t.operator_id
+  WHERE (v_effective_spbu IS NULL OR op.spbu_id = v_effective_spbu)
+    AND (v_start_time IS NULL OR t.waktu_pencatatan >= v_start_time)
+    AND (v_end_time IS NULL OR t.waktu_pencatatan <= v_end_time);
+
+  -- Hitung rentang hari untuk rata-rata harian
+  IF v_start_time IS NOT NULL AND v_end_time IS NOT NULL THEN
+    v_days_count := GREATEST(EXTRACT(DAY FROM (v_end_time - v_start_time))::integer + 1, 1);
+  ELSE
+    v_days_count := 30;
+  END IF;
+  
+  v_avg_trx_per_day := ROUND(v_total_trx::numeric / v_days_count::numeric, 1);
+
+  -- 2. Trend Penjualan Harian (Bar + Line Chart)
+  WITH daily_trend AS (
+    SELECT 
+      (t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar')::date AS date_val,
+      COALESCE(SUM(t.harga), 0) AS sales,
+      COALESCE(SUM(t.liter), 0) AS volume
+    FROM public.transaksi_pertalite t
+    JOIN public.operator_profiles op ON op.id = t.operator_id
+    WHERE (v_effective_spbu IS NULL OR op.spbu_id = v_effective_spbu)
+      AND (v_start_time IS NULL OR t.waktu_pencatatan >= v_start_time)
+      AND (v_end_time IS NULL OR t.waktu_pencatatan <= v_end_time)
+    GROUP BY 1
+    ORDER BY date_val ASC
+  )
+  SELECT json_agg(
+    json_build_object(
+      'date', to_char(date_val, 'DD Mon'),
+      'sales', sales,
+      'volume', volume
+    )
+  ) INTO v_trend_json FROM daily_trend;
+
+  -- 3. Leaderboard Performa & Kontribusi SPBU
+  WITH spbu_totals AS (
+    SELECT 
+      s.id AS spbu_id,
+      COALESCE(s.nama, CONCAT('SPBU #', s.id)) AS spbu_name,
+      COALESCE(SUM(t.harga), 0) AS revenue,
+      COALESCE(SUM(t.liter), 0) AS volume,
+      COUNT(t.id) AS total_trx
+    FROM public.spbu s
+    LEFT JOIN public.operator_profiles op ON op.spbu_id = s.id
+    LEFT JOIN public.transaksi_pertalite t 
+      ON t.operator_id = op.id 
+      AND (v_start_time IS NULL OR t.waktu_pencatatan >= v_start_time)
+      AND (v_end_time IS NULL OR t.waktu_pencatatan <= v_end_time)
+    WHERE (v_effective_spbu IS NULL OR s.id = v_effective_spbu)
+    GROUP BY s.id, s.nama
+  ),
+  spbu_ranked AS (
+    SELECT 
+      spbu_id,
+      spbu_name,
+      revenue,
+      volume,
+      total_trx,
+      CASE WHEN v_total_sales > 0 THEN ROUND((revenue / v_total_sales) * 100, 1) ELSE 0 END AS share_pct,
+      ROW_NUMBER() OVER (ORDER BY revenue DESC) AS rank_pos
+    FROM spbu_totals
+  )
+  SELECT json_agg(
+    json_build_object(
+      'rank', rank_pos,
+      'spbu_id', spbu_id,
+      'spbu_name', spbu_name,
+      'revenue', revenue,
+      'volume', volume,
+      'total_trx', total_trx,
+      'share_pct', share_pct,
+      'status', CASE WHEN rank_pos = 1 AND revenue > 0 THEN 'Top Performer' WHEN revenue = 0 THEN 'No Activity' ELSE 'Normal' END
+    ) ORDER BY revenue DESC
+  ) INTO v_leaderboard_json FROM spbu_ranked;
+
+  -- Build Result JSON (Kompatibilitas ganda kpis & kpi)
+  v_result := json_build_object(
+    'kpis', json_build_object(
+      'totalSales', v_total_sales,
+      'totalVolume', v_total_volume,
+      'totalTrx', v_total_trx,
+      'avgTrxPerDay', v_avg_trx_per_day
+    ),
+    'kpi', json_build_object(
+      'total_sales', v_total_sales,
+      'total_volume', v_total_volume,
+      'total_trx', v_total_trx,
+      'avg_trx_per_day', v_avg_trx_per_day
+    ),
+    'trend', COALESCE(v_trend_json, '[]'::json),
+    'leaderboard', COALESCE(v_leaderboard_json, '[]'::json)
+  );
+
+  RETURN v_result;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_master_analytics_summary(text, text, text) TO authenticated;
+
 
 -- 8.7 RPC: get_spbu_top_plates
 CREATE OR REPLACE FUNCTION public.get_spbu_top_plates(
@@ -1549,12 +1754,13 @@ BEGIN
     RAISE EXCEPTION 'Forbidden: Akses ditolak.';
   END IF;
 
+  -- [AUDIT FIX #NEW-3] Tambah offset +08 (WITA) agar tidak tergeser ke UTC
   IF p_date_from IS NOT NULL AND TRIM(p_date_from) != '' THEN
-    v_date_from := (p_date_from || ' 00:00:00')::timestamp with time zone;
+    v_date_from := (p_date_from || ' 00:00:00+08')::timestamp with time zone;
   END IF;
 
   IF p_date_to IS NOT NULL AND TRIM(p_date_to) != '' THEN
-    v_date_to := (p_date_to || ' 23:59:59.999')::timestamp with time zone;
+    v_date_to := (p_date_to || ' 23:59:59.999+08')::timestamp with time zone;
   END IF;
 
   WITH raw_trx AS (
@@ -1626,12 +1832,14 @@ BEGIN
     SELECT role INTO v_caller_role FROM public.user_roles WHERE user_id = v_caller_uid LIMIT 1;
   END IF;
 
-  IF LOWER(COALESCE(v_caller_role, 'master')) != 'master' THEN
+  -- [AUDIT FIX #1] Fix privilege escalation: NULL role HARUS ditolak, bukan di-fallback ke 'master'
+  IF v_caller_role IS NULL OR LOWER(v_caller_role) != 'master' THEN
     RAISE EXCEPTION 'Akses ditolak: Hanya role Master yang diizinkan mereset password akun operator';
   END IF;
 
-  IF p_new_password IS NULL OR length(p_new_password) < 6 THEN
-    RAISE EXCEPTION 'Password baru minimal harus 6 karakter';
+  -- [AUDIT FIX #16] Tingkatkan minimum password ke 8 karakter
+  IF p_new_password IS NULL OR length(p_new_password) < 8 THEN
+    RAISE EXCEPTION 'Password baru minimal harus 8 karakter';
   END IF;
 
   SELECT role INTO v_target_role FROM public.user_roles WHERE user_id = p_target_user_id;
