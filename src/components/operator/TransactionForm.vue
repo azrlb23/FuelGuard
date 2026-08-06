@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { toast } from 'vue3-toastify'
+import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/auth'
 import { useCameraScanner } from '@/composables/operator/useCameraScanner'
 import { useTransactionAction } from '@/composables/operator/useTransactionAction'
@@ -262,10 +263,23 @@ const handleCheckPlate = async () => {
   }
 }
 
-const handleResetPlateCheck = () => {
+const handleEditPlateNumber = () => {
+  showRefueledModal.value = false
+  subStep.value = 'check_plate'
+  platStatus.value = 'idle'
+  nextTick(() => {
+    if (platInputRef.value) {
+      platInputRef.value.focus()
+      platInputRef.value.select()
+    }
+  })
+}
+
+const handleResetVehicleSelection = () => {
   showRefueledModal.value = false
   refueledInfo.value = null
   form.value.plat_nomor = ''
+  platStatus.value = 'idle'
   subStep.value = 'check_plate'
   emit('back')
 }
@@ -785,16 +799,28 @@ const handleSubmit = async () => {
             </template>
           </div>
 
-          <!-- Action Button (Signature Green Gradient & Glassmorphism) -->
-          <button
-            @click="handleResetPlateCheck"
-            class="w-full bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] hover:from-[#1b4d3a] hover:to-[#258f62] text-white font-extrabold text-xs md:text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/10"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
-            <span>PILIH KENDARAAN LAIN</span>
-          </button>
+          <!-- Action Buttons: Primary (Edit Plat) & Secondary (Pilih Kendaraan Lain) -->
+          <div class="space-y-2.5">
+            <button
+              @click="handleEditPlateNumber"
+              class="w-full bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] hover:from-[#1b4d3a] hover:to-[#258f62] text-white font-extrabold text-xs md:text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+              <span>PERBAIKI / UBAH NOMOR PLAT</span>
+            </button>
+
+            <button
+              @click="handleResetVehicleSelection"
+              class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-xs py-2.5 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+              </svg>
+              <span>Pilih Kategori Kendaraan Lain</span>
+            </button>
+          </div>
 
         </div>
       </div>
