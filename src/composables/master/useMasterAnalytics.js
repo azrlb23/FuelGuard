@@ -113,18 +113,45 @@ export function useMasterAnalytics() {
       }
 
       if (data) {
-        kpi.value = data.kpis || kpi.value
+        const rawKpis = data.kpis || data.kpi || {}
+        kpi.value = {
+          totalSales: rawKpis.totalSales ?? rawKpis.total_sales ?? 0,
+          totalVolume: rawKpis.totalVolume ?? rawKpis.total_volume ?? 0,
+          totalTransactions: rawKpis.totalTransactions ?? rawKpis.totalTrx ?? rawKpis.total_trx ?? 0,
+          avgTrxPerDay: rawKpis.avgTrxPerDay ?? rawKpis.avg_trx_per_day ?? 0
+        }
         trendData.value = data.trend || []
 
         const rawLeaderboard = data.leaderboard || []
         const totalLeaderboardSales = rawLeaderboard.reduce((sum, item) => sum + (item.revenue || 0), 0)
-        leaderboard.value = rawLeaderboard.map((item, index) => ({
-          ...item,
-          rank: index + 1,
-          sharePct: totalLeaderboardSales > 0 ? ((item.revenue / totalLeaderboardSales) * 100).toFixed(1) : 0
-        }))
+        
+        leaderboard.value = rawLeaderboard.map((item, index) => {
+          const revenue = item.revenue || 0
+          const share = item.sharePct ?? item.share_pct ?? (totalLeaderboardSales > 0 ? ((revenue / totalLeaderboardSales) * 100).toFixed(1) : 0)
+          return {
+            ...item,
+            spbu_id: item.spbu_id,
+            name: item.name || item.spbu_name || `SPBU #${item.spbu_id}`,
+            revenue: revenue,
+            volume: item.volume || 0,
+            trxCount: item.trxCount ?? item.total_trx ?? item.totalTrx ?? 0,
+            rank: item.rank || index + 1,
+            sharePct: Number(share)
+          }
+        })
 
-        spbuShares.value = data.spbuShares || []
+        if (data.spbuShares && data.spbuShares.length > 0) {
+          spbuShares.value = data.spbuShares
+        } else {
+          spbuShares.value = leaderboard.value
+            .filter(item => (item.revenue || 0) > 0)
+            .map(item => ({
+              spbu_id: item.spbu_id,
+              name: item.name,
+              sales: item.revenue,
+              value: Number(item.sharePct)
+            }))
+        }
       }
       await minLoadingPromise
     } catch (err) {
