@@ -386,7 +386,7 @@ watch(() => form.value.liter, (val) => {
 watch(() => form.value.totalHarga, (val) => {
   if (lastEdited.value !== 'harga') return
   const harga = parseRupiah(val)
-  form.value.liter = harga > 0 ? String((harga / hargaPerLiter.value).toFixed(2)) : ''
+  form.value.liter = harga > 0 ? String(parseFloat((harga / hargaPerLiter.value).toFixed(3))) : ''
 })
 
 const ALLOWED_NUMERIC_KEYS = new Set([
@@ -479,7 +479,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="w-full max-w-lg mx-auto animate-enter relative">
+  <div class="w-full max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto animate-enter relative">
 
     <!-- HEADER BAR -->
     <div class="flex items-center justify-between mb-4 md:mb-6">
@@ -625,9 +625,9 @@ const handleSubmit = async () => {
             @input="onLiterInput"
             @keydown="onLiterKeydown"
             type="number"
-            step="0.01"
+            step="0.001"
             min="0"
-            placeholder="0.00"
+            placeholder="0.000"
             class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-4 py-3 md:py-4 text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all"
           />
         </div>

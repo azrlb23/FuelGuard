@@ -127,7 +127,7 @@ watch(() => authStore.activeKasirId, (newVal) => {
     </header>
 
     <!-- Main View Content Area -->
-    <main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 flex flex-col overflow-y-auto relative hide-scrollbar pb-24 md:pb-8">
+    <main class="flex-1 w-full max-w-[1600px] mx-auto p-3 sm:p-4 md:p-8 flex flex-col overflow-y-auto relative pb-24 md:pb-8">
       <slot></slot>
     </main>
 
