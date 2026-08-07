@@ -120,9 +120,9 @@ const formatPlatNomor = (val) => {
 // Auto-check live ke database (HANYA UPDATE VISUAL TEKS INDIKATOR — TANPA BISA INSERT LOG)
 const checkPlateLive = async (cleaned) => {
   const res = await checkPlateStatus(cleaned, props.vehicleType === 'Ojol')
-  
+
   // Pastikan user tidak mengetik hal lain selagi menunggu
-  if (form.value.plat_nomor.trim() !== cleaned) return 
+  if (form.value.plat_nomor.trim() !== cleaned) return
 
   if (res && res.success) {
     if (res.hasRefueledToday || res.remainingQuota <= 0) {
@@ -147,7 +147,7 @@ const onPlatInput = (e) => {
 
   const cleaned = formatted.trim()
   if (debounceTimeout) clearTimeout(debounceTimeout)
-  
+
   if (!cleaned) {
     platStatus.value = 'idle'
     platMessage.value = ''
@@ -157,7 +157,7 @@ const onPlatInput = (e) => {
   } else {
     platStatus.value = 'validating'
     platMessage.value = 'Sedang mengecek ke database...'
-    
+
     debounceTimeout = setTimeout(() => {
       if (subStep.value === 'check_plate' && form.value.plat_nomor.trim() === cleaned) {
         checkPlateLive(cleaned)
@@ -198,7 +198,7 @@ onMounted(() => {
 const handleCheckPlate = async () => {
   if (checkingPlate.value) return
   if (debounceTimeout) clearTimeout(debounceTimeout)
-  
+
   platTouched.value = true
   const cleaned = form.value.plat_nomor.trim()
 
@@ -493,7 +493,7 @@ const handleSubmit = async () => {
         </svg>
       </button>
       <span class="px-4 py-1.5 rounded-full text-xs md:text-sm font-bold bg-white/10 border border-white/20 text-white tracking-wide shadow-sm">
-        {{ vehicleType === 'Ojol' ? 'Ojol' : 'Biasa' }}
+        {{ vehicleType === 'Ojol' ? 'OJOL' : 'UMUM' }}
       </span>
     </div>
 
@@ -704,17 +704,17 @@ const handleSubmit = async () => {
               <div class="flex justify-between items-center py-1">
                 <span class="text-gray-500 font-medium">Kategori Sesi Ini</span>
                 <span class="font-bold text-gray-800 uppercase">
-                  {{ isOjol ? 'Ojek Online (Ojol)' : vehicleType }}
+                  {{ isOjol ? 'Ojek Online (Ojol)' : 'Umum' }}
                 </span>
               </div>
 
               <div class="flex justify-between items-center py-1 border-t border-gray-200/40">
                 <span class="text-gray-500 font-medium">Kategori Terdaftar Hari Ini</span>
                 <span class="font-bold text-red-600 uppercase">
-                  {{ isOjol ? (vehicleType === 'Motor' ? 'Motor Non-Ojol' : 'Mobil Non-Ojol') : 'Ojek Online (Ojol)' }}
+                  {{ isOjol ? 'Umum' : 'Ojol' }}
                 </span>
               </div>
-              
+
               <div class="pt-2 border-t border-gray-200/40">
                 <p class="text-[11px] text-gray-500 font-medium leading-normal">
                   Kendaraan sudah terdaftar di kategori lain hari ini. Transaksi lintas kategori ditolak.
@@ -730,7 +730,7 @@ const handleSubmit = async () => {
                   {{ refueledInfo.attemptedLiter }} Liter ({{ formatRupiah(refueledInfo.attemptedHarga) }})
                 </span>
               </div>
-              
+
               <div v-if="refueledInfo?.isQuotaExceededTransaction" class="pt-2 pb-1 border-b border-gray-200/50">
                 <div class="bg-red-50 text-red-700 text-[11px] p-2.5 rounded-lg border border-red-100 font-medium leading-relaxed">
                   <span class="font-bold">Peringatan:</span> Nominal pengisian melebihi sisa kuota subsidi kendaraan ini. Transaksi dibatalkan secara otomatis.
