@@ -644,12 +644,7 @@ BEGIN
     INSERT INTO public.repeated_transaction_logs (
       plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, 
       attempted_liter, total_harga_today, reason, created_at
-    ) VALUES (
-<<<<<<< HEAD
-      v_plat_clean, v_spbu_id, p_operator_id, p_is_ojol,
-=======
       v_plat_clean, v_spbu_id, v_operator_id, p_is_ojol,
->>>>>>> cf61fe7bf236da79fd1d3b761ce64a38e48c653c
       p_liter, 0, 'category_mismatch', NOW()
     );
 
@@ -677,17 +672,9 @@ BEGIN
   ORDER BY updated_at DESC NULLS LAST
   LIMIT 1;
 
-  -- [AUDIT FIX #11] Tolak transaksi jika harga belum dikonfigurasi, bukan fallback diam-diam
+  -- [AUDIT FIX #11] Fallback default harga Rp 10.000 jika belum dikonfigurasi
   IF v_harga_per_liter IS NULL OR v_harga_per_liter <= 0 THEN
-<<<<<<< HEAD
-    RETURN json_build_object(
-      'success', false,
-      'reason', 'no_price',
-      'message', 'Harga Pertalite belum dikonfigurasi untuk SPBU ini. Hubungi admin untuk mengatur harga terlebih dahulu.'
-    );
-=======
-    v_harga_per_liter := 10000; -- Default fallback price
->>>>>>> cf61fe7bf236da79fd1d3b761ce64a38e48c653c
+    v_harga_per_liter := 10000;
   END IF;
 
   v_total_harga := p_liter * v_harga_per_liter;

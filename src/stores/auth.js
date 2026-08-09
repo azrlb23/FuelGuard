@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
+import { secureSetItem, secureGetItem } from '@/utils/cryptoStorage'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -16,14 +17,30 @@ export const useAuthStore = defineStore('auth', () => {
   let _initPromise = null
 
   const fetchUserMeta = async () => {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('role, spbu_id')
-      .eq('user_id', (await supabase.auth.getUser()).data.user.id)
-      .single()
+    try {
+      const userRes = await supabase.auth.getUser()
+      const userId = userRes?.data?.user?.id
+      if (!userId) throw new Error('No user id')
 
-    if (error) throw error
-    return data
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role, spbu_id')
+        .eq('user_id', userId)
+        .single()
+
+      if (error) throw error
+      if (data) {
+        secureSetItem('hj_cached_user_meta', data)
+      }
+      return data
+    } catch (err) {
+      console.warn('[fetchUserMeta] Network/auth error, reading cached user meta:', err)
+      const cached = secureGetItem('hj_cached_user_meta')
+      if (cached) {
+        return cached
+      }
+      return { role: 'operator', spbu_id: null }
+    }
   }
 
   const initialize = async () => {
@@ -37,15 +54,17 @@ export const useAuthStore = defineStore('auth', () => {
         if (session) {
           user.value = session.user
           const meta = await fetchUserMeta()
-          role.value = meta.role
-          spbuId.value = meta.spbu_id
+          role.value = meta?.role || null
+          spbuId.value = meta?.spbu_id || null
           
-          if (meta.role === 'operator' && meta.spbu_id) {
+          if (meta?.spbu_id) {
             await fetchKasirList(meta.spbu_id)
           }
         }
-        isInitialized.value = true
+      } catch (err) {
+        console.warn('[auth.initialize] Caught error during auth init:', err)
       } finally {
+        isInitialized.value = true
         isLoading.value = false
         _initPromise = null
       }
@@ -66,13 +85,18 @@ export const useAuthStore = defineStore('auth', () => {
         
       if (error) throw error
       kasirList.value = data || []
+      localStorage.setItem('hj_cache_operators_v1', JSON.stringify(kasirList.value))
       
       // Jika activeKasirId saat ini tidak ada di daftar terbaru, reset
       if (activeKasirId.value && !kasirList.value.find(k => k.id === activeKasirId.value)) {
         setActiveKasir(null)
       }
     } catch (err) {
-      console.error('Failed to fetch kasir list:', err)
+      console.warn('Failed to fetch kasir list from network, fallback to cache:', err)
+      const cached = localStorage.getItem('hj_cache_operators_v1')
+      if (cached) {
+        try { kasirList.value = JSON.parse(cached) } catch (e) {}
+      }
     }
   }
 

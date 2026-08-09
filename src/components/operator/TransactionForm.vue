@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useCameraScanner } from '@/composables/operator/useCameraScanner'
 import { useTransactionAction } from '@/composables/operator/useTransactionAction'
 import { useAudioAlert } from '@/composables/common/useAudioAlert'
+import { validatePlateFormat } from '@/utils/plateValidation'
 
 const props = defineProps({
   vehicleType: { type: String, required: true },
@@ -151,18 +152,21 @@ const onPlatInput = (e) => {
   if (!cleaned) {
     platStatus.value = 'idle'
     platMessage.value = ''
-  } else if (!PLAT_REGEX.test(cleaned)) {
-    platStatus.value = 'invalid'
-    platMessage.value = 'Format tidak valid. Contoh: KT 1234 AB'
   } else {
-    platStatus.value = 'validating'
-    platMessage.value = 'Sedang mengecek ke database...'
-    
-    debounceTimeout = setTimeout(() => {
-      if (subStep.value === 'check_plate' && form.value.plat_nomor.trim() === cleaned) {
-        checkPlateLive(cleaned)
-      }
-    }, 600)
+    const valRes = validatePlateFormat(cleaned)
+    if (!valRes.isValid) {
+      platStatus.value = 'invalid'
+      platMessage.value = valRes.message
+    } else {
+      platStatus.value = 'validating'
+      platMessage.value = 'Sedang mengecek ke database...'
+      
+      debounceTimeout = setTimeout(() => {
+        if (subStep.value === 'check_plate' && form.value.plat_nomor.trim() === cleaned) {
+          checkPlateLive(cleaned)
+        }
+      }, 500)
+    }
   }
 }
 
@@ -205,28 +209,27 @@ const handleCheckPlate = async () => {
   if (!cleaned) {
     platStatus.value = 'invalid'
     platMessage.value = 'Mohon masukkan nomor plat kendaraan'
-    toast.warn('Mohon masukkan nomor plat kendaraan!')
     return
   }
 
-  if (!PLAT_REGEX.test(cleaned)) {
+  const valRes = validatePlateFormat(cleaned)
+  if (!valRes.isValid) {
     platStatus.value = 'invalid'
-    platMessage.value = 'Format plat tidak valid. Contoh: KT 1234 AB'
-    toast.warn('Format plat nomor tidak valid!')
+    platMessage.value = valRes.message
     return
   }
 
-  form.value.plat_nomor = cleaned
+  form.value.plat_nomor = valRes.platClean
   platMessage.value = 'Memproses...'
 
-  const res = await checkPlateStatus(cleaned, props.isOjol)
+  const res = await checkPlateStatus(valRes.platClean, props.isOjol)
 
   if (res && res.success) {
-    form.value.plat_nomor = res.plat
+    form.value.plat_nomor = res.plat || valRes.platClean
 
     if (res.hasRefueledToday || res.remainingQuota <= 0) {
       // 🚨 PENCATATAN EKSPLISIT: Catat log perulangan HANYA saat tombol Enter/Cek Plat ditekan!
-      await recordRepeatedLog(cleaned, props.isOjol, 'quota_exceeded', res.totalHargaToday)
+      await recordRepeatedLog(valRes.platClean, props.isOjol, 'quota_exceeded', res.totalHargaToday)
 
       refueledInfo.value = {
         ...res,
@@ -247,18 +250,17 @@ const handleCheckPlate = async () => {
   } else if (res && !res.success) {
     if (res.reason === 'category_mismatch') {
       // 🚨 PENCATATAN EKSPLISIT: Catat log mismatch HANYA saat tombol Enter/Cek Plat ditekan!
-      await recordRepeatedLog(cleaned, props.isOjol, 'category_mismatch', 0)
+      await recordRepeatedLog(valRes.platClean, props.isOjol, 'category_mismatch', 0)
 
       refueledInfo.value = {
-        plat: cleaned,
+        plat: valRes.platClean,
         isCategoryMismatch: true,
         message: res.message || 'Kendaraan ini sudah terdaftar di kategori lain hari ini!'
       }
       showRefueledModal.value = true
     } else {
       platStatus.value = 'invalid'
-      platMessage.value = res.message || 'Plat nomor tidak terdaftar.'
-      toast.error(res.message || 'Plat nomor ditolak oleh sistem.')
+      platMessage.value = res.message || 'Plat nomor ditolak oleh sistem.'
     }
   }
 }
@@ -424,10 +426,32 @@ const onLiterInput = () => {
   lastEdited.value = 'liter'
 }
 
+const isSubmittingLock = ref(false)
+
 const handleSubmit = async () => {
+  if (isSubmittingLock.value) return
+  isSubmittingLock.value = true
+  setTimeout(() => { isSubmittingLock.value = false }, 300)
+
   const liter = parseFloat(form.value.liter)
   if (!liter || liter <= 0) {
-    toast.warn('Mohon masukkan jumlah liter atau total harga!')
+    platStatus.value = 'invalid'
+    platMessage.value = 'Mohon masukkan jumlah liter atau total harga'
+    return
+  }
+
+  // Batas Maksimal Pengisian sesuai Aturan Database: Umum max 5 Liter (Rp 50k), Ojol max 10 Liter (Rp 100k)
+  const maxLiterLimit = props.isOjol ? 10 : 5
+  if (liter > maxLiterLimit) {
+    playWarningSound()
+    refueledInfo.value = {
+      plat: form.value.plat_nomor,
+      isQuotaExceededTransaction: true,
+      attemptedLiter: liter,
+      attemptedHarga: parseRupiah(form.value.totalHarga),
+      message: `Jumlah pengisian (${liter} Liter) melebihi batas maksimal kategori ${props.isOjol ? 'Motor Ojol' : 'Motor Umum'} (${maxLiterLimit} Liter / Rp ${formatAngka(maxLiterLimit * hargaPerLiter.value)})!`
+    }
+    showRefueledModal.value = true
     return
   }
 
@@ -459,21 +483,16 @@ const handleSubmit = async () => {
   if (res && res.success) {
     playSuccessSound()
     emit('submit', { success: true })
-  } else if (res && (res.reason === 'quota_exceeded' || res.reason === 'already_refueled' || res.reason === 'category_mismatch')) {
+  } else if (res && !res.success) {
     playWarningSound()
-    if (statusRes && statusRes.success) {
-      refueledInfo.value = statusRes
-    } else {
-      refueledInfo.value = {
-        plat: form.value.plat_nomor,
-        isCategoryMismatch: res.reason === 'category_mismatch',
-        countToday: 1,
-        message: res.message || 'Transaksi ditolak oleh sistem!'
-      }
+    refueledInfo.value = {
+      plat: form.value.plat_nomor,
+      isCategoryMismatch: res.reason === 'category_mismatch',
+      isQuotaExceededTransaction: res.reason === 'quota_exceeded' || res.reason === 'already_refueled',
+      countToday: 1,
+      message: res.message || 'Transaksi ditolak oleh sistem!'
     }
     showRefueledModal.value = true
-  } else if (res && !res.success) {
-    toast.error(res.message || 'Gagal memproses transaksi.')
   }
 }
 </script>
@@ -651,9 +670,9 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      <!-- Hint 2 arah -->
-      <p class="text-center text-white/50 text-[11px] -mt-2">
-        Isi salah satu kolom
+      <!-- Hint 2 arah & Limitasi -->
+      <p class="text-center text-white/70 text-xs font-semibold -mt-1">
+        Batas Maksimal {{ props.isOjol ? 'Motor Ojol' : 'Motor Umum' }}: {{ props.isOjol ? '10 Liter (Rp 100.000)' : '5 Liter (Rp 50.000)' }}
       </p>
 
       <!-- Submit Button -->

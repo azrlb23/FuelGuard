@@ -3,6 +3,51 @@ import { supabase } from '@/lib/supabaseClient'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+import { secureSetItem, secureGetItem, secureRemoveItem } from '@/utils/cryptoStorage'
+
+const STORAGE_KEY_DAILY_HISTORY = 'hj_cache_daily_history_v1'
+
+const getTodayStr = () => {
+  try {
+    const formatter = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Makassar' })
+    return formatter.format(new Date())
+  } catch (e) {
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const d = String(now.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+}
+
+const getCachedDailyHistory = (spbuId) => {
+  try {
+    const parsed = secureGetItem(STORAGE_KEY_DAILY_HISTORY)
+    if (!parsed) return []
+    const today = getTodayStr()
+    // Reset otomatis jika pergantian hari (tanggal kemarin) atau beda SPBU
+    if (parsed.cacheDate !== today || parsed.spbuId !== spbuId) {
+      secureRemoveItem(STORAGE_KEY_DAILY_HISTORY)
+      return []
+    }
+    return Array.isArray(parsed.transactions) ? parsed.transactions : []
+  } catch (e) {
+    return []
+  }
+}
+
+const saveDailyHistoryCache = (spbuId, transactionsList) => {
+  try {
+    if (Array.isArray(transactionsList)) {
+      secureSetItem(STORAGE_KEY_DAILY_HISTORY, {
+        cacheDate: getTodayStr(),
+        spbuId: spbuId,
+        transactions: transactionsList
+      })
+    }
+  } catch (e) {}
+}
+
 export function useTransactionHistory(itemsPerPage = 10, options = {}) {
 
   const transactions = ref([])
@@ -32,15 +77,33 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
       let rpcDateFrom = dateFrom.value || ''
       let rpcDateTo = dateTo.value || ''
 
+      const todayStr = getTodayStr()
+
       // If dateFilter is strictly "today" (Operator History default)
       if (options.dateFilter) {
-        const now = new Date()
-        const y = now.getFullYear()
-        const m = String(now.getMonth() + 1).padStart(2, '0')
-        const d = String(now.getDate()).padStart(2, '0')
-        const todayStr = `${y}-${m}-${d}`
         rpcDateFrom = todayStr
         rpcDateTo = todayStr
+      }
+
+      // Offline Fallback: Jika perangkat sedang offline, tampilkan data cache harian dengan filter lokal
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        let cachedList = getCachedDailyHistory(spbuId)
+        if (vehicleFilter.value) {
+          const isOjolTarget = vehicleFilter.value === 'ojol'
+          cachedList = cachedList.filter(t => t.is_ojol === isOjolTarget)
+        }
+        if (searchQuery.value.trim()) {
+          const q = searchQuery.value.trim().toLowerCase()
+          cachedList = cachedList.filter(t => {
+            const platMatch = (t.plat_nomor && t.plat_nomor.toLowerCase().includes(q)) || (t.plat && t.plat.toLowerCase().includes(q))
+            const opMatch = (t.operator_name && t.operator_name.toLowerCase().includes(q)) || (t.nama_operator && t.nama_operator.toLowerCase().includes(q))
+            return platMatch || opMatch
+          })
+        }
+        transactions.value = cachedList
+        totalItems.value = cachedList.length
+        loading.value = false
+        return
       }
 
       const isSearching = !!searchQuery.value.trim()
@@ -67,6 +130,11 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
         if (vehicleFilter.value) {
            const isOjolTarget = vehicleFilter.value === 'ojol'
            filteredTransactions = filteredTransactions.filter(t => t.is_ojol === isOjolTarget)
+        }
+
+        // Cache hasil query harian jika tanpa pencarian
+        if (!isSearching && options.dateFilter) {
+          saveDailyHistoryCache(spbuId, filteredTransactions)
         }
 
         // Multi-field search filtering for plat, operator, spbu, and time (17:54 / 14:30)
@@ -99,7 +167,10 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
         }
       }
     } catch (err) {
-      console.error('Error fetching history:', err.message)
+      console.warn('Error fetching history from network, fallback to daily cache:', err.message)
+      const cachedList = getCachedDailyHistory(spbuId)
+      transactions.value = cachedList
+      totalItems.value = cachedList.length
     } finally {
       loading.value = false
     }
@@ -125,13 +196,9 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
     fetchHistory()
   })
 
-  onUnmounted(() => clearTimeout(searchDebounceTimer))
-
-  watch(() => route.query.q, (newQuery) => {
-    if (newQuery !== undefined) {
-      searchQuery.value = newQuery
-    }
-  })
+  const handleOnlineReconnect = () => {
+    fetchHistory()
+  }
 
   const resetFilters = () => {
     searchQuery.value = ''
@@ -147,7 +214,17 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
     if (route.query.q) {
       searchQuery.value = route.query.q
     }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnlineReconnect)
+    }
     fetchHistory()
+  })
+
+  onUnmounted(() => {
+    clearTimeout(searchDebounceTimer)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', handleOnlineReconnect)
+    }
   })
 
   return {

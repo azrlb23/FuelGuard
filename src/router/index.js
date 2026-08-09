@@ -87,34 +87,43 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
-  const { data: { session } } = await supabase.auth.getSession()
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
 
-  if (to.meta.requiresAuth && !session) {
-    authStore.user = null
-    authStore.role = null
-    return next({ name: 'login' })
-  }
-
-  if (session && !authStore.user) {
-    await authStore.initialize()
-  }
-
-  const userRole = authStore.role
-
-  if (to.meta.requiresAuth) {
-    if (to.meta.role && to.meta.role !== userRole) {
-      if (userRole === 'master') return next({ name: 'master-dashboard' })
-      if (userRole === 'operator') return next({ name: 'operator' })
-
-      await supabase.auth.signOut()
+    if (to.meta.requiresAuth && !session) {
+      authStore.user = null
+      authStore.role = null
       return next({ name: 'login' })
     }
+
+    if (session && !authStore.user) {
+      await authStore.initialize()
+    }
+
+    const userRole = authStore.role
+
+    if (to.meta.requiresAuth) {
+      if (to.meta.role && to.meta.role !== userRole) {
+        if (userRole === 'master') return next({ name: 'master-dashboard' })
+        if (userRole === 'operator') return next({ name: 'operator' })
+
+        if (!navigator.onLine) {
+          return next()
+        }
+
+        await supabase.auth.signOut()
+        return next({ name: 'login' })
+      }
+    }
+
+    if (to.name === 'login' && session) {
+      if (userRole === 'master') return next({ name: 'master-dashboard' })
+      if (userRole === 'operator') return next({ name: 'operator' })
+    }
+  } catch (err) {
+    console.warn('[router.beforeEach] Error in navigation guard during offline mode:', err)
   }
 
-  if (to.name === 'login' && session) {
-    if (userRole === 'master') return next({ name: 'master-dashboard' })
-    if (userRole === 'operator') return next({ name: 'operator' })
-  }
   next()
 })
 
