@@ -46,6 +46,14 @@ const getInitials = (name) => {
   if (!name) return 'A'
   return name.charAt(0).toUpperCase()
 }
+
+const formatReason = (reason) => {
+  if (!reason) return 'Kuota Habis'
+  const r = String(reason).trim().toLowerCase()
+  if (r === 'quota_exceeded' || r === 'quota_excedded') return 'Kuota Habis'
+  if (r === 'category_mismatch') return 'Kategori Salah'
+  return reason
+}
 </script>
 
 <template>
@@ -139,7 +147,7 @@ const getInitials = (name) => {
           <div class="flex items-center justify-between text-[11px] pt-2 border-t border-emerald-900/50">
             <span class="text-emerald-200/60 font-medium">Alasan Ditolak</span>
             <span class="font-extrabold text-red-300 bg-red-950/70 px-2 py-0.5 rounded-md border border-red-700/50 text-[10px]">
-              {{ attempt.reason || attempt.deskripsi || attempt.catatan || 'Kuota Harian Terlampaui' }}
+              {{ formatReason(attempt.reason || attempt.deskripsi || attempt.catatan) }}
             </span>
           </div>
         </div>
@@ -212,7 +220,7 @@ const getInitials = (name) => {
               <!-- ALASAN DITOLAK -->
               <td class="py-3 px-3 text-right whitespace-nowrap">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-extrabold bg-red-500/20 text-red-300 border border-red-500/30">
-                  {{ attempt.reason || attempt.deskripsi || attempt.catatan || 'Kuota Harian Terlampaui' }}
+                  {{ formatReason(attempt.reason || attempt.deskripsi || attempt.catatan) }}
                 </span>
               </td>
             </tr>

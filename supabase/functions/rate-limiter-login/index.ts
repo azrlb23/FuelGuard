@@ -5,14 +5,25 @@ import { Redis } from 'https://esm.sh/@upstash/redis@1.28.4'
 // CORS Headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with, *',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
 }
 
-// [AUDIT FIX #19] Inisialisasi Upstash Redis REST Client (credentials WAJIB dari env vars)
-const redis = new Redis({
-  url: Deno.env.get('UPSTASH_REDIS_REST_URL') ?? '',
-  token: Deno.env.get('UPSTASH_REDIS_REST_TOKEN') ?? '',
-})
+// Helper untuk inisialisasi Upstash Redis secara aman tanpa crash saat Deno boot
+function getRedis() {
+  const url = Deno.env.get('UPSTASH_REDIS_REST_URL')
+  const token = Deno.env.get('UPSTASH_REDIS_REST_TOKEN')
+  if (!url || !token) {
+    console.warn('UPSTASH_REDIS_REST_URL atau UPSTASH_REDIS_REST_TOKEN belum dikonfigurasi di Supabase Secrets.')
+    return null
+  }
+  try {
+    return new Redis({ url, token })
+  } catch (e) {
+    console.error('Gagal inisialisasi Upstash Redis client:', e)
+    return null
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -44,15 +55,19 @@ serve(async (req) => {
     let emailFailedCount = 0
     let ipFailedCount = 0
 
-    try {
-      const [eCount, iCount] = await Promise.all([
-        redis.get<number>(emailKey),
-        redis.get<number>(ipKey)
-      ])
-      emailFailedCount = eCount || 0
-      ipFailedCount = iCount || 0
-    } catch (err) {
-      console.error('Redis read check error:', err)
+    const redis = getRedis()
+
+    if (redis) {
+      try {
+        const [eCount, iCount] = await Promise.all([
+          redis.get<number>(emailKey),
+          redis.get<number>(ipKey)
+        ])
+        emailFailedCount = eCount || 0
+        ipFailedCount = iCount || 0
+      } catch (err) {
+        console.error('Redis read check error:', err)
+      }
     }
 
     // Cek Kunci Berdasarkan Akun (Email) -> Kunci 1 Menit
@@ -101,18 +116,20 @@ serve(async (req) => {
       let newEmailCount = emailFailedCount + 1
       let newIpCount = ipFailedCount + 1
 
-      try {
-        const [eInc, iInc] = await Promise.all([
-          redis.incr(emailKey),
-          redis.incr(ipKey)
-        ])
-        newEmailCount = eInc
-        newIpCount = iInc
+      if (redis) {
+        try {
+          const [eInc, iInc] = await Promise.all([
+            redis.incr(emailKey),
+            redis.incr(ipKey)
+          ])
+          newEmailCount = eInc
+          newIpCount = iInc
 
-        if (newEmailCount === 1) await redis.expire(emailKey, 60)   // TTL Akun: 1 Menit (60 detik)
-        if (newIpCount === 1) await redis.expire(ipKey, 600)        // TTL IP: 10 Menit (600 detik)
-      } catch (err) {
-        console.error('Upstash Redis INCR error:', err)
+          if (newEmailCount === 1) await redis.expire(emailKey, 60)   // TTL Akun: 1 Menit (60 detik)
+          if (newIpCount === 1) await redis.expire(ipKey, 600)        // TTL IP: 10 Menit (600 detik)
+        } catch (err) {
+          console.error('Upstash Redis INCR error:', err)
+        }
       }
 
       const maxCount = Math.max(newEmailCount, newIpCount)
@@ -167,13 +184,15 @@ serve(async (req) => {
     }
 
     // 🟢 LOGIN BERHASIL: Hapus & reset counter kegagalan di Redis untuk Email & IP
-    try {
-      await Promise.all([
-        redis.del(emailKey),
-        redis.del(ipKey)
-      ])
-    } catch (err) {
-      console.error('Failed to reset Redis login counter:', err)
+    if (redis) {
+      try {
+        await Promise.all([
+          redis.del(emailKey),
+          redis.del(ipKey)
+        ])
+      } catch (err) {
+        console.error('Failed to reset Redis login counter:', err)
+      }
     }
 
     return new Response(

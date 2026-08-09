@@ -68,7 +68,7 @@ const menuItems = [
 </script>
 
 <template>
-  <div class="h-screen w-full bg-[#f5f5f5] font-sans text-gray-800 flex flex-col xl:flex-row overflow-hidden relative">
+  <div class="h-screen h-[100dvh] w-full bg-[#f5f5f5] font-sans text-gray-800 flex flex-col xl:flex-row overflow-hidden relative">
 
     <!-- DESKTOP SIDEBAR (xl:flex hidden on < xl) -->
     <aside

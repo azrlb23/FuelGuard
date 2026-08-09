@@ -530,13 +530,14 @@ BEGIN
   );
 END;
 $$;
+REVOKE EXECUTE ON FUNCTION public.fn_check_plate_status(text, boolean, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.fn_check_plate_status(text, boolean, text) TO authenticated;
 
 -- 7.2 RPC: fn_safe_insert_transaction
 CREATE OR REPLACE FUNCTION public.fn_safe_insert_transaction(
   p_plat text,
   p_liter numeric,
-  p_operator_id uuid,
+  p_operator_id uuid DEFAULT NULL,
   p_is_ojol boolean DEFAULT false
 )
 RETURNS json
@@ -546,6 +547,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_spbu_id text;
+  v_operator_id uuid;
   v_plat_clean text;
   v_harga_per_liter numeric;
   v_total_harga numeric;
@@ -556,13 +558,47 @@ DECLARE
   v_first_is_ojol boolean := NULL;
   v_today_start timestamptz;
 BEGIN
-  IF p_operator_id IS NULL THEN
-    RETURN json_build_object('success', false, 'reason', 'no_operator', 'message', 'Operator ID tidak valid.');
+  -- 🔴 SECURITY CHECK 1: Proteksi Akses Tanpa Login (Anon / Unauthenticated)
+  IF auth.uid() IS NULL THEN
+    RETURN json_build_object(
+      'success', false,
+      'reason', 'unauthorized',
+      'message', 'Akses ditolak. Anda harus login terlebih dahulu.'
+    );
   END IF;
 
-  SELECT spbu_id INTO v_spbu_id FROM public.operator_profiles WHERE id = p_operator_id AND is_active = true;
+  -- 🔴 SECURITY CHECK 2: Ambil spbu_id LANGSUNG dari auth.uid() (tabel user_roles)
+  v_spbu_id := public.get_user_spbu_id();
   IF v_spbu_id IS NULL THEN
-    RETURN json_build_object('success', false, 'reason', 'no_spbu', 'message', 'Operator tidak terdaftar atau tidak aktif.');
+    RETURN json_build_object(
+      'success', false,
+      'reason', 'no_spbu',
+      'message', 'Akun Anda tidak terikat dengan unit SPBU manapun.'
+    );
+  END IF;
+
+  -- 🔴 Tentukan operator_id dari auth / operator_profiles SPBU tersebut
+  IF p_operator_id IS NOT NULL THEN
+    SELECT id INTO v_operator_id 
+    FROM public.operator_profiles 
+    WHERE id = p_operator_id AND spbu_id = v_spbu_id AND is_active = true;
+  END IF;
+
+  -- Fallback jika p_operator_id tidak dikirim/tidak valid: gunakan profil operator aktif pertama di SPBU ini
+  IF v_operator_id IS NULL THEN
+    SELECT id INTO v_operator_id 
+    FROM public.operator_profiles 
+    WHERE spbu_id = v_spbu_id AND is_active = true 
+    ORDER BY created_at ASC 
+    LIMIT 1;
+  END IF;
+
+  IF v_operator_id IS NULL THEN
+    RETURN json_build_object(
+      'success', false, 
+      'reason', 'no_operator', 
+      'message', 'Tidak ditemukan profil operator aktif untuk SPBU ini. Buat profil operator terlebih dahulu.'
+    );
   END IF;
 
   v_plat_clean := regexp_replace(UPPER(TRIM(p_plat)), '\s+', ' ', 'g');
@@ -609,7 +645,11 @@ BEGIN
       plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, 
       attempted_liter, total_harga_today, reason, created_at
     ) VALUES (
+<<<<<<< HEAD
       v_plat_clean, v_spbu_id, p_operator_id, p_is_ojol,
+=======
+      v_plat_clean, v_spbu_id, v_operator_id, p_is_ojol,
+>>>>>>> cf61fe7bf236da79fd1d3b761ce64a38e48c653c
       p_liter, 0, 'category_mismatch', NOW()
     );
 
@@ -639,11 +679,15 @@ BEGIN
 
   -- [AUDIT FIX #11] Tolak transaksi jika harga belum dikonfigurasi, bukan fallback diam-diam
   IF v_harga_per_liter IS NULL OR v_harga_per_liter <= 0 THEN
+<<<<<<< HEAD
     RETURN json_build_object(
       'success', false,
       'reason', 'no_price',
       'message', 'Harga Pertalite belum dikonfigurasi untuk SPBU ini. Hubungi admin untuk mengatur harga terlebih dahulu.'
     );
+=======
+    v_harga_per_liter := 10000; -- Default fallback price
+>>>>>>> cf61fe7bf236da79fd1d3b761ce64a38e48c653c
   END IF;
 
   v_total_harga := p_liter * v_harga_per_liter;
@@ -661,7 +705,7 @@ BEGIN
       plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, 
       attempted_liter, total_harga_today, reason, created_at
     ) VALUES (
-      v_plat_clean, v_spbu_id, p_operator_id, p_is_ojol,
+      v_plat_clean, v_spbu_id, v_operator_id, p_is_ojol,
       p_liter, (v_total_harga_today + v_total_harga), 'quota_exceeded', NOW()
     );
 
@@ -678,7 +722,7 @@ BEGIN
   INSERT INTO public.transaksi_pertalite (
     plat_nomor, liter, harga, operator_id, is_ojol, waktu_pencatatan
   ) VALUES (
-    v_plat_clean, p_liter, v_total_harga, p_operator_id, p_is_ojol, NOW()
+    v_plat_clean, p_liter, v_total_harga, v_operator_id, p_is_ojol, NOW()
   )
   RETURNING id INTO v_new_id;
 
@@ -690,6 +734,7 @@ BEGIN
   );
 END;
 $$;
+REVOKE EXECUTE ON FUNCTION public.fn_safe_insert_transaction(text, numeric, uuid, boolean) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.fn_safe_insert_transaction(text, numeric, uuid, boolean) TO authenticated;
 
 -- 7.3 RPC: get_dashboard_summary
@@ -1264,17 +1309,18 @@ BEGIN
     )
   ) INTO v_operators_json FROM operator_details;
 
+  -- Get SPBU authentication accounts list (Hanya Akun Login SPBU Terdaftar)
   WITH account_details AS (
     SELECT 
       ur.user_id,
       ur.spbu_id,
       COALESCE(s.nama, CONCAT('SPBU #', ur.spbu_id)) AS spbu_name,
-      ur.role,
+      COALESCE(ur.role, 'operator') AS role,
       u.email
     FROM public.user_roles ur
     INNER JOIN auth.users u ON u.id = ur.user_id
     LEFT JOIN public.spbu s ON s.id = ur.spbu_id
-    WHERE ur.role = 'operator'
+    WHERE LOWER(COALESCE(ur.role, '')) != 'master'
       AND (COALESCE(p_spbu_id, '') = '' OR ur.spbu_id::text = p_spbu_id)
       AND (COALESCE(p_search, '') = '' OR s.nama ILIKE '%' || p_search || '%' OR COALESCE(u.email, '') ILIKE '%' || p_search || '%')
     ORDER BY ur.spbu_id ASC

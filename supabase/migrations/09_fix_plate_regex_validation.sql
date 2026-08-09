@@ -133,6 +133,7 @@ BEGIN
   );
 END;
 $$;
+REVOKE EXECUTE ON FUNCTION public.fn_check_plate_status(text, boolean, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.fn_check_plate_status(text, boolean, text) TO authenticated;
 
 
@@ -292,4 +293,5 @@ BEGIN
   );
 END;
 $$;
+REVOKE EXECUTE ON FUNCTION public.fn_safe_insert_transaction(text, numeric, uuid, boolean) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.fn_safe_insert_transaction(text, numeric, uuid, boolean) TO authenticated;

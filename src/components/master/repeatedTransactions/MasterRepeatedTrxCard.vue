@@ -123,6 +123,14 @@ const formatDateOnly = (dateString) => {
   })
 }
 
+const formatReason = (reason) => {
+  if (!reason) return 'Kuota Habis'
+  const r = String(reason).trim().toLowerCase()
+  if (r === 'quota_exceeded' || r === 'quota_excedded') return 'Kuota Habis'
+  if (r === 'category_mismatch') return 'Kategori Salah'
+  return reason
+}
+
 const exportToExcel = () => {
   if (!props.repeatedLogs || props.repeatedLogs.length === 0) {
     toast.warn('Tidak ada data transaksi ditolak untuk diekspor.')
@@ -141,7 +149,7 @@ const exportToExcel = () => {
         'Lokasi SPBU': attempt.spbu_nama || 'N/A',
         'Nama Operator': (attempt.operator_nama || 'N/A').toUpperCase(),
         'Kategori': attempt.is_ojol ? 'Ojol' : 'Non Ojol',
-        'Alasan Ditolak': attempt.reason || attempt.deskripsi || attempt.catatan || `Percobaan ke-${attemptNum} (${totalNum}x Transaksi)`
+        'Alasan Ditolak': formatReason(attempt.reason || attempt.deskripsi || attempt.catatan)
       })
     })
   })
