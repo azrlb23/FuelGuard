@@ -202,7 +202,7 @@ const prevPage = () => {
           <tr v-else>
             <td colspan="7" class="py-12 text-center flex flex-col items-center justify-center text-green-100/50">
               <span class="text-4xl mb-2">🍃</span>
-              <span class="italic">Tidak ada riwayat transaksi ditemukan.</span>
+              <span class="italic text-sm">Tidak ada riwayat transaksi ditemukan.</span>
             </td>
           </tr>
         </tbody>

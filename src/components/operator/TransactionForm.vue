@@ -226,6 +226,7 @@ const handleCheckPlate = async () => {
 
   if (res && res.success) {
     form.value.plat_nomor = res.plat || valRes.platClean
+    refueledInfo.value = res
 
     if (res.hasRefueledToday || res.remainingQuota <= 0) {
       // 🚨 PENCATATAN EKSPLISIT: Catat log perulangan HANYA saat tombol Enter/Cek Plat ditekan!
@@ -426,6 +427,37 @@ const onLiterInput = () => {
   lastEdited.value = 'liter'
 }
 
+const selectPresetLiter = (literValue) => {
+  lastEdited.value = 'liter'
+  form.value.liter = String(literValue)
+  form.value.totalHarga = formatAngka(literValue * hargaPerLiter.value)
+}
+
+const selectPresetRupiah = (hargaNominal) => {
+  lastEdited.value = 'harga'
+  form.value.totalHarga = formatAngka(hargaNominal)
+  const liter = (hargaNominal / hargaPerLiter.value).toFixed(2)
+  form.value.liter = String(liter)
+}
+
+const selectPresetFullQuota = () => {
+  let maxLiter = props.isOjol ? 10 : 5
+
+  if (refueledInfo.value && refueledInfo.value.remainingQuota !== undefined) {
+    const rem = refueledInfo.value.remainingQuota
+    if (typeof rem === 'number' && rem > 0) {
+      if (rem <= 100) {
+        maxLiter = Math.min(maxLiter, rem)
+      } else {
+        const remLiter = rem / hargaPerLiter.value
+        maxLiter = Math.min(maxLiter, remLiter)
+      }
+    }
+  }
+
+  selectPresetLiter(maxLiter)
+}
+
 const isSubmittingLock = ref(false)
 
 const handleSubmit = async () => {
@@ -584,7 +616,7 @@ const handleSubmit = async () => {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6 text-[#143d2e]">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
               </svg>
-              <span>CEK PLAT (ENTER)</span>
+              <span>CEK PLAT</span>
             </template>
           </button>
 
@@ -607,31 +639,24 @@ const handleSubmit = async () => {
     <!-- TAHAP 2: INPUT LITER & TRANSAKSI -->
     <form v-else-if="subStep === 'input_liter'" @submit.prevent="handleSubmit" class="space-y-5 animate-enter">
 
-      <!-- Info Plat Terverifikasi -->
+      <!-- Info Plat Nomor -->
       <div class="bg-white/10 border border-white/20 rounded-2xl p-4 flex items-center justify-between shadow-lg">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div>
-            <div class="text-xs text-white/70 font-bold uppercase tracking-wider">Plat Terverifikasi</div>
-            <div class="text-xl font-black text-white tracking-wide">{{ form.plat_nomor }}</div>
-          </div>
-        </div>
+        <div class="text-2xl font-black text-white tracking-wider font-mono">{{ form.plat_nomor }}</div>
 
         <button
           type="button"
           @click="handleBackToPlateCheck"
-          class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 transition-all active:scale-95"
+          class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-sm"
+          title="Ganti Plat Nomor"
         >
-          Ubah Plat
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+          </svg>
         </button>
       </div>
 
-      <!-- Input Liter & Total Harga (2 arah) -->
-      <div class="grid grid-cols-2 gap-3 md:gap-4">
+      <!-- Input Liter & Total Harga (2 arah - Stack atas-bawah di layar kecil) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
         <!-- Kolom Liter -->
         <div class="space-y-1.5">
           <label class="text-green-100 text-xs md:text-sm font-bold ml-1 uppercase flex items-center gap-1">
@@ -647,7 +672,7 @@ const handleSubmit = async () => {
             step="0.01"
             min="0"
             placeholder="0.00"
-            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-4 py-3 md:py-4 text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all"
+            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-4 py-3 md:py-4 text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all no-spinner"
           />
         </div>
 
@@ -670,10 +695,45 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      <!-- Hint 2 arah & Limitasi -->
-      <p class="text-center text-white/70 text-xs font-semibold -mt-1">
-        Batas Maksimal {{ props.isOjol ? 'Motor Ojol' : 'Motor Umum' }}: {{ props.isOjol ? '10 Liter (Rp 100.000)' : '5 Liter (Rp 50.000)' }}
-      </p>
+      <!-- Quick Presets Grid (2x2 di HP & Tablet) -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <button
+          type="button"
+          @click="selectPresetLiter(1)"
+          class="py-3 px-2 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          :class="{ '!bg-white !text-[#143d2e] !border-white shadow-md': parseFloat(form.liter) === 1 }"
+        >
+          1L
+        </button>
+
+        <button
+          type="button"
+          @click="selectPresetLiter(2)"
+          class="py-3 px-2 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          :class="{ '!bg-white !text-[#143d2e] !border-white shadow-md': parseFloat(form.liter) === 2 }"
+        >
+          2L
+        </button>
+
+        <button
+          type="button"
+          @click="selectPresetLiter(4)"
+          class="py-3 px-2 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          :class="{ '!bg-white !text-[#143d2e] !border-white shadow-md': parseFloat(form.liter) === 4 }"
+        >
+          4L
+        </button>
+
+        <button
+          type="button"
+          @click="selectPresetFullQuota"
+          class="py-3 px-2 rounded-2xl bg-emerald-400/20 hover:bg-emerald-400/30 active:bg-emerald-400/40 border border-emerald-400/40 text-emerald-200 font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          :class="{ '!bg-emerald-400 !text-[#143d2e] !border-emerald-300 shadow-md': parseFloat(form.liter) === (props.isOjol ? 10 : 5) }"
+        >
+          FULL
+        </button>
+      </div>
+
 
       <!-- Submit Button -->
       <button
