@@ -427,6 +427,7 @@ DECLARE
   v_last_trx json := NULL;
   v_last_time text := '';
   v_today_start timestamptz;
+  v_history_today json := NULL;
 BEGIN
   v_spbu_id := COALESCE(p_spbu_id, public.get_user_spbu_id());
   v_today_start := date_trunc('day', NOW() AT TIME ZONE 'Asia/Makassar') AT TIME ZONE 'Asia/Makassar';
@@ -512,6 +513,48 @@ BEGIN
     v_last_time := to_char((v_last_trx->>'waktu_pencatatan')::timestamptz AT TIME ZONE 'Asia/Makassar', 'HH24:MI');
   END IF;
 
+  -- Ambil seluruh riwayat transaksi diterima & percobaan ditolak hari ini untuk plat ini
+  SELECT json_agg(h) INTO v_history_today
+  FROM (
+    SELECT 
+      t.waktu_pencatatan AS waktu_raw,
+      to_char(t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar', 'HH24:MI') || ' WITA' AS waktu,
+      COALESCE(op.spbu_id, 'Unknown') AS spbu_id,
+      COALESCE(s.nama, CONCAT('SPBU ', op.spbu_id)) AS spbu_nama,
+      'diterima' AS status,
+      t.liter AS liter,
+      t.harga AS harga,
+      'Pengisian Berhasil' AS reason
+    FROM public.transaksi_pertalite t
+    LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
+    LEFT JOIN public.spbu s ON s.id = op.spbu_id
+    WHERE t.plat_nomor = v_plat_clean
+      AND t.waktu_pencatatan >= v_today_start
+
+    UNION ALL
+
+    SELECT 
+      r.created_at AS waktu_raw,
+      to_char(r.created_at AT TIME ZONE 'Asia/Makassar', 'HH24:MI') || ' WITA' AS waktu,
+      COALESCE(r.attempt_spbu_id, 'Unknown') AS spbu_id,
+      COALESCE(s.nama, CONCAT('SPBU ', r.attempt_spbu_id)) AS spbu_nama,
+      'ditolak' AS status,
+      r.attempted_liter AS liter,
+      r.total_harga_today AS harga,
+      CASE 
+        WHEN r.reason = 'quota_exceeded' THEN 'Kuota Habis'
+        WHEN r.reason = 'category_mismatch' THEN 'Kategori Tidak Sesuai'
+        WHEN r.reason = 'already_refueled' THEN 'Sudah Mengisi Hari Ini'
+        ELSE r.reason
+      END AS reason
+    FROM public.repeated_transaction_logs r
+    LEFT JOIN public.spbu s ON s.id = r.attempt_spbu_id
+    WHERE r.plat_nomor = v_plat_clean
+      AND r.created_at >= v_today_start
+
+    ORDER BY waktu_raw DESC
+  ) h;
+
   -- Mengembalikan baik 'plat' dan 'plat_nomor' untuk kompatibilitas penuh frontend Vue
   RETURN json_build_object(
     'success', true,
@@ -526,7 +569,8 @@ BEGIN
     'is_ojol_locked', (v_first_is_ojol IS NOT NULL),
     'locked_is_ojol', v_first_is_ojol,
     'last_transaction', v_last_trx,
-    'last_time', v_last_time
+    'last_time', v_last_time,
+    'history_today', COALESCE(v_history_today, '[]'::json)
   );
 END;
 $$;

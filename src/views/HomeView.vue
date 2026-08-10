@@ -70,16 +70,16 @@ const handleProcess = async (res) => {
         <template v-else>
           <VehicleSelector v-if="step === 1" @select="handleVehicleSelect" />
 
-      <TransactionForm 
-        v-if="step === 2"
-        :vehicle-type="selectedVehicle"
-        :is-ojol="isOjol"
-        :loading="loading"
-        @submit="handleProcess" 
-        @back="handleBack"
-      />
+          <TransactionForm 
+            v-if="step === 2"
+            :vehicle-type="selectedVehicle"
+            :is-ojol="isOjol"
+            :loading="loading"
+            @submit="handleProcess" 
+            @back="handleBack"
+          />
 
-        <TransactionSuccess v-if="step === 3" @reset="handleReset" />
+          <TransactionSuccess v-if="step === 3" @reset="handleReset" />
         </template>
       </div>
     </div>
