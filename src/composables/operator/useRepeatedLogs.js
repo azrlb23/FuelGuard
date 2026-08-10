@@ -1,7 +1,48 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/stores/auth'
-import { toast } from 'vue3-toastify'
+import { secureSetItem, secureGetItem, secureRemoveItem } from '@/utils/cryptoStorage'
+
+const STORAGE_KEY_PENGETAP = 'hj_cache_pengetap_v1'
+
+const getTodayStr = () => {
+  try {
+    const formatter = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Makassar' })
+    return formatter.format(new Date())
+  } catch (e) {
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const d = String(now.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+}
+
+const getCachedPengetapLogs = (spbuId) => {
+  try {
+    const parsed = secureGetItem(STORAGE_KEY_PENGETAP)
+    if (!parsed) return []
+    if (parsed.cacheDate !== getTodayStr() || (spbuId && parsed.spbuId !== spbuId)) {
+      secureRemoveItem(STORAGE_KEY_PENGETAP)
+      return []
+    }
+    return Array.isArray(parsed.logs) ? parsed.logs : []
+  } catch (e) {
+    return []
+  }
+}
+
+const savePengetapCache = (logsList, spbuId) => {
+  try {
+    if (Array.isArray(logsList)) {
+      secureSetItem(STORAGE_KEY_PENGETAP, {
+        cacheDate: getTodayStr(),
+        spbuId: spbuId,
+        logs: logsList
+      })
+    }
+  } catch (e) {}
+}
 
 export function useRepeatedLogs(itemsPerPage = 50) {
   const logs = ref([])
@@ -18,6 +59,20 @@ export function useRepeatedLogs(itemsPerPage = 50) {
     }
 
     loading.value = true
+
+    // Offline Fallback: Gunakan cache lokal & jalankan client-side search jika offline
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      let cachedList = getCachedPengetapLogs()
+      if (searchQuery.value.trim()) {
+        const q = searchQuery.value.trim().toLowerCase()
+        cachedList = cachedList.filter(l => l.plat_nomor && l.plat_nomor.toLowerCase().includes(q))
+      }
+      logs.value = cachedList
+      totalCount.value = cachedList.length
+      loading.value = false
+      return
+    }
+
     try {
       // Panggil RPC dengan p_spbu_id: null agar Cross-SPBU seluruh log hari ini
       const { data, error } = await supabase.rpc('get_operator_repeated_logs', {
@@ -28,19 +83,27 @@ export function useRepeatedLogs(itemsPerPage = 50) {
       })
 
       if (error) {
-        console.error('[useRepeatedLogs] RPC Error:', error)
-        toast.error('Gagal mengambil data pengetap: ' + error.message)
+        console.warn('[useRepeatedLogs] RPC Error during fetch:', error.message)
         throw error
       }
 
       if (data) {
-        logs.value = data.logs || []
+        const fetchedLogs = data.logs || []
+        logs.value = fetchedLogs
         totalCount.value = data.total_count || 0
+        if (!searchQuery.value.trim()) {
+          savePengetapCache(fetchedLogs)
+        }
       }
     } catch (err) {
-      console.error('[useRepeatedLogs] Exception:', err.message)
-      logs.value = []
-      totalCount.value = 0
+      console.warn('[useRepeatedLogs] Network fetch failed, reading cached logs:', err.message)
+      let cachedList = getCachedPengetapLogs()
+      if (searchQuery.value.trim()) {
+        const q = searchQuery.value.trim().toLowerCase()
+        cachedList = cachedList.filter(l => l.plat_nomor && l.plat_nomor.toLowerCase().includes(q))
+      }
+      logs.value = cachedList
+      totalCount.value = cachedList.length
     } finally {
       loading.value = false
     }
@@ -89,15 +152,9 @@ export function useRepeatedLogs(itemsPerPage = 50) {
     }, 300)
   })
 
-  onUnmounted(() => clearTimeout(searchDebounceTimer))
-
-  watch(currentPage, () => {
+  const handleOnlineReconnect = () => {
     fetchOperatorLogs()
-  })
-
-  watch(() => authStore.user, (newUser) => {
-    if (newUser) fetchOperatorLogs()
-  })
+  }
 
   const resetFilters = () => {
     searchQuery.value = ''
@@ -106,7 +163,17 @@ export function useRepeatedLogs(itemsPerPage = 50) {
   }
 
   onMounted(() => {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnlineReconnect)
+    }
     fetchOperatorLogs()
+  })
+
+  onUnmounted(() => {
+    clearTimeout(searchDebounceTimer)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', handleOnlineReconnect)
+    }
   })
 
   return {

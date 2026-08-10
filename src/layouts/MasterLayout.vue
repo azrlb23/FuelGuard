@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import OfflineBadge from '@/components/common/OfflineBadge.vue'
+import PWAUpdatePrompt from '@/components/common/PWAUpdatePrompt.vue'
 
 const isSidebarOpen = ref(false)
 const isCollapsed = ref(false)
@@ -283,5 +285,8 @@ const menuItems = [
       <slot></slot>
     </main>
 
+    <!-- PWA & Offline Indicators -->
+    <OfflineBadge />
+    <PWAUpdatePrompt />
   </div>
 </template>

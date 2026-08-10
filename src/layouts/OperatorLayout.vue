@@ -4,6 +4,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useRouter, useRoute } from 'vue-router'
 import KasirSelectorModal from '@/components/operator/KasirSelectorModal.vue'
 import { useIdleTimeout } from '@/composables/common/useIdleTimeout'
+import OfflineBadge from '@/components/common/OfflineBadge.vue'
+import PWAUpdatePrompt from '@/components/common/PWAUpdatePrompt.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -198,5 +200,9 @@ watch(() => authStore.activeKasirId, (newVal) => {
       @select="handleSelectKasir"
       @close="showKasirModal = false"
     />
+
+    <!-- PWA & Offline Indicators -->
+    <OfflineBadge />
+    <PWAUpdatePrompt />
   </div>
 </template>

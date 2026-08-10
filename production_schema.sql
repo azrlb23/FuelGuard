@@ -644,7 +644,6 @@ BEGIN
     INSERT INTO public.repeated_transaction_logs (
       plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, 
       attempted_liter, total_harga_today, reason, created_at
-    ) VALUES (
       v_plat_clean, v_spbu_id, v_operator_id, p_is_ojol,
       p_liter, 0, 'category_mismatch', NOW()
     );
@@ -673,8 +672,9 @@ BEGIN
   ORDER BY updated_at DESC NULLS LAST
   LIMIT 1;
 
+  -- [AUDIT FIX #11] Fallback default harga Rp 10.000 jika belum dikonfigurasi
   IF v_harga_per_liter IS NULL OR v_harga_per_liter <= 0 THEN
-    v_harga_per_liter := 10000; -- Default fallback price
+    v_harga_per_liter := 10000;
   END IF;
 
   v_total_harga := p_liter * v_harga_per_liter;
