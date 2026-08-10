@@ -130,48 +130,44 @@ const prevPagePengetap = () => {
     <!-- TAB 1 CONTENT: Riwayat Transaksi Hari Ini -->
     <div 
       v-if="activeTab === 'history'"
-      class="bg-white rounded-3xl border border-gray-100 shadow-xs flex flex-col animate-fade-in"
+      class="flex flex-col gap-4 animate-fade-in"
     >
       <!-- Top Section: Filter Bar -->
-      <div class="p-4 border-b border-gray-100 bg-white">
-        <HistoryHeader 
-          v-model="searchHistory" 
-          v-model:vehicle-filter="vehicleFilter"
-          v-model:date-from="dateFrom"
-          v-model:date-to="dateTo"
-          v-model:sort-field="sortField"
-          v-model:sort-dir="sortDir"
-          @reset="resetHistory"
-        />
-      </div>
+      <HistoryHeader 
+        v-model="searchHistory" 
+        v-model:vehicle-filter="vehicleFilter"
+        v-model:date-from="dateFrom"
+        v-model:date-to="dateTo"
+        v-model:sort-field="sortField"
+        v-model:sort-dir="sortDir"
+        @reset="resetHistory"
+      />
 
-      <!-- Bottom Section: History Table -->
-      <div class="flex-1 p-4 bg-gray-50/50">
-        <HistoryTable 
-          :transactions="transactions"
-          :loading="loadingHistory"
-          :current-page="pageHistory"
-          :total-items="totalHistory"
-          :items-per-page="10"
-          @change-page="(newPage) => pageHistory = newPage"
-        />
-      </div>
+      <!-- Bottom Section: History Table (Deep Green Card) -->
+      <HistoryTable 
+        :transactions="transactions"
+        :loading="loadingHistory"
+        :current-page="pageHistory"
+        :total-items="totalHistory"
+        :items-per-page="10"
+        @change-page="(newPage) => pageHistory = newPage"
+      />
     </div>
 
     <!-- TAB 2 CONTENT: Alert Pengetap Terdeteksi Hari Ini -->
     <div 
       v-else-if="activeTab === 'pengetap'"
-      class="bg-white rounded-3xl border border-gray-100 shadow-xs flex flex-col animate-fade-in"
+      class="flex flex-col gap-4 animate-fade-in"
     >
       <!-- Filter Bar -->
-      <div class="p-4 border-b border-gray-100 bg-white flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
         <!-- Search Input -->
         <div class="relative w-full sm:w-72">
           <input
             v-model="searchPengetap"
             type="text"
             placeholder="Cari Plat, Operator, Jam (21:00), atau Alasan..."
-            class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#143d2e]/15 focus:border-[#143d2e] focus:bg-white transition-all shadow-2xs"
+            class="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#143d2e]/15 focus:border-[#143d2e] transition-all shadow-xs"
           />
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-gray-400 absolute left-3.5 top-2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -188,156 +184,153 @@ const prevPagePengetap = () => {
         </div>
       </div>
 
-      <!-- Accordion Pengetap Section -->
-      <div class="flex-1 p-4 bg-gray-50/40">
-        <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-8 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
-          
-          <!-- Glow decoration -->
-          <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
+      <!-- Accordion Pengetap Section (Deep Green Card) -->
+      <div class="bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-8 shadow-xl shadow-green-900/10 text-white relative overflow-hidden">
+        
+        <!-- Glow decoration -->
+        <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
 
-          <!-- ── SKELETON ── -->
-          <template v-if="loadingPengetap">
-            <div class="space-y-3">
-              <div v-for="n in 4" :key="n" class="bg-white/10 rounded-2xl p-4 animate-pulse flex items-center gap-4">
-                <div class="w-8 h-8 rounded-full bg-white/10 shrink-0"></div>
-                <div class="flex-1 space-y-2">
-                  <div class="h-5 w-32 bg-white/10 rounded"></div>
-                  <div class="h-3 w-48 bg-white/10 rounded"></div>
-                </div>
-                <div class="h-6 w-20 bg-white/10 rounded-full"></div>
+        <!-- ── SKELETON ── -->
+        <template v-if="loadingPengetap">
+          <div class="space-y-3">
+            <div v-for="n in 4" :key="n" class="bg-white/10 rounded-2xl p-4 animate-pulse flex items-center gap-4">
+              <div class="w-8 h-8 rounded-full bg-white/10 shrink-0"></div>
+              <div class="flex-1 space-y-2">
+                <div class="h-5 w-32 bg-white/10 rounded"></div>
+                <div class="h-3 w-48 bg-white/10 rounded"></div>
               </div>
+              <div class="h-6 w-20 bg-white/10 rounded-full"></div>
             </div>
-          </template>
-
-          <!-- ── EMPTY STATE ── -->
-          <div v-else-if="pengetapGrouped.length === 0" class="py-16 text-center text-green-100/50">
-            <span class="text-5xl mb-3 block">🍃</span>
-            <span class="italic text-sm">Tidak ada percobaan pengetap terdeteksi hari ini.</span>
           </div>
+        </template>
 
-          <!-- ── ACCORDION LIST ── -->
-          <div v-else class="space-y-3">
-            <div
-              v-for="group in pengetapGrouped"
-              :key="group.plat_nomor"
-              class="rounded-2xl border border-white/10 overflow-hidden transition-all duration-200"
-              :class="expandedPlates.has(group.plat_nomor) ? 'bg-white/10' : 'bg-black/20 hover:bg-black/30'"
+        <!-- ── EMPTY STATE ── -->
+        <div v-else-if="pengetapGrouped.length === 0" class="py-16 text-center text-green-100/50">
+          <span class="text-5xl mb-3 block">🍃</span>
+          <span class="italic text-sm">Tidak ada percobaan pengetap terdeteksi hari ini.</span>
+        </div>
+
+        <!-- ── ACCORDION LIST ── -->
+        <div v-else class="space-y-3">
+          <div
+            v-for="group in pengetapGrouped"
+            :key="group.plat_nomor"
+            class="rounded-2xl border border-white/10 overflow-hidden transition-all duration-200"
+            :class="expandedPlates.has(group.plat_nomor) ? 'bg-white/10' : 'bg-black/20 hover:bg-black/30'"
+          >
+            <!-- ── HEADER ROW (clickable) ── -->
+            <button
+              type="button"
+              @click="togglePlate(group.plat_nomor)"
+              class="w-full flex items-center justify-between px-3 md:px-5 py-3 md:py-4 text-left cursor-pointer transition-colors gap-2"
             >
-              <!-- ── HEADER ROW (clickable) ── -->
-              <button
-                type="button"
-                @click="togglePlate(group.plat_nomor)"
-                class="w-full flex items-center justify-between px-3 md:px-5 py-3 md:py-4 text-left cursor-pointer transition-colors gap-2"
-              >
-                <!-- Kiri: Plat Nomor & Kategori Badge -->
-                <div class="flex items-center gap-2 min-w-0">
-                  <span class="text-base md:text-xl font-mono font-black text-white tracking-wider whitespace-nowrap">
-                    {{ group.plat_nomor }}
-                  </span>
-                  <span
-                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold bg-white/10 text-white/90 border border-white/15 shrink-0"
-                  >
-                    {{ group.is_ojol ? 'Ojol' : 'Biasa' }}
-                  </span>
-                </div>
-
-                <!-- Kanan: Ikon Alert + Jumlah Percobaan + Chevron -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-200 text-[10px] md:text-xs font-bold shadow-xs">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-red-300">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                    {{ group.attempt_count }}x <span class="hidden sm:inline">Percobaan</span>
-                  </span>
-
-                  <!-- Chevron indicator -->
-                  <div class="shrink-0 w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300"
-                    :class="expandedPlates.has(group.plat_nomor) ? 'rotate-180' : ''">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3 md:w-3.5 md:h-3.5 text-white/80">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                    </svg>
-                  </div>
-                </div>
-              </button>
-
-              <!-- ── EXPANDED DETAIL ROWS ── -->
-              <div v-if="expandedPlates.has(group.plat_nomor)" class="border-t border-white/10">
-                <!-- Sub-header (3 Columns - Desktop) -->
-                <div class="hidden md:grid grid-cols-3 gap-4 px-5 py-2.5 bg-black/20 text-[10px] uppercase tracking-widest text-green-100/50 font-semibold">
-                  <span>Jam (WITA)</span>
-                  <span>Lokasi SPBU</span>
-                  <span class="text-right">Status</span>
-                </div>
-
-                <!-- Individual log entries -->
-                <div
-                  v-for="(entry, idx) in group.entries"
-                  :key="entry.id"
-                  class="px-3 md:px-5 py-2.5 md:py-3 flex flex-col md:grid md:grid-cols-3 gap-1.5 md:gap-4 items-start md:items-center transition-colors hover:bg-white/5"
-                  :class="idx < group.entries.length - 1 ? 'border-b border-white/5' : ''"
+              <!-- Kiri: Plat Nomor & Kategori Badge -->
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-base md:text-xl font-mono font-black text-white tracking-wider whitespace-nowrap">
+                  {{ group.plat_nomor }}
+                </span>
+                <span
+                  class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold bg-white/10 text-white/90 border border-white/15 shrink-0"
                 >
-                  <!-- Line 1 Mobile (Waktu + SPBU In-Line) -->
-                  <div class="flex items-center justify-between w-full md:w-auto">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded bg-white/10 text-white font-mono text-[11px] font-bold border border-white/10">
-                      {{ formatWitaTime(entry.waktu) }} WITA
-                    </span>
+                  {{ group.is_ojol ? 'Ojol' : 'Biasa' }}
+                </span>
+              </div>
 
-                    <div class="flex items-center gap-1 md:hidden">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-green-300 shrink-0">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                      </svg>
-                      <span class="text-[11px] text-green-100 font-bold">SPBU {{ entry.attempt_spbu_id }}</span>
-                    </div>
-                  </div>
+              <!-- Kanan: Ikon Alert + Jumlah Percobaan + Chevron -->
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-200 text-[10px] md:text-xs font-bold shadow-xs">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-red-300">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  {{ group.attempt_count }}x <span class="hidden sm:inline">Percobaan</span>
+                </span>
 
-                  <!-- 2. SPBU (Desktop Only) -->
-                  <div class="hidden md:flex items-center gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-green-300 shrink-0">
+                <!-- Chevron indicator -->
+                <div class="shrink-0 w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300"
+                  :class="expandedPlates.has(group.plat_nomor) ? 'rotate-180' : ''">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3 md:w-3.5 md:h-3.5 text-white/80">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </div>
+              </div>
+            </button>
+
+            <!-- ── EXPANDED DETAIL ROWS ── -->
+            <div v-if="expandedPlates.has(group.plat_nomor)" class="border-t border-white/10">
+              <!-- Sub-header (3 Columns - Desktop) -->
+              <div class="hidden md:grid grid-cols-3 gap-4 px-5 py-2.5 bg-black/20 text-[10px] uppercase tracking-widest text-green-100/50 font-semibold">
+                <span>Jam (WITA)</span>
+                <span>Lokasi SPBU</span>
+                <span class="text-right">Status</span>
+              </div>
+
+              <!-- Individual log entries -->
+              <div
+                v-for="(entry, idx) in group.entries"
+                :key="entry.id"
+                class="px-3 md:px-5 py-2.5 md:py-3 flex flex-col md:grid md:grid-cols-3 gap-1.5 md:gap-4 items-start md:items-center transition-colors hover:bg-white/5"
+                :class="idx < group.entries.length - 1 ? 'border-b border-white/5' : ''"
+              >
+                <!-- Line 1 Mobile (Waktu + SPBU In-Line) -->
+                <div class="flex items-center justify-between w-full md:w-auto">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded bg-white/10 text-white font-mono text-[11px] font-bold border border-white/10">
+                    {{ formatWitaTime(entry.waktu) }} WITA
+                  </span>
+
+                  <div class="flex items-center gap-1 md:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 text-green-300 shrink-0">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                     </svg>
-                    <span class="text-xs text-green-100/90 font-bold">SPBU {{ entry.attempt_spbu_id }}</span>
-                  </div>
-
-                  <!-- 3. Status -->
-                  <div class="w-full md:w-auto md:text-right">
-                    <span class="text-[10px] md:text-xs text-red-300 font-bold bg-red-500/15 px-2 py-0.5 rounded border border-red-500/20 whitespace-nowrap inline-block">
-                      {{ entry.reason === 'category_mismatch' ? 'Ditolak (Beda Kategori)' : 'Ditolak (Kuota Habis)' }}
-                    </span>
+                    <span class="text-[11px] text-green-100 font-bold">SPBU {{ entry.attempt_spbu_id }}</span>
                   </div>
                 </div>
+
+                <!-- 2. SPBU (Desktop Only) -->
+                <div class="hidden md:flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-green-300 shrink-0">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                  </svg>
+                  <span class="text-xs text-green-100/90 font-bold">SPBU {{ entry.attempt_spbu_id }}</span>
+                </div>
+
+                <!-- 3. Status -->
+                <div class="w-full md:w-auto md:text-right">
+                  <span class="text-[10px] md:text-xs text-red-300 font-bold bg-red-500/15 px-2 py-0.5 rounded border border-red-500/20 whitespace-nowrap inline-block">
+                    {{ entry.reason === 'category_mismatch' ? 'Ditolak (Beda Kategori)' : 'Ditolak (Kuota Habis)' }}
+                  </span>
+                </div>
               </div>
-
             </div>
-          </div>
 
-          <!-- ── PAGINATION ── -->
-          <div class="flex flex-col md:flex-row items-center justify-between mt-6 pt-4 border-t border-white/10 gap-4">
-            <span class="text-xs text-green-100/60 order-2 md:order-1">
-              Menampilkan {{ pengetapGrouped.length }} plat unik dari {{ totalPengetap }} total percobaan
-            </span>
-            <div class="flex gap-2 order-1 md:order-2 w-full md:w-auto justify-center">
-              <button
-                @click="prevPagePengetap"
-                :disabled="pagePengetap === 1"
-                class="px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold transition-all flex-1 md:flex-none"
-              >
-                Prev
-              </button>
-              <button
-                @click="nextPagePengetap"
-                :disabled="(pagePengetap * itemsPerPagePengetap) >= totalPengetap"
-                class="px-6 py-2 rounded-full bg-white text-[#143d2e] hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold transition-all shadow-lg flex-1 md:flex-none"
-              >
-                Next
-              </button>
-            </div>
           </div>
-
         </div>
-      </div>
 
+        <!-- ── PAGINATION ── -->
+        <div class="flex flex-col md:flex-row items-center justify-between mt-6 pt-4 border-t border-white/10 gap-4">
+          <span class="text-xs text-green-100/60 order-2 md:order-1">
+            Menampilkan {{ pengetapGrouped.length }} plat unik dari {{ totalPengetap }} total percobaan
+          </span>
+          <div class="flex gap-2 order-1 md:order-2 w-full md:w-auto justify-center">
+            <button
+              @click="prevPagePengetap"
+              :disabled="pagePengetap === 1"
+              class="px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold transition-all flex-1 md:flex-none"
+            >
+              Prev
+            </button>
+            <button
+              @click="nextPagePengetap"
+              :disabled="(pagePengetap * itemsPerPagePengetap) >= totalPengetap"
+              class="px-6 py-2 rounded-full bg-white text-[#143d2e] hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold transition-all shadow-lg flex-1 md:flex-none"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
 
   </div>

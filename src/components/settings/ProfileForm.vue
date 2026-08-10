@@ -22,10 +22,10 @@ const updateProfile = async () => {
     if (error) throw error
 
     authStore.user = data.user
-    
+
     toast.success("Profil berhasil diperbarui!")
   } catch (err) {
-    toast.error("Gagal update profil: " + err.message)
+    toast.error("Gagal update profil.")
   } finally {
     loading.value = false
   }
@@ -47,16 +47,16 @@ const updateProfile = async () => {
     <form @submit.prevent="updateProfile" class="flex flex-col md:flex-row gap-4 items-end">
       <div class="w-full">
         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Lengkap</label>
-        <input 
+        <input
           v-model="fullName"
-          type="text" 
+          type="text"
           placeholder="Nama Anda"
           class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e]"
         />
       </div>
 
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         :disabled="loading"
         class="w-full md:w-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50 flex justify-center items-center"
       >

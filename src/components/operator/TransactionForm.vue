@@ -121,9 +121,9 @@ const formatPlatNomor = (val) => {
 // Auto-check live ke database (HANYA UPDATE VISUAL TEKS INDIKATOR — TANPA BISA INSERT LOG)
 const checkPlateLive = async (cleaned) => {
   const res = await checkPlateStatus(cleaned, props.vehicleType === 'Ojol')
-  
+
   // Pastikan user tidak mengetik hal lain selagi menunggu
-  if (form.value.plat_nomor.trim() !== cleaned) return 
+  if (form.value.plat_nomor.trim() !== cleaned) return
 
   if (res && res.success) {
     if (res.hasRefueledToday || res.remainingQuota <= 0) {
@@ -148,7 +148,7 @@ const onPlatInput = (e) => {
 
   const cleaned = formatted.trim()
   if (debounceTimeout) clearTimeout(debounceTimeout)
-  
+
   if (!cleaned) {
     platStatus.value = 'idle'
     platMessage.value = ''
@@ -160,7 +160,7 @@ const onPlatInput = (e) => {
     } else {
       platStatus.value = 'validating'
       platMessage.value = 'Sedang mengecek ke database...'
-      
+
       debounceTimeout = setTimeout(() => {
         if (subStep.value === 'check_plate' && form.value.plat_nomor.trim() === cleaned) {
           checkPlateLive(cleaned)
@@ -202,7 +202,7 @@ onMounted(() => {
 const handleCheckPlate = async () => {
   if (checkingPlate.value) return
   if (debounceTimeout) clearTimeout(debounceTimeout)
-  
+
   platTouched.value = true
   const cleaned = form.value.plat_nomor.trim()
 
@@ -226,13 +226,26 @@ const handleCheckPlate = async () => {
 
   if (res && res.success) {
     form.value.plat_nomor = res.plat || valRes.platClean
+    refueledInfo.value = res
 
     if (res.hasRefueledToday || res.remainingQuota <= 0) {
       // 🚨 PENCATATAN EKSPLISIT: Catat log perulangan HANYA saat tombol Enter/Cek Plat ditekan!
       await recordRepeatedLog(valRes.platClean, props.isOjol, 'quota_exceeded', res.totalHargaToday)
 
+      const history = res.history_today ? [...res.history_today] : []
+      const nowWita = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') + ' WITA'
+      history.unshift({
+        waktu: nowWita,
+        spbu_id: authStore.spbuId || 'SPBU ini',
+        spbu_nama: 'SPBU ini',
+        status: 'ditolak',
+        liter: 0,
+        reason: 'Kuota Habis'
+      })
+
       refueledInfo.value = {
         ...res,
+        history_today: history,
         isQuotaExceededTransaction: res.remainingQuota <= 0 || res.hasRefueledToday
       }
       showRefueledModal.value = true
@@ -252,8 +265,20 @@ const handleCheckPlate = async () => {
       // 🚨 PENCATATAN EKSPLISIT: Catat log mismatch HANYA saat tombol Enter/Cek Plat ditekan!
       await recordRepeatedLog(valRes.platClean, props.isOjol, 'category_mismatch', 0)
 
+      const history = res.history_today ? [...res.history_today] : []
+      const nowWita = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') + ' WITA'
+      history.unshift({
+        waktu: nowWita,
+        spbu_id: authStore.spbuId || 'SPBU ini',
+        spbu_nama: 'SPBU ini',
+        status: 'ditolak',
+        liter: 0,
+        reason: 'Kategori Tidak Sesuai'
+      })
+
       refueledInfo.value = {
-        plat: valRes.platClean,
+        plat: cleaned,
+        history_today: history,
         isCategoryMismatch: true,
         message: res.message || 'Kendaraan ini sudah terdaftar di kategori lain hari ini!'
       }
@@ -388,7 +413,7 @@ watch(() => form.value.liter, (val) => {
 watch(() => form.value.totalHarga, (val) => {
   if (lastEdited.value !== 'harga') return
   const harga = parseRupiah(val)
-  form.value.liter = harga > 0 ? String((harga / hargaPerLiter.value).toFixed(2)) : ''
+  form.value.liter = harga > 0 ? String(parseFloat((harga / hargaPerLiter.value).toFixed(3))) : ''
 })
 
 const ALLOWED_NUMERIC_KEYS = new Set([
@@ -424,6 +449,37 @@ const onHargaInput = (e) => {
 
 const onLiterInput = () => {
   lastEdited.value = 'liter'
+}
+
+const selectPresetLiter = (literValue) => {
+  lastEdited.value = 'liter'
+  form.value.liter = String(literValue)
+  form.value.totalHarga = formatAngka(literValue * hargaPerLiter.value)
+}
+
+const selectPresetRupiah = (hargaNominal) => {
+  lastEdited.value = 'harga'
+  form.value.totalHarga = formatAngka(hargaNominal)
+  const liter = (hargaNominal / hargaPerLiter.value).toFixed(2)
+  form.value.liter = String(liter)
+}
+
+const selectPresetFullQuota = () => {
+  let maxLiter = props.isOjol ? 10 : 5
+
+  if (refueledInfo.value && refueledInfo.value.remainingQuota !== undefined) {
+    const rem = refueledInfo.value.remainingQuota
+    if (typeof rem === 'number' && rem > 0) {
+      if (rem <= 100) {
+        maxLiter = Math.min(maxLiter, rem)
+      } else {
+        const remLiter = rem / hargaPerLiter.value
+        maxLiter = Math.min(maxLiter, remLiter)
+      }
+    }
+  }
+
+  selectPresetLiter(maxLiter)
 }
 
 const isSubmittingLock = ref(false)
@@ -498,7 +554,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="w-full max-w-lg mx-auto animate-enter relative">
+  <div class="w-full max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto animate-enter relative">
 
     <!-- HEADER BAR -->
     <div class="flex items-center justify-between mb-4 md:mb-6">
@@ -512,7 +568,7 @@ const handleSubmit = async () => {
         </svg>
       </button>
       <span class="px-4 py-1.5 rounded-full text-xs md:text-sm font-bold bg-white/10 border border-white/20 text-white tracking-wide shadow-sm">
-        {{ vehicleType === 'Ojol' ? 'Ojol' : 'Biasa' }}
+        {{ vehicleType === 'Ojol' ? 'OJOL' : 'UMUM' }}
       </span>
     </div>
 
@@ -584,7 +640,7 @@ const handleSubmit = async () => {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6 text-[#143d2e]">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
               </svg>
-              <span>CEK PLAT (ENTER)</span>
+              <span>CEK PLAT</span>
             </template>
           </button>
 
@@ -607,31 +663,24 @@ const handleSubmit = async () => {
     <!-- TAHAP 2: INPUT LITER & TRANSAKSI -->
     <form v-else-if="subStep === 'input_liter'" @submit.prevent="handleSubmit" class="space-y-5 animate-enter">
 
-      <!-- Info Plat Terverifikasi -->
+      <!-- Info Plat Nomor -->
       <div class="bg-white/10 border border-white/20 rounded-2xl p-4 flex items-center justify-between shadow-lg">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div>
-            <div class="text-xs text-white/70 font-bold uppercase tracking-wider">Plat Terverifikasi</div>
-            <div class="text-xl font-black text-white tracking-wide">{{ form.plat_nomor }}</div>
-          </div>
-        </div>
+        <div class="text-2xl font-black text-white tracking-wider font-mono">{{ form.plat_nomor }}</div>
 
         <button
           type="button"
           @click="handleBackToPlateCheck"
-          class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/20 transition-all active:scale-95"
+          class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-sm"
+          title="Ganti Plat Nomor"
         >
-          Ubah Plat
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+          </svg>
         </button>
       </div>
 
-      <!-- Input Liter & Total Harga (2 arah) -->
-      <div class="grid grid-cols-2 gap-3 md:gap-4">
+      <!-- Input Liter & Total Harga (2 arah - Stack atas-bawah di layar kecil) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
         <!-- Kolom Liter -->
         <div class="space-y-1.5">
           <label class="text-green-100 text-xs md:text-sm font-bold ml-1 uppercase flex items-center gap-1">
@@ -644,10 +693,10 @@ const handleSubmit = async () => {
             @input="onLiterInput"
             @keydown="onLiterKeydown"
             type="number"
-            step="0.01"
+            step="0.001"
             min="0"
-            placeholder="0.00"
-            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-4 py-3 md:py-4 text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all"
+            placeholder="0.000"
+            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-4 py-3 md:py-4 text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all no-spinner"
           />
         </div>
 
@@ -670,10 +719,45 @@ const handleSubmit = async () => {
         </div>
       </div>
 
-      <!-- Hint 2 arah & Limitasi -->
-      <p class="text-center text-white/70 text-xs font-semibold -mt-1">
-        Batas Maksimal {{ props.isOjol ? 'Motor Ojol' : 'Motor Umum' }}: {{ props.isOjol ? '10 Liter (Rp 100.000)' : '5 Liter (Rp 50.000)' }}
-      </p>
+      <!-- Quick Presets Grid (2x2 di HP & Tablet) -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <button
+          type="button"
+          @click="selectPresetLiter(1)"
+          class="py-3 px-2 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          :class="{ '!bg-white !text-[#143d2e] !border-white shadow-md': parseFloat(form.liter) === 1 }"
+        >
+          1L
+        </button>
+
+        <button
+          type="button"
+          @click="selectPresetLiter(2)"
+          class="py-3 px-2 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          :class="{ '!bg-white !text-[#143d2e] !border-white shadow-md': parseFloat(form.liter) === 2 }"
+        >
+          2L
+        </button>
+
+        <button
+          type="button"
+          @click="selectPresetLiter(4)"
+          class="py-3 px-2 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          :class="{ '!bg-white !text-[#143d2e] !border-white shadow-md': parseFloat(form.liter) === 4 }"
+        >
+          4L
+        </button>
+
+        <button
+          type="button"
+          @click="selectPresetFullQuota"
+          class="py-3 px-2 rounded-2xl bg-emerald-400/20 hover:bg-emerald-400/30 active:bg-emerald-400/40 border border-emerald-400/40 text-emerald-200 font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          :class="{ '!bg-emerald-400 !text-[#143d2e] !border-emerald-300 shadow-md': parseFloat(form.liter) === (props.isOjol ? 10 : 5) }"
+        >
+          FULL
+        </button>
+      </div>
+
 
       <!-- Submit Button -->
       <button
@@ -688,138 +772,181 @@ const handleSubmit = async () => {
 
     <!-- MODAL POPUP KENDARAAN SUDAH MENGISI (STRICT GREEN & WHITE UI) -->
     <Teleport to="body">
-      <div v-if="showRefueledModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-enter">
-        <div class="bg-white rounded-3xl max-w-sm md:max-w-md w-full p-6 text-slate-800 shadow-xl border border-gray-100 flex flex-col relative overflow-hidden">
+      <div v-if="showRefueledModal" class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-enter">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm md:max-w-md w-full text-slate-800 shadow-xl border border-gray-100 flex flex-col relative overflow-hidden max-h-[92dvh] sm:max-h-[88dvh] sm:mx-4">
 
-          <!-- Header Section -->
-          <div class="flex items-start gap-3.5 mb-4">
-            <div class="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-            </div>
-            <div>
-              <span class="inline-block text-[10px] font-bold text-red-600 uppercase tracking-wide mb-0.5">
-                {{ refueledInfo?.isQuotaExceededTransaction ? 'Kelebihan Kuota Subsidi' : (refueledInfo?.isCategoryMismatch ? 'Pelanggaran Kategori' : 'Peringatan Transaksi') }}
-              </span>
-              <h3 class="text-base md:text-lg font-extrabold text-[#143d2e] tracking-tight leading-tight">
-                {{ refueledInfo?.isQuotaExceededTransaction ? 'Melebihi Kuota Subsidi' : (refueledInfo?.isCategoryMismatch ? 'Kategori Tidak Sesuai' : 'Melebihi batas pengisian') }}
-              </h3>
-            </div>
-          </div>
+          <!-- Scrollable content area -->
+          <div class="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
 
-          <!-- Details Card (Clean Minimalist List) -->
-          <div class="bg-gray-50/70 rounded-2xl p-4 text-xs space-y-2.5 mb-5 border border-gray-100">
-            <!-- Plat -->
-            <div class="flex justify-between items-center pb-2 border-b border-gray-200/50">
-              <span class="text-gray-400 font-medium uppercase text-[10px] tracking-wider">Nomor Polisi</span>
-              <span class="font-mono font-black text-gray-900 text-sm tracking-wider">
-                {{ refueledInfo?.plat }}
-              </span>
+            <!-- Drag handle (mobile only) -->
+            <div class="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden"></div>
+
+            <!-- Header Section -->
+            <div class="flex items-start gap-3.5 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div>
+                <span class="inline-block text-[10px] font-bold text-red-600 uppercase tracking-wide mb-0.5">
+                  {{ refueledInfo?.isQuotaExceededTransaction ? 'Kelebihan Kuota Subsidi' : (refueledInfo?.isCategoryMismatch ? 'Pelanggaran Kategori' : 'Peringatan Transaksi') }}
+                </span>
+                <h3 class="text-base md:text-lg font-extrabold text-[#143d2e] tracking-tight leading-tight">
+                  {{ refueledInfo?.isQuotaExceededTransaction ? 'Melebihi Kuota Subsidi' : (refueledInfo?.isCategoryMismatch ? 'Kategori Tidak Sesuai' : 'Melebihi batas pengisian') }}
+                </h3>
+              </div>
             </div>
 
-            <!-- Detail Pelanggaran Kategori (Sangat Minimalis & Elegan) -->
-            <template v-if="refueledInfo?.isCategoryMismatch">
-              <div class="flex justify-between items-center py-1">
-                <span class="text-gray-500 font-medium">Kategori Sesi Ini</span>
-                <span class="font-bold text-gray-800 uppercase">
-                  {{ isOjol ? 'Ojek Online (Ojol)' : vehicleType }}
+            <!-- Details Card (Clean Minimalist List) -->
+            <div class="bg-gray-50/70 rounded-2xl p-4 text-xs space-y-2.5 border border-gray-100">
+              <!-- Plat -->
+              <div class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+                <span class="text-gray-900 font-semibold uppercase text-[10px] tracking-wider">NOMOR POLISI</span>
+                <span class="font-mono font-black text-gray-900 text-sm tracking-wider">
+                  {{ refueledInfo?.plat }}
                 </span>
               </div>
 
-              <div class="flex justify-between items-center py-1 border-t border-gray-200/40">
-                <span class="text-gray-500 font-medium">Kategori Terdaftar Hari Ini</span>
-                <span class="font-bold text-red-600 uppercase">
-                  {{ isOjol ? (vehicleType === 'Motor' ? 'Motor Non-Ojol' : 'Mobil Non-Ojol') : 'Ojek Online (Ojol)' }}
-                </span>
-              </div>
-              
-              <div class="pt-2 border-t border-gray-200/40">
-                <p class="text-[11px] text-gray-500 font-medium leading-normal">
-                  Kendaraan sudah terdaftar di kategori lain hari ini. Transaksi lintas kategori ditolak.
-                </p>
-              </div>
-            </template>
-
-            <!-- Percobaan Pengisian (Jika Melebihi Kuota) -->
-            <template v-else-if="refueledInfo?.attemptedLiter">
-              <div class="flex justify-between items-center py-1 border-b border-gray-200/50">
-                <span class="text-gray-500 font-medium">Input Transaksi</span>
-                <span class="font-bold text-red-600">
-                  {{ refueledInfo.attemptedLiter }} Liter ({{ formatRupiah(refueledInfo.attemptedHarga) }})
-                </span>
-              </div>
-              
-              <div v-if="refueledInfo?.isQuotaExceededTransaction" class="pt-2 pb-1 border-b border-gray-200/50">
-                <div class="bg-red-50 text-red-700 text-[11px] p-2.5 rounded-lg border border-red-100 font-medium leading-relaxed">
-                  <span class="font-bold">Peringatan:</span> Nominal pengisian melebihi sisa kuota subsidi kendaraan ini. Transaksi dibatalkan secara otomatis.
+              <!-- Detail Pelanggaran Kategori (Sangat Minimalis & Elegan) -->
+              <template v-if="refueledInfo?.isCategoryMismatch">
+                <div class="flex justify-between items-center py-1">
+                  <span class="text-gray-900 font-semibold">Kategori Sesi Ini</span>
+                  <span class="font-semibold text-gray-900 uppercase">
+                    {{ isOjol ? 'Ojek Online (Ojol)' : 'Umum' }}
+                  </span>
                 </div>
-              </div>
-            </template>
 
-            <template v-if="!refueledInfo?.isCategoryMismatch">
-              <!-- Total Terisi -->
-              <div v-if="refueledInfo?.totalHargaToday !== undefined || refueledInfo?.totalLiterToday !== undefined" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
-                <span class="text-gray-500 font-medium">Total Terisi Hari Ini</span>
-                <span class="font-bold text-[#143d2e]">
-                  <template v-if="refueledInfo?.totalHargaToday !== undefined">
-                    {{ formatRupiah(refueledInfo.totalHargaToday) }}
-                  </template>
-                  <template v-else-if="refueledInfo?.totalLiterToday !== undefined">
-                    {{ refueledInfo.totalLiterToday }} Liter
-                  </template>
-                </span>
-              </div>
+                <div class="flex justify-between items-center py-1 border-t border-gray-200/40">
+                  <span class="text-gray-900 font-semibold">Kategori Terdaftar Hari Ini</span>
+                  <span class="font-bold text-red-600 uppercase">
+                    {{ isOjol ? 'Umum' : 'Ojol' }}
+                  </span>
+                </div>
 
-              <!-- Sisa Kuota -->
-              <div v-if="refueledInfo?.remainingQuota !== undefined" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
-                <span class="text-gray-500 font-medium">
-                  {{ refueledInfo?.hasRefueledToday ? 'Sisa Kuota Hari Ini' : 'Kuota Hari Ini' }}
-                </span>
-                <span class="font-black text-red-600">
-                  <template v-if="typeof refueledInfo?.remainingQuota === 'number'">
-                    <template v-if="refueledInfo.remainingQuota > 100">
-                      {{ formatRupiah(refueledInfo.remainingQuota) }}
+                <div class="pt-2 border-t border-gray-200/40">
+                  <p class="text-[11px] text-gray-900 font-semibold leading-normal">
+                    Kendaraan sudah terdaftar di kategori lain hari ini. Transaksi lintas kategori ditolak.
+                  </p>
+                </div>
+              </template>
+
+              <!-- Percobaan Pengisian (Jika Melebihi Kuota) -->
+              <template v-else-if="refueledInfo?.attemptedLiter">
+                <div class="flex justify-between items-center py-1 border-b border-gray-200/50">
+                  <span class="text-gray-900 font-semibold">Input Transaksi</span>
+                  <span class="font-bold text-red-600">
+                    {{ refueledInfo.attemptedLiter }} Liter ({{ formatRupiah(refueledInfo.attemptedHarga) }})
+                  </span>
+                </div>
+
+                <div v-if="refueledInfo?.isQuotaExceededTransaction" class="pt-2 pb-1 border-b border-gray-200/50">
+                  <div class="bg-red-50 text-red-700 text-[11px] p-2.5 rounded-lg border border-red-100 font-semibold leading-relaxed">
+                    <span class="font-bold">Peringatan:</span> Nominal pengisian melebihi sisa kuota subsidi kendaraan ini. Transaksi dibatalkan secara otomatis.
+                  </div>
+                </div>
+              </template>
+
+              <template v-if="!refueledInfo?.isCategoryMismatch">
+                <!-- Total Terisi -->
+                <div v-if="refueledInfo?.totalHargaToday !== undefined || refueledInfo?.totalLiterToday !== undefined" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+                  <span class="text-gray-900 font-semibold">Total Terisi Hari Ini</span>
+                  <span class="font-semibold text-gray-900">
+                    <template v-if="refueledInfo?.totalHargaToday !== undefined">
+                      {{ formatRupiah(refueledInfo.totalHargaToday) }}
                     </template>
-                    <template v-else-if="refueledInfo.remainingQuota === 0">
-                      Rp 0 (Habis)
+                    <template v-else-if="refueledInfo?.totalLiterToday !== undefined">
+                      {{ refueledInfo.totalLiterToday }} Liter
+                    </template>
+                  </span>
+                </div>
+
+                <!-- Sisa Kuota -->
+                <div v-if="refueledInfo?.remainingQuota !== undefined" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+                  <span class="text-gray-900 font-semibold">
+                    {{ refueledInfo?.hasRefueledToday ? 'Sisa Kuota Hari Ini' : 'Kuota Hari Ini' }}
+                  </span>
+                  <span class="font-black text-red-600">
+                    <template v-if="typeof refueledInfo?.remainingQuota === 'number'">
+                      <template v-if="refueledInfo.remainingQuota > 100">
+                        {{ formatRupiah(refueledInfo.remainingQuota) }}
+                      </template>
+                      <template v-else-if="refueledInfo.remainingQuota === 0">
+                        Rp 0 (Habis)
+                      </template>
+                      <template v-else>
+                        {{ refueledInfo.remainingQuota }} Liter
+                      </template>
                     </template>
                     <template v-else>
-                      {{ refueledInfo.remainingQuota }} Liter
+                      {{ refueledInfo.remainingQuota }}
                     </template>
-                  </template>
-                  <template v-else>
-                    {{ refueledInfo.remainingQuota }}
-                  </template>
-                </span>
-              </div>
+                  </span>
+                </div>
 
-              <!-- Pengisian Terakhir -->
-              <div v-if="refueledInfo?.lastTransaction" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
-                <span class="text-gray-500 font-medium">Pengisian Terakhir</span>
-                <span class="font-semibold text-gray-800">{{ refueledInfo?.lastTransaction?.liter }} Liter ({{ formatRupiah(refueledInfo?.lastTransaction?.harga) }})</span>
-              </div>
+                <!-- Pengisian Terakhir -->
+                <div v-if="refueledInfo?.lastTransaction" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+                  <span class="text-gray-900 font-semibold">Pengisian Terakhir</span>
+                  <span class="font-semibold text-gray-900">{{ refueledInfo?.lastTransaction?.liter }} Liter ({{ formatRupiah(refueledInfo?.lastTransaction?.harga) }})</span>
+                </div>
 
-              <!-- Waktu Terakhir -->
-              <div v-if="refueledInfo?.lastTransaction?.waktu_pencatatan || refueledInfo?.timeFormatted" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
-                <span class="text-gray-500 font-medium">Waktu Terakhir</span>
-                <span class="font-semibold text-gray-800">
-                  {{ formatWitaTime(refueledInfo?.timeFormatted, refueledInfo?.lastTransaction?.waktu_pencatatan) }} WITA
-                </span>
-              </div>
+                <!-- Waktu Terakhir -->
+                <div v-if="refueledInfo?.lastTransaction?.waktu_pencatatan || refueledInfo?.timeFormatted" class="flex justify-between items-center pb-2 border-b border-gray-200/50">
+                  <span class="text-gray-900 font-semibold">Waktu Terakhir</span>
+                  <span class="font-semibold text-gray-900">
+                    {{ formatWitaTime(refueledInfo?.timeFormatted, refueledInfo?.lastTransaction?.waktu_pencatatan) }} WITA
+                  </span>
+                </div>
 
-              <!-- SPBU Pengisian -->
-              <div v-if="refueledInfo?.lastTransaction?.spbu_nama || refueledInfo?.lastTransaction?.spbu_id" class="flex justify-between items-center">
-                <span class="text-gray-500 font-medium">SPBU Pengisian</span>
-                <span class="font-bold text-[#143d2e]">
-                  {{ refueledInfo?.lastTransaction?.spbu_nama || ('SPBU ' + refueledInfo?.lastTransaction?.spbu_id) }}
-                </span>
+                <!-- SPBU Pengisian -->
+                <div v-if="refueledInfo?.lastTransaction?.spbu_nama || refueledInfo?.lastTransaction?.spbu_id" class="flex justify-between items-center">
+                  <span class="text-gray-900 font-semibold">SPBU Pengisian</span>
+                  <span class="font-semibold text-gray-900">
+                    {{ refueledInfo?.lastTransaction?.spbu_nama || ('SPBU ' + refueledInfo?.lastTransaction?.spbu_id) }}
+                  </span>
+                </div>
+              </template>
+
+              <!-- Riwayat Pengisian & Percobaan Hari Ini -->
+              <div v-if="refueledInfo?.history_today && refueledInfo.history_today.length > 0" class="pt-3 border-t border-gray-100">
+                <div class="text-[11px] font-semibold text-gray-900 uppercase tracking-widest mb-2.5 flex items-center justify-between">
+                  <span>RIWAYAT PENGISIAN HARI INI</span>
+                  <div class="flex items-center gap-1 text-[10px] font-semibold text-gray-900">
+                    <span>{{ refueledInfo.history_today.length }} AKTIVITAS</span>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <div
+                    v-for="(item, idx) in refueledInfo.history_today"
+                    :key="idx"
+                    class="flex items-center justify-between min-h-[40px] px-3.5 py-2 rounded-2xl border text-xs text-white transition-all shadow-sm"
+                    :class="item.status === 'diterima' ? 'bg-[#143d2e] border-[#143d2e]' : 'bg-red-600 border-red-600'"
+                  >
+                    <div class="flex items-center gap-1.5 text-[11px] leading-none truncate text-white">
+                      <span class="font-mono font-extrabold shrink-0 text-white/90 leading-none">{{ item.waktu }}</span>
+                      <span class="text-white/40 leading-none">·</span>
+                      <span class="font-black truncate text-white leading-none" :title="item.spbu_nama || item.spbu_id">
+                        {{ item.spbu_id ? (item.spbu_id.length > 12 ? 'SPBU ' + item.spbu_id.slice(0, 10) + '...' : item.spbu_id) : item.spbu_nama }}
+                      </span>
+                    </div>
+                    <div class="shrink-0 font-black text-[11px] text-right ml-2 text-white flex items-center leading-none">
+                      <template v-if="item.status === 'diterima'">
+                        <span class="font-black text-white leading-none">Diterima ({{ item.liter }} L)</span>
+                      </template>
+                      <template v-else>
+                        <span class="font-black text-white leading-none">Ditolak ({{ item.reason || 'Ditolak' }})</span>
+                      </template>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </template>
+            </div>
+
           </div>
 
-          <!-- Action Buttons: Primary (Edit Plat) & Secondary (Pilih Kendaraan Lain) -->
-          <div class="space-y-2.5">
+          <!-- Action Buttons: pinned at bottom, always visible -->
+          <div class="shrink-0 px-4 sm:px-6 pt-3 pb-5 space-y-2.5 border-t border-gray-100 bg-white">
             <button
               @click="handleEditPlateNumber"
               class="w-full bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] hover:from-[#1b4d3a] hover:to-[#258f62] text-white font-extrabold text-xs md:text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/10"

@@ -82,11 +82,13 @@ export function useMasterHistory(itemsPerPage = 10) {
         let list = data.transactions || []
         if (isSearching) {
           const q = searchQuery.value.trim().toLowerCase()
+          const normalizePlat = (s) => (s || '').replace(/\s+/g, '').toLowerCase()
           list = list.filter(trx => {
-            const platMatch = trx.plat_nomor && trx.plat_nomor.toLowerCase().includes(q)
+            const platMatch = normalizePlat(trx.plat_nomor).includes(normalizePlat(q))
             const opMatch = (trx.operator_name && trx.operator_name.toLowerCase().includes(q)) || 
                             (trx.nama_operator && trx.nama_operator.toLowerCase().includes(q))
-            const spbuMatch = (trx.spbu_name && trx.spbu_name.toLowerCase().includes(q)) ||
+            const spbuMatch = (trx.spbu_nama && trx.spbu_nama.toLowerCase().includes(q)) ||
+                              (trx.spbu_name && trx.spbu_name.toLowerCase().includes(q)) ||
                               (trx.spbu_id && String(trx.spbu_id).toLowerCase().includes(q))
             let timeMatch = false
             if (trx.waktu_pencatatan) {
@@ -199,7 +201,7 @@ export function useMasterHistory(itemsPerPage = 10) {
           'No': idx + 1,
           'Tanggal': dateStr,
           'Waktu': timeStr,
-          'SPBU': trx.spbu_name || `SPBU #${trx.spbu_id}`,
+          'SPBU': trx.spbu_nama || trx.spbu_name || `SPBU #${trx.spbu_id}`,
           'Operator': trx.operator_name || '-',
           'Kategori': trx.is_ojol ? 'Ojol' : 'Umum',
           'Plat Nomor': trx.plat_nomor,

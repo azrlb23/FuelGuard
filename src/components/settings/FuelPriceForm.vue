@@ -62,7 +62,8 @@ const savePrice = async () => {
     }
     toast.success("Harga Pertalite berhasil diperbarui & tersinkronisasi ke Operator!")
   } catch (err) {
-    toast.error("Gagal menyimpan harga: " + err.message)
+    console.error("Gagal menyimpan harga:", err)
+    toast.error("Gagal menyimpan harga.")
   } finally {
     loading.value = false
   }

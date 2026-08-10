@@ -48,15 +48,15 @@ const handleProcess = async (res) => {
 </script>
 
 <template>
-  <div class="flex-1 h-full flex flex-col items-center justify-center w-full gap-6 animate-enter">
+  <div class="flex-1 my-auto flex flex-col items-center justify-center w-full gap-4 sm:gap-6 animate-enter">
     
-    <div class="w-full max-w-2xl bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[1.5rem] md:rounded-[2.5rem] p-5 md:p-8 text-white shadow-2xl relative overflow-hidden min-h-[350px] flex flex-col justify-center transition-all duration-300">
+    <div class="w-full max-w-2xl bg-gradient-to-br from-[#143d2e] to-[#1e5c45] rounded-[1.5rem] md:rounded-[2.5rem] p-4 sm:p-5 md:p-8 text-white shadow-2xl relative overflow-y-auto hide-scrollbar transition-all duration-300">
       
       <div class="absolute top-0 right-0 w-60 h-60 bg-white/5 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
 
 
 
-      <div class="mt-12 md:mt-10 flex-1 flex flex-col justify-center">
+      <div class="w-full flex-1 flex flex-col justify-center">
         <div v-if="!authStore.activeKasirId" class="text-center animate-enter">
           <div class="w-16 h-16 md:w-20 md:h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 md:w-10 md:h-10 text-white/50">
@@ -70,16 +70,16 @@ const handleProcess = async (res) => {
         <template v-else>
           <VehicleSelector v-if="step === 1" @select="handleVehicleSelect" />
 
-      <TransactionForm 
-        v-if="step === 2"
-        :vehicle-type="selectedVehicle"
-        :is-ojol="isOjol"
-        :loading="loading"
-        @submit="handleProcess" 
-        @back="handleBack"
-      />
+          <TransactionForm 
+            v-if="step === 2"
+            :vehicle-type="selectedVehicle"
+            :is-ojol="isOjol"
+            :loading="loading"
+            @submit="handleProcess" 
+            @back="handleBack"
+          />
 
-        <TransactionSuccess v-if="step === 3" @reset="handleReset" />
+          <TransactionSuccess v-if="step === 3" @reset="handleReset" />
         </template>
       </div>
     </div>

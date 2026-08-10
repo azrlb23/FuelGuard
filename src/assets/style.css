@@ -8,9 +8,11 @@ html, body, #app {
   width: 100%;
   margin: 0;
   padding: 0;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
-button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"] {
+button, input, select, textarea, [role="button"] {
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
   cursor: pointer;
 }
 
@@ -76,12 +78,15 @@ button, [role="button"], input[type="button"], input[type="submit"], input[type=
   display: none; 
 }
 
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
 .no-spinner::-webkit-outer-spin-button,
 .no-spinner::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
+input[type="number"],
 .no-spinner {
   -moz-appearance: textfield;
 }
@@ -195,4 +200,69 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .Toastify__progress-bar--warning,
 .Toastify__progress-bar--error {
   background: linear-gradient(90deg, #143d2e 0%, #258f62 50%, #34d399 100%) !important;
+}
+
+/* 📱 Mode Split-Screen / Layar Pendek (Samsung Tab A7 Lite Landscape Split & Short Viewports) */
+@media (max-height: 580px) {
+  /* Sembunyikan Top Header Bar & Fixed Bottom Navbar di Layar Pendek / Split Screen */
+  header.h-16,
+  nav.fixed.bottom-0,
+  footer {
+    display: none !important;
+  }
+
+  /* Maksimalkan area utama (main) tanpa terhalang navbar & aktifkan scroll */
+  main {
+    padding: 0.5rem !important;
+    overflow-y: auto !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+  }
+
+  /* Kartu utama Operator dapat di-scroll vertikal jika konten memanjang */
+  .max-w-2xl {
+    min-height: auto !important;
+    max-height: calc(100vh - 1rem) !important;
+    max-height: calc(100dvh - 1rem) !important;
+    overflow-y: auto !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  /* Form & Spacing antar elemen */
+  .space-y-6 > :not([hidden]) ~ :not([hidden]),
+  .space-y-5 > :not([hidden]) ~ :not([hidden]),
+  .space-y-4 > :not([hidden]) ~ :not([hidden]),
+  .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.4rem !important;
+  }
+
+  /* Input fields & tombol */
+  input[type="text"],
+  input[type="number"] {
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+    font-size: 1.15rem !important;
+  }
+
+  /* Header input plat (KT 1234 ABC) */
+  input.h-16 {
+    height: 3.25rem !important;
+  }
+
+  /* Tombol Cek Plat & Submit */
+  button[type="submit"],
+  button.h-14 {
+    height: 3rem !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Preset buttons (1L, 2L, 4L, FULL) */
+  .grid-cols-2 button,
+  .grid-cols-4 button {
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+    font-size: 0.9rem !important;
+  }
 }
