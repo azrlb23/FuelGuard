@@ -131,7 +131,7 @@ const formatTimeOnly = (dateString) => {
 }
 
 const getSpbuName = (trx) => {
-  return trx.spbu_name || 'SPBU 64.7501'
+  return trx.spbu_nama || trx.spbu_name || (trx.spbu_id ? `SPBU #${trx.spbu_id}` : '-')
 }
 
 const setPage = (p) => {
