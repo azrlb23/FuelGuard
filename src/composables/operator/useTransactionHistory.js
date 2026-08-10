@@ -94,8 +94,9 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
         }
         if (searchQuery.value.trim()) {
           const q = searchQuery.value.trim().toLowerCase()
+          const normalizePlat = (s) => (s || '').replace(/\s+/g, '').toLowerCase()
           cachedList = cachedList.filter(t => {
-            const platMatch = (t.plat_nomor && t.plat_nomor.toLowerCase().includes(q)) || (t.plat && t.plat.toLowerCase().includes(q))
+            const platMatch = normalizePlat(t.plat_nomor).includes(normalizePlat(q)) || normalizePlat(t.plat).includes(normalizePlat(q))
             const opMatch = (t.operator_name && t.operator_name.toLowerCase().includes(q)) || (t.nama_operator && t.nama_operator.toLowerCase().includes(q))
             return platMatch || opMatch
           })
@@ -140,8 +141,9 @@ export function useTransactionHistory(itemsPerPage = 10, options = {}) {
         // Multi-field search filtering for plat, operator, spbu, and time (17:54 / 14:30)
         if (isSearching) {
           const q = searchQuery.value.trim().toLowerCase()
+          const normalizePlat = (s) => (s || '').replace(/\s+/g, '').toLowerCase()
           filteredTransactions = filteredTransactions.filter(t => {
-            const platMatch = t.plat_nomor && t.plat_nomor.toLowerCase().includes(q)
+            const platMatch = normalizePlat(t.plat_nomor).includes(normalizePlat(q))
             const opMatch = (t.operator_name && t.operator_name.toLowerCase().includes(q)) || 
                             (t.nama_operator && t.nama_operator.toLowerCase().includes(q))
             const spbuMatch = (t.spbu_name && t.spbu_name.toLowerCase().includes(q)) ||

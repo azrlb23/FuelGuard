@@ -70,7 +70,7 @@ export function useExcelExport() {
 
     } catch (err) {
       console.error(err)
-      toast.error("Gagal export: " + err.message)
+      toast.error("Gagal export.")
     } finally {
       exportLoading.value = false
       progress.value = 0

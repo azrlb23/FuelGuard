@@ -688,6 +688,7 @@ BEGIN
     INSERT INTO public.repeated_transaction_logs (
       plat_nomor, attempt_spbu_id, attempt_operator_id, is_ojol, 
       attempted_liter, total_harga_today, reason, created_at
+    ) VALUES (
       v_plat_clean, v_spbu_id, v_operator_id, p_is_ojol,
       p_liter, 0, 'category_mismatch', NOW()
     );

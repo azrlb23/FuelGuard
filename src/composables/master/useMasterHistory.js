@@ -82,8 +82,9 @@ export function useMasterHistory(itemsPerPage = 10) {
         let list = data.transactions || []
         if (isSearching) {
           const q = searchQuery.value.trim().toLowerCase()
+          const normalizePlat = (s) => (s || '').replace(/\s+/g, '').toLowerCase()
           list = list.filter(trx => {
-            const platMatch = trx.plat_nomor && trx.plat_nomor.toLowerCase().includes(q)
+            const platMatch = normalizePlat(trx.plat_nomor).includes(normalizePlat(q))
             const opMatch = (trx.operator_name && trx.operator_name.toLowerCase().includes(q)) || 
                             (trx.nama_operator && trx.nama_operator.toLowerCase().includes(q))
             const spbuMatch = (trx.spbu_nama && trx.spbu_nama.toLowerCase().includes(q)) ||

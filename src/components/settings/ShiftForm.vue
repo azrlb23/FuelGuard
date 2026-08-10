@@ -19,7 +19,7 @@ const fetchShifts = async () => {
       .select('*')
       .eq('spbu_id', authStore.spbuId)
       .order('shift_name')
-    
+
     if (error || !data || data.length === 0) {
       // Jika database kosong / belum ada data shift, gunakan jadwal default
       shifts.value = [
@@ -63,7 +63,8 @@ const saveShifts = async () => {
     }
     toast.success("Jam operasional shift berhasil diperbarui!")
   } catch (err) {
-    toast.error("Gagal menyimpan: " + err.message)
+    console.error("Gagal menyimpan:", err)
+    toast.error("Gagal menyimpan.")
   } finally {
     loading.value = false
   }
@@ -74,7 +75,7 @@ onMounted(() => fetchShifts())
 
 <template>
   <div class="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm relative overflow-hidden">
-    
+
     <div class="mb-6">
       <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-[#143d2e]">
@@ -86,14 +87,14 @@ onMounted(() => fetchShifts())
     </div>
 
     <form @submit.prevent="saveShifts" class="space-y-4">
-      
+
       <div v-if="loading && shifts.length === 0" class="text-center py-6 text-gray-400">
         <span class="loading loading-dots loading-sm"></span> Memuat jadwal...
       </div>
 
       <div v-else class="space-y-4">
         <div v-for="item in shifts" :key="item.id" class="flex flex-col md:flex-row items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-          
+
           <div class="w-full md:w-1/4">
             <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Nama Shift</span>
             <div class="font-bold text-gray-800 text-lg">{{ item.shift_name }}</div>
@@ -101,9 +102,9 @@ onMounted(() => fetchShifts())
 
           <div class="w-full md:w-1/3">
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Jam Mulai</label>
-            <input 
+            <input
               v-model="item.start_time"
-              type="time" 
+              type="time"
               class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] transition-all cursor-pointer"
             />
           </div>
@@ -116,9 +117,9 @@ onMounted(() => fetchShifts())
 
           <div class="w-full md:w-1/3">
             <label class="text-xs font-bold text-gray-500 uppercase block mb-1">Jam Selesai</label>
-            <input 
+            <input
               v-model="item.end_time"
-              type="time" 
+              type="time"
               class="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#143d2e]/20 focus:border-[#143d2e] transition-all cursor-pointer"
             />
           </div>
@@ -127,8 +128,8 @@ onMounted(() => fetchShifts())
       </div>
 
       <div class="pt-4 text-right">
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           :disabled="loading"
           class="bg-[#143d2e] hover:bg-[#1e5c45] text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-green-900/10 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
         >
