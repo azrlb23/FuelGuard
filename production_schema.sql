@@ -1843,38 +1843,70 @@ BEGIN
 
   WITH raw_trx AS (
     SELECT 
+      t.id,
       regexp_replace(UPPER(TRIM(t.plat_nomor)), '\s+', ' ', 'g') AS plat_nomor,
       t.liter,
       t.harga,
-      COALESCE(t.is_ojol, false) AS is_ojol
+      COALESCE(t.is_ojol, false) AS is_ojol,
+      t.waktu_pencatatan,
+      op.spbu_id,
+      COALESCE(s.nama, 'SPBU #' || op.spbu_id) AS spbu_nama
     FROM public.transaksi_pertalite t
     INNER JOIN public.operator_profiles op ON op.id = t.operator_id
+    LEFT JOIN public.spbu s ON s.id = op.spbu_id
     WHERE (p_spbu_id IS NULL OR TRIM(p_spbu_id) = '' OR op.spbu_id = p_spbu_id)
       AND (v_date_from IS NULL OR t.waktu_pencatatan >= v_date_from)
       AND (v_date_to IS NULL OR t.waktu_pencatatan <= v_date_to)
   ),
-  aggregated_plates AS (
+  top_plates AS (
     SELECT 
       plat_nomor,
       bool_or(is_ojol) AS is_ojol,
       COUNT(*) AS trx_count,
+      COUNT(DISTINCT spbu_id) AS unique_spbu_count,
       SUM(liter) AS total_liter,
       SUM(harga) AS total_harga
     FROM raw_trx
     GROUP BY plat_nomor
     ORDER BY SUM(liter) DESC, COUNT(*) DESC
     LIMIT LEAST(GREATEST(p_limit, 1), 50)
+  ),
+  detailed_transactions AS (
+    SELECT 
+      tp.plat_nomor,
+      tp.is_ojol,
+      tp.trx_count,
+      tp.unique_spbu_count,
+      tp.total_liter,
+      tp.total_harga,
+      json_agg(
+        json_build_object(
+          'id', r.id,
+          'waktu_pencatatan', r.waktu_pencatatan,
+          'spbu_id', r.spbu_id,
+          'spbu_nama', r.spbu_nama,
+          'liter', r.liter,
+          'harga', r.harga,
+          'is_ojol', r.is_ojol
+        ) ORDER BY r.waktu_pencatatan DESC
+      ) AS transactions
+    FROM top_plates tp
+    JOIN raw_trx r ON r.plat_nomor = tp.plat_nomor
+    GROUP BY tp.plat_nomor, tp.is_ojol, tp.trx_count, tp.unique_spbu_count, tp.total_liter, tp.total_harga
+    ORDER BY tp.total_liter DESC, tp.trx_count DESC
   )
   SELECT json_agg(
     json_build_object(
       'plat_nomor', plat_nomor,
       'is_ojol', is_ojol,
       'trx_count', trx_count,
+      'unique_spbu_count', unique_spbu_count,
       'total_liter', total_liter,
-      'total_harga', total_harga
+      'total_harga', total_harga,
+      'transactions', transactions
     )
   ) INTO v_result
-  FROM aggregated_plates;
+  FROM detailed_transactions;
 
   RETURN json_build_object(
     'success', true,

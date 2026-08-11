@@ -5,6 +5,7 @@ import MasterAnalyticsFilterPanel from '@/components/master/report/MasterAnalyti
 import MasterAnalyticsKpiCards from '@/components/master/report/MasterAnalyticsKpiCards.vue'
 import MasterAnalyticsChartsSection from '@/components/master/report/MasterAnalyticsChartsSection.vue'
 import MasterAnalyticsLeaderboard from '@/components/master/report/MasterAnalyticsLeaderboard.vue'
+import MasterAnalyticsAllPlatesLeaderboard from '@/components/master/report/MasterAnalyticsAllPlatesLeaderboard.vue'
 import MasterAnalyticsExportBar from '@/components/master/report/MasterAnalyticsExportBar.vue'
 
 const {
@@ -183,6 +184,15 @@ const doughnutChartOptions = {
     <MasterAnalyticsLeaderboard
       :loading="loading"
       :leaderboard="leaderboard"
+      :formatRupiah="formatRupiah"
+      :formatVolume="formatVolume"
+    />
+
+    <!-- Row 3.5: Ranking Plat Pengisi Terbanyak (Semua SPBU - Tampil Hanya Jika Filter Semua SPBU Active) -->
+    <MasterAnalyticsAllPlatesLeaderboard
+      v-if="!selectedSpbuId"
+      :loading="loading"
+      :topPlates="topPlates"
       :formatRupiah="formatRupiah"
       :formatVolume="formatVolume"
     />

@@ -64,16 +64,12 @@ export function useMasterAnalytics() {
   })
   const topPlates = ref([])
   const fetchTopPlates = async () => {
-    if (!selectedSpbuId.value) {
-      topPlates.value = []
-      return
-    }
     try {
       const { data, error } = await supabase.rpc('get_spbu_top_plates', {
-        p_spbu_id: selectedSpbuId.value,
+        p_spbu_id: selectedSpbuId.value || null,
         p_date_from: dateFrom.value || '',
         p_date_to: dateTo.value || '',
-        // p_limit: 10
+        p_limit: 10
       })
 
       if (error) {
@@ -243,6 +239,24 @@ export function useMasterAnalytics() {
           ])
         })
       }
+
+      sheetRows.push([])
+      sheetRows.push(['PERINGKAT PLAT NOMOR PENGISI TERBANYAK (SEMUA SPBU)'])
+      sheetRows.push(['Rank', 'Nomor Plat', 'Kategori', 'Jumlah SPBU Unik', 'Jumlah Transaksi', 'Total Volume (Liter)', 'Total Pembelian (Rp)'])
+
+      if (topPlates.value && topPlates.value.length > 0) {
+        topPlates.value.forEach((row, index) => {
+          sheetRows.push([
+            `#${index + 1}`,
+            row.plat_nomor,
+            row.is_ojol ? 'Ojol' : 'Umum',
+            row.unique_spbu_count || 1,
+            row.trx_count || 0,
+            row.total_liter || 0,
+            row.total_harga || 0
+          ])
+        })
+      }
     }
 
     const worksheet = XLSX.utils.aoa_to_sheet(sheetRows)
@@ -310,6 +324,7 @@ export function useMasterAnalytics() {
       </tr>
     `
     let tableRowsHtml = ''
+    let topPlatesSectionHtml = ''
 
     if (isSingleSpbu) {
       tableSectionTitle = `Peringkat Plat Nomor Pengisi Terbanyak`
@@ -356,6 +371,44 @@ export function useMasterAnalytics() {
           <td style="padding:10px; border-bottom:1px solid #eee; text-align:right; font-weight:bold; color:#143d2e;">${row.sharePct || 0}%</td>
         </tr>
       `).join('')
+
+      if (topPlates.value && topPlates.value.length > 0) {
+        const platesRows = topPlates.value.map((item, index) => `
+          <tr>
+            <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:center;"><b>#${index + 1}</b></td>
+            <td style="padding:8px 10px; border-bottom:1px solid #eee; font-family:monospace; font-weight:bold; font-size:13px; color:#111;">${item.plat_nomor}</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:center;">
+              <span style="padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; ${item.is_ojol ? 'background:#dcfce7; color:#166534;' : 'background:#f3f4f6; color:#374151;'}">
+                ${item.is_ojol ? 'OJOL' : 'UMUM'}
+              </span>
+            </td>
+            <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:center;">${item.unique_spbu_count || 1} SPBU</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:center; font-weight:bold;">${(item.trx_count || 0).toLocaleString('id-ID')}x</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right; font-weight:bold; color:#143d2e;">${(item.total_liter || 0).toLocaleString('id-ID')} L</td>
+            <td style="padding:8px 10px; border-bottom:1px solid #eee; text-align:right; font-weight:bold; color:#143d2e;">${formatCurrency(item.total_harga)}</td>
+          </tr>
+        `).join('')
+
+        topPlatesSectionHtml = `
+          <h3 style="color:#143d2e; margin-top:25px; margin-bottom:10px; font-weight:800;">Peringkat Plat Nomor Pengisi Terbanyak (Semua SPBU)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align:center; width:50px;">Rank</th>
+                <th>Nomor Plat</th>
+                <th style="text-align:center;">Kategori</th>
+                <th style="text-align:center;">Jumlah SPBU</th>
+                <th style="text-align:center;">Total Transaksi</th>
+                <th style="text-align:right;">Total Volume</th>
+                <th style="text-align:right;">Total Pembelian</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${platesRows}
+            </tbody>
+          </table>
+        `
+      }
     }
 
     const doc = iframe.contentWindow.document
@@ -433,6 +486,8 @@ export function useMasterAnalytics() {
               ${tableRowsHtml}
             </tbody>
           </table>
+
+          ${topPlatesSectionHtml}
 
           <div class="footer">
             Dokumen ini dihasilkan secara otomatis oleh Sistem Eksekutif FuelGuard. Confidential.
