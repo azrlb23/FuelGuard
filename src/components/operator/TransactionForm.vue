@@ -25,12 +25,38 @@ const videoRef = ref(null)
 const platInputRef = ref(null)
 const literInputRef = ref(null)
 const hargaInputRef = ref(null)
+const submitBtnRef = ref(null)
 
 const isCameraFeatureEnabled = ref(false)
 
 const subStep = ref('check_plate') // 'check_plate' | 'input_liter'
 const showRefueledModal = ref(false)
 const refueledInfo = ref(null)
+
+const scrollToBottomInput = () => {
+  nextTick(() => {
+    setTimeout(() => {
+      if (literInputRef.value) {
+        try {
+          literInputRef.value.focus({ preventScroll: true })
+        } catch (e) {
+          literInputRef.value.focus()
+        }
+      }
+      if (submitBtnRef.value) {
+        submitBtnRef.value.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      } else {
+        window.scrollTo({ top: document.body.scrollHeight || 99999, behavior: 'smooth' })
+      }
+    }, 60)
+  })
+}
+
+watch(subStep, (newStep) => {
+  if (newStep === 'input_liter') {
+    scrollToBottomInput()
+  }
+})
 
 const form = ref({
   plat_nomor: '',
@@ -255,10 +281,7 @@ const handleCheckPlate = async () => {
       form.value.liter = ''
       form.value.totalHarga = ''
       lastEdited.value = 'liter'
-      await nextTick()
-      if (literInputRef.value) {
-        literInputRef.value.focus()
-      }
+      scrollToBottomInput()
     }
   } else if (res && !res.success) {
     if (res.reason === 'category_mismatch') {
@@ -733,6 +756,7 @@ const handleSubmit = async () => {
 
       <!-- Submit Button -->
       <button
+        ref="submitBtnRef"
         type="submit"
         :disabled="loading || !form.liter"
         class="w-full bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-base sm:text-lg md:text-xl py-3 sm:py-4 rounded-2xl shadow-xl transform active:scale-95 transition-all mt-1 sm:mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -877,21 +901,24 @@ const handleSubmit = async () => {
                 </span>
               </div>
 
-              <div class="space-y-2">
+              <div class="space-y-2 max-h-52 overflow-y-auto pr-1 custom-scrollbar">
                 <div
                   v-for="(item, idx) in refueledInfo.history_today"
                   :key="idx"
-                  class="flex items-center justify-between min-h-[38px] px-3.5 py-2 rounded-2xl border text-xs text-white transition-all shadow-xs"
+                  class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-3 px-3 py-2 sm:py-2.5 rounded-xl border text-xs text-white transition-all shadow-xs"
                   :class="item.status === 'diterima' ? 'bg-[#143d2e] border-[#143d2e]' : 'bg-red-600 border-red-600'"
                 >
-                  <div class="flex items-center gap-1.5 text-[11px] font-bold text-white min-w-0">
-                    <span class="font-mono font-extrabold shrink-0 text-white/90">{{ item.waktu }}</span>
+                  <!-- KIRI (Baris 1 di HP, Kiri di Desktop): Waktu & SPBU ID -->
+                  <div class="flex items-center gap-1.5 shrink-0 text-[11px] font-bold text-white">
+                    <span class="font-mono font-extrabold text-white/90">{{ item.waktu }}</span>
                     <span class="text-white/40">·</span>
-                    <span class="font-bold truncate text-white" :title="item.spbu_nama || item.spbu_id">
-                      {{ item.spbu_id ? (item.spbu_id.length > 12 ? 'SPBU ' + item.spbu_id.slice(0, 10) + '...' : item.spbu_id) : item.spbu_nama }}
+                    <span class="font-bold text-white">
+                      {{ item.spbu_id ? (item.spbu_id.startsWith('SPBU') ? item.spbu_id : 'SPBU ' + item.spbu_id) : (item.spbu_nama || 'SPBU ini') }}
                     </span>
                   </div>
-                  <div class="shrink-0 font-extrabold text-[11px] text-right ml-2 text-white">
+
+                  <!-- KANAN (Baris 2 di HP, Kanan di Desktop): Status & Alasan Penolakan -->
+                  <div class="shrink-0 font-extrabold text-[11px] text-left sm:text-right text-white">
                     <template v-if="item.status === 'diterima'">
                       <span>Diterima ({{ item.liter }} L)</span>
                     </template>

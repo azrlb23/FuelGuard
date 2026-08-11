@@ -463,56 +463,6 @@ BEGIN
   ORDER BY waktu_pencatatan ASC
   LIMIT 1;
 
-  IF v_first_is_ojol IS NOT NULL AND v_first_is_ojol != p_is_ojol THEN
-    RETURN json_build_object(
-      'success', false,
-      'reason', 'category_mismatch',
-      'message', format('Kendaraan %s hari ini sudah terdaftar sebagai %s! Tidak dapat bertransaksi sebagai %s.',
-        v_plat_clean,
-        CASE WHEN v_first_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END,
-        CASE WHEN p_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END
-      )
-    );
-  END IF;
-
-  SELECT 
-    COALESCE(SUM(liter), 0),
-    COALESCE(SUM(harga), 0),
-    COUNT(id)
-  INTO v_total_liter_today, v_total_harga_today, v_count_today
-  FROM public.transaksi_pertalite
-  WHERE plat_nomor = v_plat_clean
-    AND waktu_pencatatan >= v_today_start;
-
-  IF COALESCE(v_first_is_ojol, p_is_ojol) THEN
-    v_max_quota := 100000;
-  ELSE
-    v_max_quota := 50000;
-  END IF;
-
-  v_has_refueled := v_total_harga_today >= v_max_quota;
-  v_remaining_quota := GREATEST(0, v_max_quota - v_total_harga_today);
-
-  IF v_count_today > 0 THEN
-    SELECT json_build_object(
-      'id', t.id,
-      'liter', t.liter,
-      'harga', t.harga,
-      'waktu_pencatatan', t.waktu_pencatatan,
-      'is_ojol', t.is_ojol,
-      'spbu_id', op.spbu_id,
-      'nama_operator', op.nama_operator
-    ) INTO v_last_trx
-    FROM public.transaksi_pertalite t
-    LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
-    WHERE t.plat_nomor = v_plat_clean
-      AND t.waktu_pencatatan >= v_today_start
-    ORDER BY t.waktu_pencatatan DESC
-    LIMIT 1;
-
-    v_last_time := to_char((v_last_trx->>'waktu_pencatatan')::timestamptz AT TIME ZONE 'Asia/Makassar', 'HH24:MI');
-  END IF;
-
   -- Ambil seluruh riwayat transaksi diterima & percobaan ditolak hari ini untuk plat ini
   SELECT json_agg(h) INTO v_history_today
   FROM (
@@ -554,6 +504,57 @@ BEGIN
 
     ORDER BY waktu_raw DESC
   ) h;
+
+  IF v_first_is_ojol IS NOT NULL AND v_first_is_ojol != p_is_ojol THEN
+    RETURN json_build_object(
+      'success', false,
+      'reason', 'category_mismatch',
+      'message', format('Kendaraan %s hari ini sudah terdaftar sebagai %s! Tidak dapat bertransaksi sebagai %s.',
+        v_plat_clean,
+        CASE WHEN v_first_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END,
+        CASE WHEN p_is_ojol THEN 'Motor Ojol' ELSE 'Motor Biasa' END
+      ),
+      'history_today', COALESCE(v_history_today, '[]'::json)
+    );
+  END IF;
+
+  SELECT 
+    COALESCE(SUM(liter), 0),
+    COALESCE(SUM(harga), 0),
+    COUNT(id)
+  INTO v_total_liter_today, v_total_harga_today, v_count_today
+  FROM public.transaksi_pertalite
+  WHERE plat_nomor = v_plat_clean
+    AND waktu_pencatatan >= v_today_start;
+
+  IF COALESCE(v_first_is_ojol, p_is_ojol) THEN
+    v_max_quota := 100000;
+  ELSE
+    v_max_quota := 50000;
+  END IF;
+
+  v_has_refueled := v_total_harga_today >= v_max_quota;
+  v_remaining_quota := GREATEST(0, v_max_quota - v_total_harga_today);
+
+  IF v_count_today > 0 THEN
+    SELECT json_build_object(
+      'id', t.id,
+      'liter', t.liter,
+      'harga', t.harga,
+      'waktu_pencatatan', t.waktu_pencatatan,
+      'is_ojol', t.is_ojol,
+      'spbu_id', op.spbu_id,
+      'nama_operator', op.nama_operator
+    ) INTO v_last_trx
+    FROM public.transaksi_pertalite t
+    LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
+    WHERE t.plat_nomor = v_plat_clean
+      AND t.waktu_pencatatan >= v_today_start
+    ORDER BY t.waktu_pencatatan DESC
+    LIMIT 1;
+
+    v_last_time := to_char((v_last_trx->>'waktu_pencatatan')::timestamptz AT TIME ZONE 'Asia/Makassar', 'HH24:MI');
+  END IF;
 
   -- Mengembalikan baik 'plat' dan 'plat_nomor' untuk kompatibilitas penuh frontend Vue
   RETURN json_build_object(
