@@ -557,13 +557,13 @@ const handleSubmit = async () => {
   <div class="w-full max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto animate-enter relative">
 
     <!-- HEADER BAR -->
-    <div class="flex items-center justify-between mb-4 md:mb-6">
+    <div class="flex items-center justify-between mb-3 md:mb-5">
       <button
         @click="$emit('back')"
-        class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white active:scale-95 transition-all shadow-md"
+        class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white active:scale-95 transition-all shadow-sm"
         title="Kembali ke Pilih Kendaraan"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
         </svg>
       </button>
@@ -661,31 +661,31 @@ const handleSubmit = async () => {
     </div>
 
     <!-- TAHAP 2: INPUT LITER & TRANSAKSI -->
-    <form v-else-if="subStep === 'input_liter'" @submit.prevent="handleSubmit" class="space-y-5 animate-enter">
+    <form v-else-if="subStep === 'input_liter'" @submit.prevent="handleSubmit" class="space-y-2.5 sm:space-y-4 animate-enter">
 
       <!-- Info Plat Nomor -->
-      <div class="bg-white/10 border border-white/20 rounded-2xl p-4 flex items-center justify-between shadow-lg">
-        <div class="text-2xl font-black text-white tracking-wider font-mono">{{ form.plat_nomor }}</div>
+      <div class="bg-white/10 border border-white/20 rounded-2xl p-3 sm:p-4 flex items-center justify-between shadow-lg">
+        <div class="text-xl sm:text-2xl font-black text-white tracking-wider font-mono">{{ form.plat_nomor }}</div>
 
         <button
           type="button"
           @click="handleBackToPlateCheck"
-          class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-sm"
+          class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-sm"
           title="Ganti Plat Nomor"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
           </svg>
         </button>
       </div>
 
-      <!-- Input Liter & Total Harga (2 arah - Stack atas-bawah di layar kecil) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+      <!-- Input Liter & Total Harga (2 Kolom Berdampingan di Semua Ukuran Layar) -->
+      <div class="grid grid-cols-2 gap-2 sm:gap-4">
         <!-- Kolom Liter -->
-        <div class="space-y-1.5">
-          <label class="text-green-100 text-xs md:text-sm font-bold ml-1 uppercase flex items-center gap-1">
+        <div class="space-y-1">
+          <label class="text-green-100 text-[11px] sm:text-xs md:text-sm font-bold ml-0.5 uppercase flex items-center gap-1">
             Jumlah Liter
-            <span class="text-white/40 font-normal normal-case text-[10px]">(L)</span>
+            <span class="text-white/40 font-normal normal-case text-[9px] sm:text-[10px]">(L)</span>
           </label>
           <input
             ref="literInputRef"
@@ -696,15 +696,15 @@ const handleSubmit = async () => {
             step="0.001"
             min="0"
             placeholder="0.000"
-            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-4 py-3 md:py-4 text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all no-spinner"
+            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-2.5 sm:px-4 py-2.5 sm:py-3 md:py-4 text-base sm:text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all no-spinner"
           />
         </div>
 
         <!-- Kolom Total Harga -->
-        <div class="space-y-1.5">
-          <label class="text-green-100 text-xs md:text-sm font-bold ml-1 uppercase flex items-center gap-1">
+        <div class="space-y-1">
+          <label class="text-green-100 text-[11px] sm:text-xs md:text-sm font-bold ml-0.5 uppercase flex items-center gap-1">
             Total (Rp)
-            <span class="text-white/40 font-normal normal-case text-[10px]">(opsional)</span>
+            <span class="text-white/40 font-normal normal-case text-[9px] sm:text-[10px]">(opsional)</span>
           </label>
           <input
             ref="hargaInputRef"
@@ -714,56 +714,28 @@ const handleSubmit = async () => {
             type="text"
             inputmode="numeric"
             placeholder="0"
-            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-4 py-3 md:py-4 text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all"
+            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-2.5 sm:px-4 py-2.5 sm:py-3 md:py-4 text-base sm:text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all"
           />
         </div>
       </div>
 
-      <!-- Quick Presets Grid (2x2 di HP & Tablet) -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        <button
-          type="button"
-          @click="selectPresetLiter(1)"
-          class="py-3 px-2 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
-          :class="{ '!bg-white !text-[#143d2e] !border-white shadow-md': parseFloat(form.liter) === 1 }"
-        >
-          1L
-        </button>
-
-        <button
-          type="button"
-          @click="selectPresetLiter(2)"
-          class="py-3 px-2 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
-          :class="{ '!bg-white !text-[#143d2e] !border-white shadow-md': parseFloat(form.liter) === 2 }"
-        >
-          2L
-        </button>
-
-        <button
-          type="button"
-          @click="selectPresetLiter(4)"
-          class="py-3 px-2 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
-          :class="{ '!bg-white !text-[#143d2e] !border-white shadow-md': parseFloat(form.liter) === 4 }"
-        >
-          4L
-        </button>
-
+      <!-- Quick Preset Button (FULL) -->
+      <div>
         <button
           type="button"
           @click="selectPresetFullQuota"
-          class="py-3 px-2 rounded-2xl bg-emerald-400/20 hover:bg-emerald-400/30 active:bg-emerald-400/40 border border-emerald-400/40 text-emerald-200 font-black text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          class="w-full py-2.5 sm:py-3 px-4 rounded-2xl bg-emerald-400/20 hover:bg-emerald-400/30 active:bg-emerald-400/40 border border-emerald-400/40 text-emerald-200 font-black text-sm sm:text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
           :class="{ '!bg-emerald-400 !text-[#143d2e] !border-emerald-300 shadow-md': parseFloat(form.liter) === (props.isOjol ? 10 : 5) }"
         >
           FULL
         </button>
       </div>
 
-
       <!-- Submit Button -->
       <button
         type="submit"
         :disabled="loading || !form.liter"
-        class="w-full bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-lg md:text-xl py-4 rounded-2xl shadow-xl transform active:scale-95 transition-all mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="w-full bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-base sm:text-lg md:text-xl py-3 sm:py-4 rounded-2xl shadow-xl transform active:scale-95 transition-all mt-1 sm:mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <span v-if="loading" class="loading loading-spinner loading-md"></span>
         <span v-else>PROSES TRANSAKSI</span>
@@ -772,28 +744,22 @@ const handleSubmit = async () => {
 
     <!-- MODAL POPUP KENDARAAN SUDAH MENGISI (STRICT GREEN & WHITE UI) -->
     <Teleport to="body">
-      <div v-if="showRefueledModal" class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-enter">
-        <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm md:max-w-md w-full text-slate-800 shadow-xl border border-gray-100 flex flex-col relative overflow-hidden max-h-[92dvh] sm:max-h-[88dvh] sm:mx-4">
+      <div v-if="showRefueledModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-enter">
+        <div class="bg-white rounded-3xl max-w-sm md:max-w-md w-full text-slate-800 shadow-xl border border-gray-100 flex flex-col relative overflow-hidden max-h-[88dvh] mx-auto">
 
           <!-- Scrollable content area -->
           <div class="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
 
-            <!-- Drag handle (mobile only) -->
-            <div class="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden"></div>
-
             <!-- Header Section -->
-            <div class="flex items-start gap-3.5 mb-4">
-              <div class="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+            <div class="flex items-center gap-3.5 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
               </div>
-              <div>
-                <span class="inline-block text-[10px] font-bold text-red-600 uppercase tracking-wide mb-0.5">
-                  {{ refueledInfo?.isQuotaExceededTransaction ? 'Kelebihan Kuota Subsidi' : (refueledInfo?.isCategoryMismatch ? 'Pelanggaran Kategori' : 'Peringatan Transaksi') }}
-                </span>
+              <div class="flex items-center">
                 <h3 class="text-base md:text-lg font-extrabold text-[#143d2e] tracking-tight leading-tight">
-                  {{ refueledInfo?.isQuotaExceededTransaction ? 'Melebihi Kuota Subsidi' : (refueledInfo?.isCategoryMismatch ? 'Kategori Tidak Sesuai' : 'Melebihi batas pengisian') }}
+                  {{ refueledInfo?.isQuotaExceededTransaction ? 'Melebihi Kuota Subsidi' : (refueledInfo?.isCategoryMismatch ? 'Kategori Tidak Sesuai' : 'Melebihi Batas Pengisian') }}
                 </h3>
               </div>
             </div>
@@ -823,12 +789,6 @@ const handleSubmit = async () => {
                     {{ isOjol ? 'Umum' : 'Ojol' }}
                   </span>
                 </div>
-
-                <div class="pt-2 border-t border-gray-200/40">
-                  <p class="text-[11px] text-gray-900 font-semibold leading-normal">
-                    Kendaraan sudah terdaftar di kategori lain hari ini. Transaksi lintas kategori ditolak.
-                  </p>
-                </div>
               </template>
 
               <!-- Percobaan Pengisian (Jika Melebihi Kuota) -->
@@ -838,12 +798,6 @@ const handleSubmit = async () => {
                   <span class="font-bold text-red-600">
                     {{ refueledInfo.attemptedLiter }} Liter ({{ formatRupiah(refueledInfo.attemptedHarga) }})
                   </span>
-                </div>
-
-                <div v-if="refueledInfo?.isQuotaExceededTransaction" class="pt-2 pb-1 border-b border-gray-200/50">
-                  <div class="bg-red-50 text-red-700 text-[11px] p-2.5 rounded-lg border border-red-100 font-semibold leading-relaxed">
-                    <span class="font-bold">Peringatan:</span> Nominal pengisian melebihi sisa kuota subsidi kendaraan ini. Transaksi dibatalkan secara otomatis.
-                  </div>
                 </div>
               </template>
 
@@ -907,37 +861,43 @@ const handleSubmit = async () => {
                 </div>
               </template>
 
-              <!-- Riwayat Pengisian & Percobaan Hari Ini -->
-              <div v-if="refueledInfo?.history_today && refueledInfo.history_today.length > 0" class="pt-3 border-t border-gray-100">
-                <div class="text-[11px] font-semibold text-gray-900 uppercase tracking-widest mb-2.5 flex items-center justify-between">
-                  <span>RIWAYAT PENGISIAN HARI INI</span>
-                  <div class="flex items-center gap-1 text-[10px] font-semibold text-gray-900">
-                    <span>{{ refueledInfo.history_today.length }} AKTIVITAS</span>
-                  </div>
-                </div>
+            </div>
 
-                <div class="space-y-2">
-                  <div
-                    v-for="(item, idx) in refueledInfo.history_today"
-                    :key="idx"
-                    class="flex items-center justify-between min-h-[40px] px-3.5 py-2 rounded-2xl border text-xs text-white transition-all shadow-sm"
-                    :class="item.status === 'diterima' ? 'bg-[#143d2e] border-[#143d2e]' : 'bg-red-600 border-red-600'"
-                  >
-                    <div class="flex items-center gap-1.5 text-[11px] leading-none truncate text-white">
-                      <span class="font-mono font-extrabold shrink-0 text-white/90 leading-none">{{ item.waktu }}</span>
-                      <span class="text-white/40 leading-none">·</span>
-                      <span class="font-black truncate text-white leading-none" :title="item.spbu_nama || item.spbu_id">
-                        {{ item.spbu_id ? (item.spbu_id.length > 12 ? 'SPBU ' + item.spbu_id.slice(0, 10) + '...' : item.spbu_id) : item.spbu_nama }}
-                      </span>
-                    </div>
-                    <div class="shrink-0 font-black text-[11px] text-right ml-2 text-white flex items-center leading-none">
-                      <template v-if="item.status === 'diterima'">
-                        <span class="font-black text-white leading-none">Diterima ({{ item.liter }} L)</span>
-                      </template>
-                      <template v-else>
-                        <span class="font-black text-white leading-none">Ditolak ({{ item.reason || 'Ditolak' }})</span>
-                      </template>
-                    </div>
+            <!-- Riwayat Pengisian & Percobaan Hari Ini (Card Terpisah & Sangat Jelas) -->
+            <div v-if="refueledInfo?.history_today && refueledInfo.history_today.length > 0" class="mt-3 bg-white border border-gray-200 rounded-2xl p-3.5 shadow-sm">
+              <div class="text-[11px] font-extrabold text-gray-800 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 text-gray-500">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  RIWAYAT PENGISIAN HARI INI
+                </span>
+                <span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-[10px] font-bold border border-gray-200">
+                  {{ refueledInfo.history_today.length }} AKTIVITAS
+                </span>
+              </div>
+
+              <div class="space-y-2">
+                <div
+                  v-for="(item, idx) in refueledInfo.history_today"
+                  :key="idx"
+                  class="flex items-center justify-between min-h-[38px] px-3.5 py-2 rounded-2xl border text-xs text-white transition-all shadow-xs"
+                  :class="item.status === 'diterima' ? 'bg-[#143d2e] border-[#143d2e]' : 'bg-red-600 border-red-600'"
+                >
+                  <div class="flex items-center gap-1.5 text-[11px] font-bold text-white min-w-0">
+                    <span class="font-mono font-extrabold shrink-0 text-white/90">{{ item.waktu }}</span>
+                    <span class="text-white/40">·</span>
+                    <span class="font-bold truncate text-white" :title="item.spbu_nama || item.spbu_id">
+                      {{ item.spbu_id ? (item.spbu_id.length > 12 ? 'SPBU ' + item.spbu_id.slice(0, 10) + '...' : item.spbu_id) : item.spbu_nama }}
+                    </span>
+                  </div>
+                  <div class="shrink-0 font-extrabold text-[11px] text-right ml-2 text-white">
+                    <template v-if="item.status === 'diterima'">
+                      <span>Diterima ({{ item.liter }} L)</span>
+                    </template>
+                    <template v-else>
+                      <span>Ditolak ({{ item.reason || 'Ditolak' }})</span>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -945,27 +905,29 @@ const handleSubmit = async () => {
 
           </div>
 
-          <!-- Action Buttons: pinned at bottom, always visible -->
-          <div class="shrink-0 px-4 sm:px-6 pt-3 pb-5 space-y-2.5 border-t border-gray-100 bg-white">
-            <button
-              @click="handleEditPlateNumber"
-              class="w-full bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] hover:from-[#1b4d3a] hover:to-[#258f62] text-white font-extrabold text-xs md:text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/10"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-              </svg>
-              <span>PERBAIKI / UBAH NOMOR PLAT</span>
-            </button>
+          <!-- Action Buttons: pinned at bottom with clear separation line & top shadow -->
+          <div class="shrink-0 p-3.5 sm:p-5 border-t-2 border-gray-100 bg-white shadow-[0_-6px_20px_rgba(0,0,0,0.06)] relative z-10">
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                @click="handleEditPlateNumber"
+                class="w-full bg-gradient-to-r from-[#143d2e] via-[#1b4d3a] to-[#256a50] hover:from-[#1b4d3a] hover:to-[#258f62] text-white font-extrabold text-xs py-3 rounded-2xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-white/10"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                </svg>
+                <span class="uppercase tracking-wider">UBAH PLAT</span>
+              </button>
 
-            <button
-              @click="handleResetVehicleSelection"
-              class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-xs py-2.5 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-              </svg>
-              <span>Pilih Kategori Kendaraan Lain</span>
-            </button>
+              <button
+                @click="handleResetVehicleSelection"
+                class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs py-3 rounded-2xl border border-gray-200 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                <span class="uppercase tracking-wider">GANTI KATEGORI</span>
+              </button>
+            </div>
           </div>
 
         </div>
