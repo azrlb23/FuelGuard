@@ -13,14 +13,15 @@ const rowId = ref(null)
 const fetchPrices = async () => {
   loading.value = true
   try {
-    const spbuId = authStore.spbuId || '64.761.01'
-
     const { data, error } = await supabase
       .from('fuel_prices')
       .select('*')
-      .eq('spbu_id', spbuId)
-      .eq('fuel_type', 'Pertalite')
+      .ilike('fuel_type', '%pertalite%')
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
+
+    if (error) throw error
 
     if (data) {
       pertalitePrice.value = Number(data.price_per_liter) || 10000
@@ -38,12 +39,14 @@ const fetchPrices = async () => {
 const savePrice = async () => {
   loading.value = true
   try {
-    const spbuId = authStore.spbuId || '64.761.01'
     const payload = {
       fuel_type: 'Pertalite',
       price_per_liter: Number(pertalitePrice.value) || 10000,
-      spbu_id: spbuId,
       updated_at: new Date().toISOString()
+    }
+
+    if (authStore.user?.id) {
+      payload.updated_by = authStore.user.id
     }
 
     if (rowId.value) {
@@ -63,7 +66,7 @@ const savePrice = async () => {
     toast.success("Harga Pertalite berhasil diperbarui & tersinkronisasi ke Operator!")
   } catch (err) {
     console.error("Gagal menyimpan harga:", err)
-    toast.error("Gagal menyimpan harga.")
+    toast.error("Gagal menyimpan harga: " + (err.message || 'Error tidak diketahui'))
   } finally {
     loading.value = false
   }
