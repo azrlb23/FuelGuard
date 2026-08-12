@@ -808,7 +808,7 @@ const handleSubmit = async () => {
                 </div>
 
                 <div class="flex justify-between items-center py-1 border-t border-gray-200/40">
-                  <span class="text-gray-900 font-semibold">Kategori Terdaftar Hari Ini</span>
+                  <span class="text-gray-900 font-semibold">Kategori Transaksi Sebelumnya</span>
                   <span class="font-bold text-red-600 uppercase">
                     {{ isOjol ? 'Umum' : 'Ojol' }}
                   </span>

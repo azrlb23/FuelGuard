@@ -197,6 +197,9 @@ CREATE INDEX IF NOT EXISTS idx_repeated_logs_spbu_date
 CREATE INDEX IF NOT EXISTS idx_repeated_logs_plat 
   ON public.repeated_transaction_logs (plat_nomor);
 
+CREATE INDEX IF NOT EXISTS idx_repeated_logs_plat_created 
+  ON public.repeated_transaction_logs (plat_nomor, created_at DESC);
+
 -- ─── 5. SECURITY HELPER FUNCTIONS & TRIGGERS ─────────────────────────────────
 
 -- Helper: Ambil role akun yang sedang login dari tabel user_roles (PL/pgSQL untuk deferred check)
@@ -455,31 +458,53 @@ BEGIN
     );
   END IF;
 
-  -- Kunci Kategori Harian
-  SELECT is_ojol INTO v_first_is_ojol
-  FROM public.transaksi_pertalite
-  WHERE plat_nomor = v_plat_clean
-    AND waktu_pencatatan >= v_today_start
-  ORDER BY waktu_pencatatan ASC
-  LIMIT 1;
-
-  -- Ambil seluruh riwayat transaksi diterima & percobaan ditolak hari ini untuk plat ini
-  SELECT json_agg(h) INTO v_history_today
-  FROM (
+  -- SINGLE-PASS CTE: Ambil transaksi hari ini, hitung agregasi & format history dalam 1x Query
+  WITH trx_today AS (
     SELECT 
-      t.waktu_pencatatan AS waktu_raw,
-      to_char(t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar', 'HH24:MI') || ' WITA' AS waktu,
-      COALESCE(op.spbu_id, 'Unknown') AS spbu_id,
-      COALESCE(s.nama, CONCAT('SPBU ', op.spbu_id)) AS spbu_nama,
-      'diterima' AS status,
-      t.liter AS liter,
-      t.harga AS harga,
-      'Pengisian Berhasil' AS reason
+      t.id,
+      t.liter,
+      t.harga,
+      t.waktu_pencatatan,
+      t.is_ojol,
+      op.spbu_id,
+      op.nama_operator,
+      COALESCE(s.nama, CONCAT('SPBU ', op.spbu_id)) AS spbu_nama
     FROM public.transaksi_pertalite t
     LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
     LEFT JOIN public.spbu s ON s.id = op.spbu_id
     WHERE t.plat_nomor = v_plat_clean
       AND t.waktu_pencatatan >= v_today_start
+  ),
+  trx_stats AS (
+    SELECT 
+      COALESCE(SUM(liter), 0) AS total_liter,
+      COALESCE(SUM(harga), 0) AS total_harga,
+      COUNT(id)::int AS count_trx,
+      (SELECT is_ojol FROM trx_today ORDER BY waktu_pencatatan ASC LIMIT 1) AS first_ojol,
+      (
+        SELECT json_build_object(
+          'id', id,
+          'liter', liter,
+          'harga', harga,
+          'waktu_pencatatan', waktu_pencatatan,
+          'is_ojol', is_ojol,
+          'spbu_id', spbu_id,
+          'nama_operator', nama_operator
+        ) FROM trx_today ORDER BY waktu_pencatatan DESC LIMIT 1
+      ) AS last_trx_obj
+    FROM trx_today
+  ),
+  history_union AS (
+    SELECT 
+      t.waktu_pencatatan AS waktu_raw,
+      to_char(t.waktu_pencatatan AT TIME ZONE 'Asia/Makassar', 'HH24:MI') || ' WITA' AS waktu,
+      COALESCE(t.spbu_id, 'Unknown') AS spbu_id,
+      COALESCE(t.spbu_nama, CONCAT('SPBU ', t.spbu_id)) AS spbu_nama,
+      'diterima' AS status,
+      t.liter AS liter,
+      t.harga AS harga,
+      'Pengisian Berhasil' AS reason
+    FROM trx_today t
 
     UNION ALL
 
@@ -503,7 +528,26 @@ BEGIN
       AND r.created_at >= v_today_start
 
     ORDER BY waktu_raw DESC
-  ) h;
+  )
+  SELECT 
+    ts.total_liter,
+    ts.total_harga,
+    ts.count_trx,
+    ts.first_ojol,
+    ts.last_trx_obj,
+    (SELECT json_agg(hu) FROM history_union hu)
+  INTO 
+    v_total_liter_today,
+    v_total_harga_today,
+    v_count_today,
+    v_first_is_ojol,
+    v_last_trx,
+    v_history_today
+  FROM trx_stats ts;
+
+  IF v_last_trx IS NOT NULL THEN
+    v_last_time := to_char((v_last_trx->>'waktu_pencatatan')::timestamptz AT TIME ZONE 'Asia/Makassar', 'HH24:MI');
+  END IF;
 
   IF v_first_is_ojol IS NOT NULL AND v_first_is_ojol != p_is_ojol THEN
     RETURN json_build_object(
@@ -518,15 +562,6 @@ BEGIN
     );
   END IF;
 
-  SELECT 
-    COALESCE(SUM(liter), 0),
-    COALESCE(SUM(harga), 0),
-    COUNT(id)
-  INTO v_total_liter_today, v_total_harga_today, v_count_today
-  FROM public.transaksi_pertalite
-  WHERE plat_nomor = v_plat_clean
-    AND waktu_pencatatan >= v_today_start;
-
   IF COALESCE(v_first_is_ojol, p_is_ojol) THEN
     v_max_quota := 100000;
   ELSE
@@ -535,26 +570,6 @@ BEGIN
 
   v_has_refueled := v_total_harga_today >= v_max_quota;
   v_remaining_quota := GREATEST(0, v_max_quota - v_total_harga_today);
-
-  IF v_count_today > 0 THEN
-    SELECT json_build_object(
-      'id', t.id,
-      'liter', t.liter,
-      'harga', t.harga,
-      'waktu_pencatatan', t.waktu_pencatatan,
-      'is_ojol', t.is_ojol,
-      'spbu_id', op.spbu_id,
-      'nama_operator', op.nama_operator
-    ) INTO v_last_trx
-    FROM public.transaksi_pertalite t
-    LEFT JOIN public.operator_profiles op ON op.id = t.operator_id
-    WHERE t.plat_nomor = v_plat_clean
-      AND t.waktu_pencatatan >= v_today_start
-    ORDER BY t.waktu_pencatatan DESC
-    LIMIT 1;
-
-    v_last_time := to_char((v_last_trx->>'waktu_pencatatan')::timestamptz AT TIME ZONE 'Asia/Makassar', 'HH24:MI');
-  END IF;
 
   -- Mengembalikan baik 'plat' dan 'plat_nomor' untuk kompatibilitas penuh frontend Vue
   RETURN json_build_object(
