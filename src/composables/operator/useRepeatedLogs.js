@@ -26,7 +26,12 @@ const getCachedPengetapLogs = (spbuId) => {
       secureRemoveItem(STORAGE_KEY_PENGETAP)
       return []
     }
-    return Array.isArray(parsed.logs) ? parsed.logs : []
+    const raw = Array.isArray(parsed.logs) ? parsed.logs : []
+    return raw.map(item => ({
+      ...item,
+      waktu: item.waktu || item.jam_pencatatan || '',
+      attempt_spbu_id: item.attempt_spbu_id || item.spbu_id || ''
+    }))
   } catch (e) {
     return []
   }
@@ -88,7 +93,12 @@ export function useRepeatedLogs(itemsPerPage = 50) {
       }
 
       if (data) {
-        const fetchedLogs = data.logs || []
+        const rawLogs = data.logs || []
+        const fetchedLogs = rawLogs.map(item => ({
+          ...item,
+          waktu: item.waktu || item.jam_pencatatan || '',
+          attempt_spbu_id: item.attempt_spbu_id || item.spbu_id || ''
+        }))
         logs.value = fetchedLogs
         totalCount.value = data.total_count || 0
         if (!searchQuery.value.trim()) {
