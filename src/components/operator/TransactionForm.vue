@@ -18,8 +18,18 @@ const emit = defineEmits(['submit', 'back'])
 
 const { playSuccessSound, playWarningSound } = useAudioAlert()
 const { isScanning, isProcessing, startCamera, stopCamera, scanPlateNumber } = useCameraScanner()
-const { checkPlateStatus, recordRepeatedLog, checkingPlate, submitTransaction } = useTransactionAction()
+const { checkPlateStatus, recordRepeatedLog, checkingPlate, submitTransaction, loading: actionLoading } = useTransactionAction()
 const authStore = useAuthStore()
+
+const isSubmittingLock = ref(false)
+
+const isSubmittingTransaction = computed(() => {
+  return props.loading || actionLoading.value || isSubmittingLock.value
+})
+
+const isProcessingForm = computed(() => {
+  return isSubmittingTransaction.value || checkingPlate.value
+})
 
 const videoRef = ref(null)
 const platInputRef = ref(null)
@@ -226,7 +236,7 @@ onMounted(() => {
  * (Di sini data alert HANYA TERCATAT 1x ke database jika terdeteksi limit/mismatch)
  */
 const handleCheckPlate = async () => {
-  if (checkingPlate.value) return
+  if (isProcessingForm.value) return
   if (debounceTimeout) clearTimeout(debounceTimeout)
 
   platTouched.value = true
@@ -505,73 +515,91 @@ const selectPresetFullQuota = () => {
   selectPresetLiter(maxLiter)
 }
 
-const isSubmittingLock = ref(false)
-
 const handleSubmit = async () => {
   if (isSubmittingLock.value) return
   isSubmittingLock.value = true
-  setTimeout(() => { isSubmittingLock.value = false }, 300)
 
-  const liter = parseFloat(form.value.liter)
-  if (!liter || liter <= 0) {
-    platStatus.value = 'invalid'
-    platMessage.value = 'Mohon masukkan jumlah liter atau total harga'
-    return
-  }
-
-  // Batas Maksimal Pengisian sesuai Aturan Database: Umum max 5 Liter (Rp 50k), Ojol max 10 Liter (Rp 100k)
-  const maxLiterLimit = props.isOjol ? 10 : 5
-  if (liter > maxLiterLimit) {
-    playWarningSound()
-    refueledInfo.value = {
-      plat: form.value.plat_nomor,
-      isQuotaExceededTransaction: true,
-      attemptedLiter: liter,
-      attemptedHarga: parseRupiah(form.value.totalHarga),
-      message: `Jumlah pengisian (${liter} Liter) melebihi batas maksimal kategori ${props.isOjol ? 'Motor Ojol' : 'Motor Umum'} (${maxLiterLimit} Liter / Rp ${formatAngka(maxLiterLimit * hargaPerLiter.value)})!`
+  try {
+    const liter = parseFloat(form.value.liter)
+    if (!liter || liter <= 0) {
+      platStatus.value = 'invalid'
+      platMessage.value = 'Mohon masukkan jumlah liter atau total harga'
+      return
     }
-    showRefueledModal.value = true
-    return
-  }
 
-  // Pre-check status plat & sisa kuota sebelum kirim transaksi
-  const statusRes = await checkPlateStatus(form.value.plat_nomor, props.isOjol)
-  if (statusRes && statusRes.success) {
-    const remaining = statusRes.remainingQuota ?? 999
-    // Cek batas kuota (baik dalam liter atau Rupiah)
-    if (remaining > 0 && remaining < 100 && liter > remaining) {
+    // Batas Maksimal Pengisian sesuai Aturan Database: Umum max 5 Liter (Rp 50k), Ojol max 10 Liter (Rp 100k)
+    const maxLiterLimit = props.isOjol ? 10 : 5
+    if (liter > maxLiterLimit) {
       playWarningSound()
       refueledInfo.value = {
-        ...statusRes,
+        plat: form.value.plat_nomor,
         isQuotaExceededTransaction: true,
         attemptedLiter: liter,
         attemptedHarga: parseRupiah(form.value.totalHarga),
-        message: `Jumlah transaksi (${liter} Liter) melebihi sisa kuota hari ini (${remaining} Liter)!`
+        message: `Jumlah pengisian (${liter} Liter) melebihi batas maksimal kategori ${props.isOjol ? 'Motor Ojol' : 'Motor Biasa'} (${maxLiterLimit} Liter / Rp ${formatAngka(maxLiterLimit * hargaPerLiter.value)})!`
       }
       showRefueledModal.value = true
       return
     }
-  }
 
-  const res = await submitTransaction({
-    platNomor: form.value.plat_nomor,
-    liter: liter,
-    isOjol: props.isOjol
-  })
+    // Pre-check status plat & sisa kuota sebelum kirim transaksi
+    const statusRes = await checkPlateStatus(form.value.plat_nomor, props.isOjol)
+    const attemptedHarga = parseRupiah(form.value.totalHarga) || (liter * hargaPerLiter.value)
 
-  if (res && res.success) {
-    playSuccessSound()
-    emit('submit', { success: true })
-  } else if (res && !res.success) {
-    playWarningSound()
-    refueledInfo.value = {
-      plat: form.value.plat_nomor,
-      isCategoryMismatch: res.reason === 'category_mismatch',
-      isQuotaExceededTransaction: res.reason === 'quota_exceeded' || res.reason === 'already_refueled',
-      countToday: 1,
-      message: res.message || 'Transaksi ditolak oleh sistem!'
+    if (statusRes && statusRes.success) {
+      const remQuota = statusRes.remainingQuota ?? 999999
+      let remRupiah = remQuota
+      let remLiter = remQuota / hargaPerLiter.value
+
+      if (typeof remQuota === 'number' && remQuota <= 100) {
+        remLiter = remQuota
+        remRupiah = remQuota * hargaPerLiter.value
+      }
+
+      if (remQuota <= 0 || statusRes.hasRefueledToday || attemptedHarga > remRupiah || liter > remLiter) {
+        playWarningSound()
+        refueledInfo.value = {
+          ...statusRes,
+          plat: form.value.plat_nomor,
+          isQuotaExceededTransaction: true,
+          attemptedLiter: liter,
+          attemptedHarga: attemptedHarga,
+          remainingQuota: remQuota,
+          message: `Jumlah transaksi (${liter} Liter / ${formatRupiah(attemptedHarga)}) melebihi sisa kuota hari ini (${remLiter} Liter / ${formatRupiah(remRupiah)})!`
+        }
+        showRefueledModal.value = true
+        return
+      }
     }
-    showRefueledModal.value = true
+
+    const res = await submitTransaction({
+      platNomor: form.value.plat_nomor,
+      liter: liter,
+      isOjol: props.isOjol
+    })
+
+    if (res && res.success) {
+      playSuccessSound()
+      emit('submit', { success: true })
+    } else if (res && !res.success) {
+      playWarningSound()
+      refueledInfo.value = {
+        ...(statusRes || {}),
+        ...(res || {}),
+        plat: form.value.plat_nomor,
+        isCategoryMismatch: res.reason === 'category_mismatch',
+        isQuotaExceededTransaction: res.reason === 'quota_exceeded' || res.reason === 'already_refueled',
+        attemptedLiter: liter,
+        attemptedHarga: attemptedHarga,
+        countToday: (statusRes?.countToday || statusRes?.count_today || 1),
+        message: res.message || 'Transaksi ditolak oleh sistem!'
+      }
+      showRefueledModal.value = true
+    }
+  } catch (err) {
+    console.error('Error in handleSubmit:', err)
+  } finally {
+    isSubmittingLock.value = false
   }
 }
 </script>
@@ -583,7 +611,8 @@ const handleSubmit = async () => {
     <div class="flex items-center justify-between mb-3 md:mb-5">
       <button
         @click="$emit('back')"
-        class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white active:scale-95 transition-all shadow-sm"
+        :disabled="isProcessingForm"
+        class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white active:scale-95 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
         title="Kembali ke Pilih Kendaraan"
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">
@@ -611,12 +640,13 @@ const handleSubmit = async () => {
               @input="onPlatInput"
               @keydown="onPlatKeydown"
               @keydown.enter.prevent="handleCheckPlate"
+              :disabled="isSubmittingTransaction"
               type="text"
               maxlength="12"
               placeholder="KT 1234 ABC"
               autocomplete="off"
               spellcheck="false"
-              class="flex-1 w-full h-16 bg-white/10 border-2 rounded-2xl px-4 py-3 text-2xl font-black uppercase tracking-wider text-white text-center placeholder-white/30 focus:outline-none focus:bg-white/20 transition-all shadow-inner"
+              class="flex-1 w-full h-16 bg-white/10 border-2 rounded-2xl px-4 py-3 text-2xl font-black uppercase tracking-wider text-white text-center placeholder-white/30 focus:outline-none focus:bg-white/20 transition-all shadow-inner disabled:opacity-60"
               :class="{
                 'border-white/30 focus:border-white': platStatus === 'idle',
                 'border-emerald-400 focus:border-emerald-300': platStatus === 'valid',
@@ -655,10 +685,10 @@ const handleSubmit = async () => {
           <button
             type="button"
             @click.prevent="handleCheckPlate"
-            :disabled="checkingPlate"
-            class="flex-1 h-14 bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-base md:text-lg rounded-2xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all disabled:opacity-50"
+            :disabled="isProcessingForm"
+            class="flex-1 h-14 bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-base md:text-lg rounded-2xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span v-if="checkingPlate" class="loading loading-spinner loading-md"></span>
+            <span v-if="isProcessingForm" class="loading loading-spinner loading-md"></span>
             <template v-else>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6 text-[#143d2e]">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -670,8 +700,9 @@ const handleSubmit = async () => {
           <button
             v-if="isCameraFeatureEnabled"
             @click.prevent="handleStartCamera"
+            :disabled="isProcessingForm"
             type="button"
-            class="w-14 h-14 shrink-0 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-95 transition-all"
+            class="w-14 h-14 shrink-0 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             title="Scan Plat"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-7 h-7">
@@ -693,7 +724,8 @@ const handleSubmit = async () => {
         <button
           type="button"
           @click="handleBackToPlateCheck"
-          class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-sm"
+          :disabled="isProcessingForm"
+          class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
           title="Ganti Plat Nomor"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">
@@ -715,11 +747,12 @@ const handleSubmit = async () => {
             v-model="form.liter"
             @input="onLiterInput"
             @keydown="onLiterKeydown"
+            :disabled="isSubmittingTransaction"
             type="number"
             step="0.001"
             min="0"
             placeholder="0.000"
-            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-2.5 sm:px-4 py-2.5 sm:py-3 md:py-4 text-base sm:text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all no-spinner"
+            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-2.5 sm:px-4 py-2.5 sm:py-3 md:py-4 text-base sm:text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all no-spinner disabled:opacity-60"
           />
         </div>
 
@@ -734,10 +767,11 @@ const handleSubmit = async () => {
             :value="form.totalHarga"
             @input="onHargaInput"
             @keydown="onHargaKeydown"
+            :disabled="isSubmittingTransaction"
             type="text"
             inputmode="numeric"
             placeholder="0"
-            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-2.5 sm:px-4 py-2.5 sm:py-3 md:py-4 text-base sm:text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all"
+            class="w-full bg-white/10 border-2 border-white/30 rounded-2xl px-2.5 sm:px-4 py-2.5 sm:py-3 md:py-4 text-base sm:text-xl md:text-2xl font-black text-white placeholder-white/30 focus:outline-none focus:bg-white/20 focus:border-white text-center transition-all disabled:opacity-60"
           />
         </div>
       </div>
@@ -747,7 +781,8 @@ const handleSubmit = async () => {
         <button
           type="button"
           @click="selectPresetFullQuota"
-          class="w-full py-2.5 sm:py-3 px-4 rounded-2xl bg-emerald-400/20 hover:bg-emerald-400/30 active:bg-emerald-400/40 border border-emerald-400/40 text-emerald-200 font-black text-sm sm:text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm"
+          :disabled="isProcessingForm"
+          class="w-full py-2.5 sm:py-3 px-4 rounded-2xl bg-emerald-400/20 hover:bg-emerald-400/30 active:bg-emerald-400/40 border border-emerald-400/40 text-emerald-200 font-black text-sm sm:text-base md:text-lg transition-all active:scale-95 flex items-center justify-center shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
           :class="{ '!bg-emerald-400 !text-[#143d2e] !border-emerald-300 shadow-md': parseFloat(form.liter) === (props.isOjol ? 10 : 5) }"
         >
           FULL
@@ -758,10 +793,10 @@ const handleSubmit = async () => {
       <button
         ref="submitBtnRef"
         type="submit"
-        :disabled="loading || !form.liter"
-        class="w-full bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-base sm:text-lg md:text-xl py-3 sm:py-4 rounded-2xl shadow-xl transform active:scale-95 transition-all mt-1 sm:mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="isProcessingForm || !form.liter"
+        class="w-full bg-white hover:bg-emerald-50 text-[#143d2e] font-black text-base sm:text-lg md:text-xl py-3 sm:py-4 rounded-2xl shadow-xl transform active:scale-95 transition-all mt-1 sm:mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
-        <span v-if="loading" class="loading loading-spinner loading-md"></span>
+        <span v-if="isProcessingForm" class="loading loading-spinner loading-md"></span>
         <span v-else>PROSES TRANSAKSI</span>
       </button>
     </form>

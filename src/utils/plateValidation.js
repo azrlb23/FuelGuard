@@ -2,12 +2,12 @@ import { supabase } from '@/lib/supabaseClient'
 
 // Daftar 57 Kode Wilayah Plat Nomor Resmi Indonesia (Sama persis dengan seeder PostgreSQL)
 export const DEFAULT_REGION_CODES = [
-  'A', 'B', 'D', 'E', 'F', 'T', 'Z', 'G', 'H', 'K', 'R', 
-  'AA', 'AB', 'AD', 'AE', 'AG', 'L', 'M', 'N', 'P', 'S', 'W', 
-  'BL', 'BB', 'BK', 'BA', 'BM', 'BP', 'BG', 'BN', 'BE', 'BD', 'BH', 
-  'KB', 'DA', 'KH', 'KT', 'KU', 
-  'DB', 'DL', 'DM', 'DN', 'DT', 'DD', 'DP', 'DC', 
-  'DK', 'DR', 'EA', 'DH', 'EB', 'ED', 
+  'A', 'B', 'D', 'E', 'F', 'T', 'Z', 'G', 'H', 'K', 'R',
+  'AA', 'AB', 'AD', 'AE', 'AG', 'L', 'M', 'N', 'P', 'S', 'W',
+  'BL', 'BB', 'BK', 'BA', 'BM', 'BP', 'BG', 'BN', 'BE', 'BD', 'BH',
+  'KB', 'DA', 'KH', 'KT', 'KU',
+  'DB', 'DL', 'DM', 'DN', 'DT', 'DD', 'DP', 'DC',
+  'DK', 'DW', 'DR', 'EA', 'DH', 'EB', 'ED',
   'DE', 'DG', 'DS', 'PA', 'PB'
 ]
 
@@ -22,7 +22,7 @@ export async function fetchAndCacheRegionCodes() {
     const { data, error } = await supabase
       .from('region_codes')
       .select('code')
-      
+
     if (error) throw error
     if (data && data.length > 0) {
       const codes = data.map(item => item.code.toUpperCase())
