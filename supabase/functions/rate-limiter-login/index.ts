@@ -42,8 +42,16 @@ serve(async (req) => {
       )
     }
 
-    const rawIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown_ip'
-    const clientIp = rawIp.split(',')[0].trim()
+    // cf-connecting-ip / x-real-ip are set by the trusted edge proxy and cannot be
+    // spoofed by the client. x-forwarded-for CAN have an attacker-supplied first
+    // entry, so if we must fall back to it, use the last hop (closest to our
+    // infrastructure) instead of the first (closest to the client) to prevent
+    // trivial IP-lockout bypass by sending a random X-Forwarded-For value.
+    const forwardedFor = req.headers.get('x-forwarded-for')
+    const clientIp = req.headers.get('cf-connecting-ip')
+      || req.headers.get('x-real-ip')
+      || (forwardedFor ? forwardedFor.split(',').pop().trim() : null)
+      || 'unknown_ip'
 
     // Key Redis Terpisah untuk Akun (Email) & IP
     const emailKey = `fuelguard:failed_login:email:${email}`

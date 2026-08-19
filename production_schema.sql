@@ -348,8 +348,12 @@ ALTER TABLE public.operator_profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "operator_profiles_select" ON public.operator_profiles;
 DROP POLICY IF EXISTS "operator_profiles_modify" ON public.operator_profiles;
 
+-- [AUDIT FIX #17] Isolasi SPBU: operator hanya bisa baca profil kasir SPBU sendiri
 CREATE POLICY "operator_profiles_select" ON public.operator_profiles
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (
+    public.get_user_role() = 'master'
+    OR spbu_id = public.get_user_spbu_id()
+  );
 
 CREATE POLICY "operator_profiles_modify" ON public.operator_profiles
   FOR ALL USING (public.get_user_role() = 'master');
@@ -394,8 +398,13 @@ DROP POLICY IF EXISTS "activity_logs_insert" ON public.activity_logs;
 CREATE POLICY "activity_logs_select" ON public.activity_logs
   FOR SELECT USING (public.get_user_role() = 'master');
 
+-- [AUDIT FIX #19] Fix audit log forgery: WITH CHECK (true) let any
+-- authenticated user insert arbitrary fake audit rows via the REST table
+-- endpoint. Legitimate writes only come from fn_audit_transaction (trigger)
+-- and SECURITY DEFINER RPCs, both of which run as the function owner and
+-- bypass RLS regardless of this policy.
 CREATE POLICY "activity_logs_insert" ON public.activity_logs
-  FOR INSERT WITH CHECK (true);
+  FOR INSERT WITH CHECK (false);
 
 -- 6.9 RLS Table: region_codes
 ALTER TABLE public.region_codes ENABLE ROW LEVEL SECURITY;
@@ -967,10 +976,19 @@ DECLARE
   v_offset integer;
   v_logs json;
 BEGIN
+  -- [AUDIT FIX #18] Fix unauthenticated data exposure: anon caller had
+  -- get_user_role() = NULL, fell through to ELSE, left v_effective_spbu
+  -- NULL, and got today's repeated-transaction log for ALL SPBUs.
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Akses ditolak: Sesi tidak terautentikasi';
+  END IF;
+
   IF public.get_user_role() = 'operator' THEN
     v_effective_spbu := public.get_user_spbu_id();
-  ELSE
+  ELSIF public.get_user_role() = 'master' THEN
     v_effective_spbu := NULLIF(TRIM(p_spbu_id), '');
+  ELSE
+    RAISE EXCEPTION 'Akses ditolak: Role tidak valid untuk mengakses log pengetap';
   END IF;
 
   v_offset := (GREATEST(p_page, 1) - 1) * p_page_size;
@@ -1025,6 +1043,7 @@ BEGIN
   );
 END;
 $$;
+REVOKE EXECUTE ON FUNCTION public.get_operator_repeated_logs(text, integer, integer, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_operator_repeated_logs(text, integer, integer, text) TO authenticated;
 
 -- ─── 8. MASTER STORED PROCEDURES (RPCs) ──────────────────────────────────────
