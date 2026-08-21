@@ -5,6 +5,7 @@ import { usePresence } from '@/composables/common/usePresence'
 import { useRoute } from 'vue-router'
 import MasterLayout from '@/layouts/MasterLayout.vue'
 import OperatorLayout from '@/layouts/OperatorLayout.vue'
+import DomainMigrationModal from '@/components/common/DomainMigrationModal.vue'
 
 const authStore = useAuthStore()
 const { initPresence, leavePresence } = usePresence()
@@ -32,6 +33,8 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <DomainMigrationModal />
+
   <MasterLayout v-if="layout === 'master'">
     <RouterView v-slot="{ Component }">
       <Transition name="content" mode="out-in">
@@ -39,8 +42,6 @@ onUnmounted(() => {
       </Transition>
     </RouterView>
   </MasterLayout>
-
-
 
   <OperatorLayout v-else-if="layout === 'operator'">
     <RouterView v-slot="{ Component }">
