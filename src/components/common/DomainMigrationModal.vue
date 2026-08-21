@@ -14,7 +14,6 @@ onMounted(() => {
 
   const hostname = window.location.hostname.toLowerCase()
 
-  // Muncul jika diakses dari domain selain fuelguard.id atau www.fuelguard.id
   if (hostname !== TARGET_DOMAIN && hostname !== `www.${TARGET_DOMAIN}`) {
     showModal.value = true
   }
@@ -25,12 +24,10 @@ const handleMigration = async () => {
   isMigrating.value = true
 
   try {
-    // 1. Sign out dari Supabase & Reset state store Pinia
     await authStore.logout()
   } catch (err) {
     console.warn('[DomainMigrationModal] Error resetting auth state:', err)
   } finally {
-    // 2. Membersihkan Storage Lokal
     try {
       localStorage.clear()
     } catch (e) {}
@@ -39,7 +36,6 @@ const handleMigration = async () => {
       sessionStorage.clear()
     } catch (e) {}
 
-    // 3. Membersihkan PWA Service Workers & Cache Storage jika ada
     try {
       if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations()
@@ -55,7 +51,6 @@ const handleMigration = async () => {
       console.warn('[DomainMigrationModal] Error clearing SW caches:', e)
     }
 
-    // 4. Redirect ke Halaman Login Domain Baru
     window.location.href = TARGET_URL
   }
 }
@@ -74,59 +69,35 @@ const handleMigration = async () => {
         <Transition name="modal-slide">
           <div
             v-if="showModal"
-            class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col relative border border-gray-100"
+            class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col relative"
           >
-            <!-- Signature FuelGuard Emerald Header -->
+            <!-- Header Ringkas Tanpa Border -->
             <div class="p-6 bg-gradient-to-br from-[#143d2e] via-[#1b4d3a] to-[#256a50] text-white relative overflow-hidden">
               <div class="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -translate-y-12 translate-x-12 pointer-events-none"></div>
 
               <div class="flex items-center gap-3.5 relative z-10">
-                <div class="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center p-2.5 shrink-0 shadow-inner">
+                <div class="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center p-2.5 shrink-0 shadow-inner">
                   <img src="@/assets/fuelguard_logo.png" alt="FuelGuard Logo" class="w-full h-full object-contain brightness-0 invert" />
                 </div>
-                <div>
-                  <span class="text-[10px] font-bold text-green-300 uppercase tracking-widest block">Pengumuman Resmi</span>
-                  <h3 id="migration-modal-title" class="text-lg font-black tracking-tight leading-tight text-white">
-                    Pemindahan Domain
-                  </h3>
-                </div>
+                <h3 id="migration-modal-title" class="text-lg font-black tracking-tight leading-tight text-white">
+                  Pemindahan Domain
+                </h3>
               </div>
             </div>
 
-            <!-- Body Content -->
+            <!-- Body Ringkas & Minimalis -->
             <div class="p-6 space-y-4 text-left">
-              <div>
-                <p class="text-sm font-semibold text-gray-800 leading-relaxed">
-                  FuelGuard kini secara resmi telah berpindah alamat domain ke:
-                </p>
-                <div class="mt-2.5 p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-center justify-between">
-                  <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">Domain Baru:</span>
-                  <span class="font-extrabold text-base text-[#143d2e] tracking-tight">fuelguard.id</span>
-                </div>
-              </div>
-
-              <div class="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
-                <div class="flex items-center gap-2 text-xs font-bold text-gray-900">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-amber-500 shrink-0">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                  </svg>
-                  <span>Informasi Pembersihan Sesi</span>
-                </div>
-                <p class="text-xs text-gray-600 leading-relaxed">
-                  Demi keamanan data, seluruh sesi lokal pada domain lama akan dibersihkan. Anda akan diarahkan ke halaman login domain baru.
-                </p>
-              </div>
+              <p class="text-sm text-gray-700 leading-relaxed font-semibold">
+                FuelGuard telah berpindah ke domain <strong class="text-[#143d2e] font-extrabold underline underline-offset-4 decoration-emerald-500">fuelguard.id</strong>. Seluruh sesi lama Anda akan dibersihkan dan dialihkan ke halaman login baru.
+              </p>
 
               <button
                 @click="handleMigration"
                 :disabled="isMigrating"
-                class="w-full py-4 px-5 rounded-2xl bg-[#143d2e] hover:bg-[#1b4d3a] text-white font-extrabold text-sm shadow-lg shadow-emerald-950/20 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+                class="w-full py-3.5 px-5 rounded-2xl bg-[#143d2e] hover:bg-[#1b4d3a] text-white font-extrabold text-sm shadow-lg shadow-emerald-950/20 transition-all duration-200 active:scale-95 flex items-center justify-center cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed mt-2"
               >
                 <template v-if="!isMigrating">
-                  <span>Pindah ke fuelguard.id Sekarang</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
+                  <span>Pindah</span>
                 </template>
                 <template v-else>
                   <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
